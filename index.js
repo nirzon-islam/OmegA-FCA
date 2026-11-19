@@ -10,6 +10,7 @@ const { EventDispatcher } = require("./src/events/dispatcher");
 const { CookieJar } = require("./src/network/cookieJar");
 const { createRequestClient, retryAfterMs, isRetryableStatus } = require("./src/network/requestClient");
 const { createPersonalSession, detectSessionChallenge, extractIdentity, extractFacebookTokens } = require("./src/auth/personalSession");
+const { normalizeFacebookResponse, stripFacebookJsonPrefix, createFacebookError } = require("./src/auth/facebookResponse");
 const { createClient } = require("./src/api/client");
 const { createGoatBotLogin } = require("./src/compat/goatbotLogin");
 const { createLegacyFcaProvider } = require("./src/compat/legacyFcaTransport");
@@ -23,7 +24,8 @@ module.exports = {
   normalizeCookies, validateSessionCookies, parseCookieHeader, parseNetscapeCookies,
   redactSecrets, classifySessionState, describeError, encryptSession, decryptSession,
   saveSession, loadSession, deleteSession, ConnectionSupervisor, EventDispatcher,
-  CookieJar, createRequestClient, retryAfterMs, isRetryableStatus, createPersonalSession, detectSessionChallenge, extractIdentity, extractFacebookTokens, createClient,
+  CookieJar, createRequestClient, retryAfterMs, isRetryableStatus, createPersonalSession, detectSessionChallenge, extractIdentity, extractFacebookTokens,
+  normalizeFacebookResponse, stripFacebookJsonPrefix, createFacebookError, createClient,
   createGoatBotLogin, createLegacyFcaProvider, verifyLicenseToken, createLicenseProvider,
   validateTransportDriver, createTransportFactory, createMetaMessengerTransport,
   normalizeWebhookPayload, verifyWebhookSignature, verifyWebhookChallenge,
