@@ -13,7 +13,7 @@ function publicChallenge(value) {
     ? value.type.trim().slice(0, 64) : "verification";
   const message = typeof value.message === "string" ? value.message.slice(0, 500) : null;
   const methods = Array.isArray(value.methods)
-    ? value.methods.filter(item => typeof item === "string").slice(0, 10) : [];
+    ? value.methods.filter(item => typeof item === "string").map(item => item.trim().slice(0, 64)).filter(Boolean).slice(0, 10) : [];
   return Object.freeze({ type, message, methods: Object.freeze(methods) });
 }
 
@@ -50,7 +50,7 @@ function createAuthenticationAttempt({ authenticate, maxChallengeRounds = 3 } = 
       error: lastError ? Object.freeze({
         name: lastError.name || "Error",
         code: typeof lastError.code === "string" ? lastError.code : null,
-        message: typeof lastError.message === "string" ? lastError.message : "Authentication failed"
+        message: "Authentication failed; inspect the provider error securely"
       }) : null
     });
   }
