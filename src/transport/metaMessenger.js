@@ -7,10 +7,10 @@ const { createRequestClient } = require("../network/requestClient");
 const GRAPH_HOST = "graph.facebook.com";
 
 function verifyWebhookSignature(rawBody, signature, appSecret) {
-  if (!Buffer.isBuffer(rawBody) || typeof signature !== "string" ||
+  if (!(rawBody instanceof Uint8Array) || typeof signature !== "string" ||
       !/^sha256=[a-f0-9]{64}$/i.test(signature) ||
       typeof appSecret !== "string" || !appSecret) return false;
-  const expected = Buffer.from("sha256=" + createHmac("sha256", appSecret).update(rawBody).digest("hex"));
+  const expected = Buffer.from("sha256=" + createHmac("sha256", appSecret).update(Buffer.from(rawBody)).digest("hex"));
   const supplied = Buffer.from(signature.toLowerCase());
   return expected.length === supplied.length && timingSafeEqual(expected, supplied);
 }
@@ -140,20 +140,20 @@ function createMetaMessengerTransport({
     if (!appSecret) {
       throw new Error("appSecret is required to verify Messenger webhook signatures");
     }
-    if (!Buffer.isBuffer(rawBody) || rawBody.length > 1024 * 1024 ||
+    if (!(rawBody instanceof Uint8Array) || rawBody.byteLength > 1024 * 1024 ||
         !verifyWebhookSignature(rawBody, signature, appSecret)) {
       const error = new Error("Messenger webhook signature verification failed");
       error.code = "META_WEBHOOK_SIGNATURE_INVALID";
       throw error;
     }
     let payload;
-    try { payload = JSON.parse(rawBody.toString("utf8")); }
+    try { payload = JSON.parse(Buffer.from(rawBody).toString("utf8")); }
     catch {
       const error = new Error("Messenger webhook body is not valid JSON");
       error.code = "META_WEBHOOK_PAYLOAD_INVALID";
       throw error;
     }
-    const normalized = normalizeWebhookPayload(payload);
+    const normalized = normalizeWebhookPayload(payload).filter(event => event.pageID === pageId);
     for (const event of normalized) events.emit("event", event);
     return normalized.length;
   }
