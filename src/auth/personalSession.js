@@ -28,6 +28,38 @@ function detectSessionChallenge(response, html) {
   return "active";
 }
 
+function extractFacebookTokens(html) {
+  if (typeof html !== "string" || html.length > MAX_RESPONSE_BYTES) {
+    throw new TypeError("Facebook HTML must be text within the response size limit");
+  }
+  const read = patterns => {
+    for (const pattern of patterns) {
+      const match = pattern.exec(html);
+      if (match && typeof match[1] === "string" && match[1].length <= 4096) return match[1];
+    }
+    return null;
+  };
+  return Object.freeze({
+    fbDtsg: read([
+      /<input[^>]+name=["']fb_dtsg["'][^>]+value=["']([^"']+)["']/i,
+      /"DTSGInitialData"[^]*?"token"\s*:\s*"([^"]+)"/,
+      /"fb_dtsg"\s*:\s*"([^"]+)"/
+    ]),
+    lsd: read([
+      /<input[^>]+name=["']lsd["'][^>]+value=["']([^"']+)["']/i,
+      /"LSD"\s*,\s*\[\s*\]\s*,\s*\{\s*"token"\s*:\s*"([^"]+)"/
+    ]),
+    jazoest: read([
+      /<input[^>]+name=["']jazoest["'][^>]+value=["']([^"']+)["']/i,
+      /"jazoest"\s*:\s*"([^"]+)"/
+    ]),
+    hsi: read([/"hsi"\s*:\s*"([0-9]+)"/]),
+    spinR: read([/"__spin_r"\s*:\s*"?([0-9]+)"?/]),
+    spinB: read([/"__spin_b"\s*:\s*"([^"]+)"/]),
+    spinT: read([/"__spin_t"\s*:\s*"?([0-9]+)"?/])
+  });
+}
+
 function collectResponseCookies(response, requestUrl) {
   const raw = typeof response.headers?.getSetCookie === "function"
     ? response.headers.getSetCookie()
@@ -152,6 +184,7 @@ async function createPersonalSession({
     }
 
     const pageUserId = extractIdentity(html);
+    const pageTokens = extractFacebookTokens(html);
     if (pageUserId && pageUserId !== userId) {
       throw sessionError("Facebook returned a different account than the supplied c_user session", "FCA_SESSION_IDENTITY_MISMATCH", "error");
     }
@@ -160,6 +193,10 @@ async function createPersonalSession({
       userId,
       state: "active",
       validatedAt: Date.now(),
+      getTokens() {
+        if (closed) throw new Error("Facebook session is closed");
+        return { ...pageTokens };
+      },
       getCookieHeader(url = FACEBOOK_ORIGIN + "/") {
         if (closed) throw new Error("Facebook session is closed");
         const target = url instanceof URL ? url : new URL(url);
@@ -225,4 +262,4 @@ async function createPersonalSession({
   }
 }
 
-module.exports = { createPersonalSession, detectSessionChallenge, extractIdentity };
+module.exports = { createPersonalSession, detectSessionChallenge, extractIdentity, extractFacebookTokens };
