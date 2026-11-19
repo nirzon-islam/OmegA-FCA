@@ -9,7 +9,8 @@
   },
   "scripts": {
     "test": "node --test",
-    "test:syntax": "node -e \"const fs=require('node:fs');const path=require('node:path');const cp=require('node:child_process');const walk=d=>fs.readdirSync(d,{withFileTypes:true}).flatMap(e=>e.isDirectory()?walk(path.join(d,e.name)):[path.join(d,e.name)]);for(const f of ['index.js',...walk('src'),...walk('test'),...walk('examples')].filter(f=>f.endsWith('.js'))){const r=cp.spawnSync(process.execPath,['--check',f],{stdio:'inherit'});if(r.status!==0)process.exit(r.status||1)}\""
+    "test:syntax": "node -e \"const fs=require('node:fs');const path=require('node:path');const cp=require('node:child_process');const walk=d=>fs.readdirSync(d,{withFileTypes:true}).flatMap(e=>e.isDirectory()?walk(path.join(d,e.name)):[path.join(d,e.name)]);for(const f of ['index.js',...walk('src'),...walk('test'),...walk('examples')].filter(f=>f.endsWith('.js'))){const r=cp.spawnSync(process.execPath,['--check',f],{stdio:'inherit'});if(r.status!==0)process.exit(r.status||1)}\"",
+    "prepublishOnly": "npm test && npm run test:syntax"
   },
   "license": "MIT",
   "repository": {
@@ -24,5 +25,20 @@
     "nodejs",
     "omega"
   ],
-  "types": "index.d.ts"
+  "types": "index.d.ts",
+  "files": [
+    "index.js",
+    "index.d.ts",
+    "src/",
+    "README.md",
+    "LICENSE",
+    "docs/META-MESSENGER-TRANSPORT.md"
+  ],
+  "exports": {
+    ".": {
+      "types": "./index.d.ts",
+      "require": "./index.js",
+      "default": "./index.js"
+    }
+  }
 }
