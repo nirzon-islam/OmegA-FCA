@@ -147,3 +147,21 @@ test("challenge metadata only exposes bounded identifier-like values", async () 
   });
   assert.equal(JSON.stringify(attempt.snapshot()).includes("hunter2"), false);
 });
+
+test("failed challenge continuation cancels pending provider state", async () => {
+  let cancelled = 0;
+  const attempt = createAuthenticationAttempt({
+    authenticate: async () => ({
+      status: "challenge_required",
+      challenge: { type: "two_factor" },
+      resume: async () => { throw Object.assign(new Error("verification rejected"), { code: "AUTH_REJECTED" }); },
+      cancel: async () => { cancelled += 1; }
+    })
+  });
+  await attempt.begin({});
+  await assert.rejects(attempt.submitChallenge("123456"), /verification rejected/);
+  assert.equal(cancelled, 1);
+  assert.equal(attempt.snapshot().state, "failed");
+  await attempt.close();
+  assert.equal(cancelled, 1);
+});
