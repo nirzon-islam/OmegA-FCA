@@ -20,9 +20,10 @@ function createClient({ authenticate, options = {}, reconnect = {}, license = {}
   let detachMqtt = null;
   let mqttErrorHandler = null;
 
-  function checkLicense() {
+  async function checkLicense() {
     if (!requireLicense) return null;
-    verifiedLicense = verifyLicenseToken(license.token, license.publicKey, {
+    const token = typeof license.refresh === "function" ? await license.refresh() : license.token;
+    verifiedLicense = verifyLicenseToken(token, license.publicKey, {
       installationId: license.installationId,
       ownerId: license.ownerId
     });
@@ -31,7 +32,7 @@ function createClient({ authenticate, options = {}, reconnect = {}, license = {}
 
   async function login(credentials = {}, loginOptions = options) {
     if (supervisor && supervisor.snapshot().connected) return api;
-    checkLicense();
+    await checkLicense();
     const mode = credentials.mode;
     let normalized;
     if (mode === "appstate") {
