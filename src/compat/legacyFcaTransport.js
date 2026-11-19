@@ -41,10 +41,7 @@ function createLegacyFcaProvider({ login, options = {}, timeoutMs = 45_000 } = {
   return async function authenticate({ mode, credentials, options: clientOptions = {} } = {}) {
     let input;
     if (mode === "appstate") {
-      input = { appState: credentials.map(cookie => ({
-        key: cookie.key, value: cookie.value, domain: cookie.domain,
-        path: cookie.path, hostOnly: cookie.hostOnly
-      })) };
+      input = { appState: credentials.map(cookie => ({ ...cookie })) };
     } else if (mode === "credentials") {
       input = {
         email: credentials.email,
