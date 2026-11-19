@@ -96,6 +96,7 @@ function createClient({ authenticate, options = {}, reconnect = {}, license = {}
         email: credentials.email.trim(),
         password: credentials.password,
         twoFactorSecret: credentials.twoFactorSecret || null,
+        twoFactorCode: typeof credentials.twoFactorCode === "string" ? credentials.twoFactorCode.trim() : null,
         userAgent: credentials.userAgent || null,
         proxy: credentials.proxy || null
       };
