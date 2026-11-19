@@ -128,7 +128,7 @@ export class EventDispatcher {
   clear(): void;
 }
 export class CookieJar {
-  constructor(cookies?: Cookie[], options?: { now?: () => number }); setCookies(cookies: Cookie[]): this;
+  constructor(cookies?: Cookie[], options?: { now?: () => number }); setCookies(cookies: Cookie[]): this; deleteCookies(cookies: Array<{ key: string; domain: string; path: string }>): this;
   getCookieHeader(inputUrl: string | URL): string; clear(): void; readonly size: number;
 }
 export function createClient(options: ClientOptions): {
