@@ -9,7 +9,7 @@
   },
   "scripts": {
     "test": "node --test",
-    "test:syntax": "node --check index.js && node --check src/api/client.js && node --check src/transport/contract.js && node --check src/compat/goatbotLogin.js && node --check src/runtime/connection.js && node --check src/events/dispatcher.js && node --check src/security/cookies.js && node --check src/security/redact.js && node --check src/security/sessionState.js && node --check src/security/sessionCrypto.js && node --check src/security/sessionStore.js && node --check src/license/verify.js && node --check src/license/provider.js"
+    "test:syntax": "node --check index.js && node --check src/api/client.js && node --check src/transport/contract.js && node --check src/compat/goatbotLogin.js && node --check src/runtime/connection.js && node --check src/events/dispatcher.js && node --check src/security/cookies.js && node --check src/security/redact.js && node --check src/security/sessionState.js && node --check src/security/sessionCrypto.js && node --check src/security/sessionStore.js && node --check src/license/verify.js && node --check src/license/provider.js && node --check src/update/manifest.js"
   },
   "license": "SEE LICENSE IN LICENSE",
   "private": true
