@@ -49,7 +49,7 @@ transport.listen((error, event) => {
 transport.publishWebhook(rawBody, signature);
 ```
 
-Do not parse and re-serialize the body before signature verification: the signature is calculated over the original bytes. Reject webhook requests that fail verification. Configure the Meta webhook verification handshake and HTTPS endpoint in your application; this package does not create or expose a web server.
+Do not parse and re-serialize the body before signature verification: the signature is calculated over the original bytes. Reject webhook requests that fail verification. For the GET verification handshake, use the exported `verifyWebhookChallenge(query, verifyToken)` helper; it returns the challenge string only when `hub.mode=subscribe` and the verify token matches, otherwise `null`. Configure the HTTPS endpoint in your application; this package does not create or expose a web server.
 
 Normalized event types currently include `message`, `postback`, `delivery`, `read`, `account_linking`, and `referral`.
 
