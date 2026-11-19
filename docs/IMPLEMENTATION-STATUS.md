@@ -4,7 +4,7 @@
 
 - Node.js 20+ CommonJS package, root exports and TypeScript declarations.
 - Cookie/AppState parsing and validation, encrypted session helpers, restrictive file permissions and secret redaction.
-- **New:** `FB_USERNAME` input is normalized by `createClient`, typed in the public API, and mapped by the GoatBot compatibility login adapter while preserving legacy email support.
+- **Updated:** account configuration now treats `account.txt` as AppState/cookie-only and rejects credential-like key/value text. Credential configuration reads canonical `facebookAccount.fb_email` (legacy `email` and `FB_EMAIL` environment aliases remain supported); it does not read `fb_username`.
 - **New native personal-session foundation:** `createPersonalSession()` validates an owner-supplied AppState against Facebook over HTTPS, scopes session cookies to Facebook/Messenger hosts, provides bounded-time authenticated web requests, and reports expired sessions/checkpoints without bypassing them.
 - Bounded HTTPS request helper and secure cookie jar.
 - **New safe diagnostics utility:** bounded metadata-only recorder, integrated with AppState-backed personal-session requests; excludes header/query/body/response values and credential material.
@@ -13,7 +13,7 @@
 - Event dispatcher with duplicate coalescing, success-only acknowledgement and per-thread ordering.
 - Injectable transport contract and GoatBot callback-login adapter.
 - **New:** `createLegacyFcaProvider()` bridges an existing callback-style personal-account FCA implementation into OmegA-FCA's transport contract. It maps AppState or credentials login, manual 2FA inputs, current-user lookup, MQTT listener lifecycle and supported FCA methods.
-- Manual 2FA input plumbing; checkpoint and expired-session classification. The owner must resolve Facebook challenges through the platform.
+- Manual 2FA input plumbing; checkpoint and expired-session classification. The owner must resolve Facebook challenges through the platform. The repository configuration loader does not treat `account.txt` as a credential source.
 - Provider-neutral authentication-attempt coordinator with bounded challenge rounds, single-use continuation, optional provider cleanup on cancellation, and secret-safe public snapshots. This is lifecycle plumbing only; no Facebook credential provider is included.
 - Optional Ed25519 licensing and signed update-manifest verification.
 - Separate official Meta Messenger Page transport and webhook example.
