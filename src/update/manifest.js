@@ -11,7 +11,7 @@ function decodeBase64Url(value, label) {
 
 function parseVersion(value) {
   if (typeof value !== "string") throw new Error("Invalid semantic version");
-  const match = /^(0|[1-9]\\d*)\\.(0|[1-9]\\d*)\\.(0|[1-9]\\d*)(?:-([0-9A-Za-z.-]+))?(?:\\+[0-9A-Za-z.-]+)?$/.exec(value);
+  const match = /^(0|[1-9]\d*)\\.(0|[1-9]\d*)\\.(0|[1-9]\d*)(?:-([0-9A-Za-z.-]+))?(?:\\+[0-9A-Za-z.-]+)?$/.exec(value);
   if (!match) throw new Error("Invalid semantic version");
   return { major: Number(match[1]), minor: Number(match[2]), patch: Number(match[3]), prerelease: match[4] || "" };
 }
@@ -29,7 +29,7 @@ function compareVersions(left, right) {
     if (aa[i] === undefined) return -1;
     if (bb[i] === undefined) return 1;
     if (aa[i] === bb[i]) continue;
-    const an = /^\\d+$/.test(aa[i]), bn = /^\\d+$/.test(bb[i]);
+    const an = /^\d+$/.test(aa[i]), bn = /^\d+$/.test(bb[i]);
     if (an && bn) return Number(aa[i]) > Number(bb[i]) ? 1 : -1;
     if (an !== bn) return an ? -1 : 1;
     return aa[i] > bb[i] ? 1 : -1;
