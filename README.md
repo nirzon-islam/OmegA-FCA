@@ -17,6 +17,7 @@ OmegA-FCA is the Facebook integration library maintained under the **OmegA Bot**
 - `FB_USERNAME` credentials are accepted by the client and GoatBot compatibility mapper; native username/password authentication is not yet implemented.
 - Manual 2FA input plumbing and checkpoint/session-expiry classification. Challenges must be resolved by the account owner.
 - Connection supervision, bounded reconnect/backoff and event dispatch.
+- Bounded realtime binary-frame envelope inspection based only on the observed WebSocket capture; no private protocol assumptions.
 - `createLegacyFcaProvider()`: adapter for an existing callback-style personal-account FCA implementation.
 - `createGoatBotLogin()`: callback-style GoatBot login adapter.
 - Personal-account driver method forwarding for messaging, threads, reactions, typing, and group actions when the supplied FCA implementation supports those methods.
@@ -59,6 +60,10 @@ console.log(session.userId, response.status);
 ```
 
 This is a session foundation only: it does not yet provide the full FCA action API or realtime listener.
+
+## Realtime frame inspection
+
+The Android Messenger Web capture confirmed a successful `/ws/realtime` WebSocket handshake and binary frames containing a JSON-like `events` envelope with `name` and `args` fields. OmegA-FCA now includes `decodeRealtimeFrame()` and `summarizeRealtimeFrame()` for bounded inspection of that observed envelope. The undocumented binary prefix remains opaque; this is not yet a socket client, authentication flow, subscription/acknowledgement implementation, event semantic map, message sender, or E2EE implementation. See [Realtime frame evidence](docs/REALTIME-FRAME-EVIDENCE.md).
 
 ## Safe diagnostic reports
 
