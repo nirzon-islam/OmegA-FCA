@@ -222,6 +222,10 @@ export interface MetaMessengerTransportOptions {
 export interface MetaMessengerTransport {
   getCurrentUserID(): string;
   sendMessage(recipientId: string, message: Record<string, unknown>): Promise<Record<string, unknown>>;
+  getThreadList(limit?: number, after?: string): Promise<Record<string, unknown>>;
+  getThreadInfo(threadId: string): Promise<Record<string, unknown>>;
+  getThreadHistory(threadId: string, limit?: number, after?: string): Promise<Record<string, unknown>>;
+  getMessage(messageId: string): Promise<Record<string, unknown>>;
   sendTypingIndicator(recipientId: string, typing?: boolean): Promise<Record<string, unknown>>;
   markAsRead(recipientId: string): Promise<Record<string, unknown>>;
   listen(callback: (error: Error | null, event?: MetaWebhookEvent) => void): () => void;

@@ -130,6 +130,74 @@ function createMetaMessengerTransport({
     return postSendApi({ recipient: { id: recipientId }, message });
   }
 
+  function validateGraphId(value, label) {
+    if (typeof value !== "string" || !/^[A-Za-z0-9_.:-]{1,128}$/.test(value)) {
+      throw new TypeError("A valid " + label + " is required");
+    }
+    return encodeURIComponent(value);
+  }
+
+  function validatePageLimit(limit) {
+    if (!Number.isInteger(limit) || limit < 1 || limit > 100) {
+      throw new TypeError("Page size must be an integer between 1 and 100");
+    }
+  }
+
+  async function graphGet(path, params = {}) {
+    if (closed) throw new Error("Messenger transport is disconnected");
+    const url = new URL("https://" + GRAPH_HOST + "/" + apiVersion + "/" + path);
+    for (const [key, value] of Object.entries(params)) {
+      if (value !== undefined && value !== null) url.searchParams.set(key, String(value));
+    }
+    const response = await request(url, {
+      method: "GET",
+      headers: { authorization: "Bearer " + pageAccessToken }
+    });
+    const body = await response.json().catch(() => null);
+    if (!response.ok || body?.error) {
+      const error = new Error(body?.error?.message || "Meta Graph API request failed");
+      error.code = body?.error?.code ? "META_GRAPH_" + body.error.code : "META_GRAPH_REQUEST_FAILED";
+      error.status = response.status;
+      error.fbtraceId = body?.error?.fbtrace_id || null;
+      throw error;
+    }
+    return body;
+  }
+
+  function paginationParams(limit, after) {
+    validatePageLimit(limit);
+    if (after !== undefined && after !== null &&
+        (typeof after !== "string" || !after || after.length > 2048)) {
+      throw new TypeError("Pagination cursor must be non-empty text up to 2048 characters");
+    }
+    return { limit, ...(after ? { after } : {}) };
+  }
+
+  function getThreadList(limit = 25, after) {
+    return graphGet(pageId + "/conversations", {
+      fields: "id,updated_time,participants,unread_count",
+      ...paginationParams(limit, after)
+    });
+  }
+
+  function getThreadInfo(threadId) {
+    const id = validateGraphId(threadId, "conversation ID");
+    return graphGet(id, { fields: "id,participants,updated_time,is_owner" });
+  }
+
+  function getThreadHistory(threadId, limit = 25, after) {
+    const id = validateGraphId(threadId, "conversation ID");
+    return graphGet(id + "/messages", {
+      fields: "id,created_time,from,to,message,attachments",
+      ...paginationParams(limit, after)
+    });
+  }
+
+  function getMessage(messageId) {
+    const id = validateGraphId(messageId, "message ID");
+    return graphGet(id, { fields: "id,created_time,from,to,message,attachments" });
+  }
+
   async function sendSenderAction(recipientId, action) {
     validateRecipientId(recipientId);
     if (!["typing_on", "typing_off", "mark_seen"].includes(action)) {
@@ -192,6 +260,10 @@ function createMetaMessengerTransport({
   return Object.freeze({
     getCurrentUserID: () => pageId,
     sendMessage,
+    getThreadList,
+    getThreadInfo,
+    getThreadHistory,
+    getMessage,
     sendTypingIndicator,
     markAsRead,
     listen,
@@ -201,7 +273,7 @@ function createMetaMessengerTransport({
       authentication: "page-access-token",
       inbound: "verified-webhook",
       outbound: "messenger-send-api",
-      supportedActions: Object.freeze(["sendMessage", "sendTypingIndicator", "markAsRead"]),
+      supportedActions: Object.freeze(["sendMessage", "getThreadList", "getThreadInfo", "getThreadHistory", "getMessage", "sendTypingIndicator", "markAsRead"]),
       userSessionEmulation: false,
       mqtt: false
     })

@@ -31,7 +31,7 @@ const result = await transport.sendMessage("RECIPIENT_PSID", {
 console.log(result.message_id);
 ```
 
-The Page token is sent as an Authorization Bearer header and is never added to the request URL. Send requests are not automatically retried, avoiding accidental duplicate actions. `sendTypingIndicator(recipientId, typing = true)` maps to Meta sender actions `typing_on` / `typing_off`, and `markAsRead(recipientId)` maps to `mark_seen`.
+The Page token is sent as an Authorization Bearer header and is never added to the request URL. Send requests are not automatically retried, avoiding accidental duplicate actions. `sendTypingIndicator(recipientId, typing = true)` maps to Meta sender actions `typing_on` / `typing_off`, and `markAsRead(recipientId)` maps to `mark_seen`. The transport also exposes `getThreadList(limit, after)`, `getThreadInfo(conversationId)`, `getThreadHistory(conversationId, limit, after)`, and `getMessage(messageId)` through the official Page Conversations and Conversation Messages Graph API edges. These read operations require the Page permissions documented by Meta and return Graph API data/pagination objects rather than pretending to provide the legacy personal-account FCA response shape.
 
 ## Inbound webhook events
 
@@ -68,3 +68,8 @@ node examples/meta-messenger-server.js
 Call `await transport.disconnect()` when the host application shuts down. `getCapabilities()` explicitly reports `userSessionEmulation: false` and `mqtt: false`.
 
 This provider does not implement personal-profile inbox access, AppState login, private browser endpoints, group-chat administration, or the legacy GoatBot FCA API. Those capabilities must not be inferred from the shared method names.
+
+
+## Conversation read permissions
+
+For Messenger Page conversations, Meta documents the Page access token and the `pages_manage_metadata`, `pages_read_engagement`, and `pages_messaging` permissions. The transport does not attempt to grant permissions or bypass App Review. See the [Page Conversations reference](https://developers.facebook.com/docs/graph-api/reference/page/conversations) and [Conversation Messages reference](https://developers.facebook.com/docs/graph-api/reference/conversation/messages/).

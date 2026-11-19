@@ -227,3 +227,48 @@ test("Meta transport exposes official typing and read sender actions without ret
   await assert.rejects(transport.markAsRead("bad-id"), /recipient ID/);
   await transport.disconnect();
 });
+
+
+test("Meta Page transport reads conversations and messages with bounded pagination", async () => {
+  const requests = [];
+  const transport = createMetaMessengerTransport({
+    ...config,
+    fetchImpl: async (url, options) => {
+      requests.push({ url: new URL(String(url)), options });
+      return new Response(JSON.stringify({ data: [{ id: "123456789" }], paging: { cursors: { after: "cursor-next" } } }), {
+        status: 200, headers: { "content-type": "application/json" }
+      });
+    }
+  });
+  await transport.getThreadList(10, "cursor-1");
+  await transport.getThreadInfo("123456789");
+  await transport.getThreadHistory("123456789", 5, "cursor-2");
+  await transport.getMessage("mid.123456");
+  assert.equal(requests[0].url.pathname, "/v99.0/123456789012345/conversations");
+  assert.equal(requests[0].url.searchParams.get("fields"), "id,updated_time,participants,unread_count");
+  assert.equal(requests[0].url.searchParams.get("limit"), "10");
+  assert.equal(requests[0].url.searchParams.get("after"), "cursor-1");
+  assert.equal(requests[1].url.pathname, "/v99.0/123456789");
+  assert.equal(requests[2].url.pathname, "/v99.0/123456789/messages");
+  assert.equal(requests[2].url.searchParams.get("limit"), "5");
+  assert.equal(requests[3].url.pathname, "/v99.0/mid.123456");
+  assert.ok(requests.every(item => item.options.headers.authorization === "Bearer " + config.pageAccessToken));
+  assert.ok(requests.every(item => !item.url.searchParams.has("access_token")));
+  await assert.rejects(transport.getThreadList(101), /between 1 and 100/);
+  await assert.rejects(transport.getThreadHistory("bad/id"), /conversation ID/);
+  await transport.disconnect();
+});
+
+test("Meta Page reads surface Graph API permission errors", async () => {
+  const transport = createMetaMessengerTransport({
+    ...config,
+    fetchImpl: async () => new Response(JSON.stringify({
+      error: { message: "Permissions error", code: 200, fbtrace_id: "trace-read" }
+    }), { status: 403, headers: { "content-type": "application/json" } })
+  });
+  await assert.rejects(
+    transport.getThreadList(),
+    error => error.status === 403 && error.code === "META_GRAPH_200" && error.fbtraceId === "trace-read"
+  );
+  await transport.disconnect();
+});
