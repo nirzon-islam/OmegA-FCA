@@ -7,7 +7,7 @@ const FACEBOOK_DOMAINS = new Set(["facebook.com", "www.facebook.com", "m.faceboo
 function normalizeDomain(domain) {
   if (typeof domain !== "string" || !domain.trim()) throw new TypeError("Cookie domain is required");
   const value = domain.trim().toLowerCase().replace(/^\./, "");
-  if (!FACEBOOK_DOMAINS.has(value) && !value.endsWith(".facebook.com")) {
+  if (!FACEBOOK_DOMAINS.has(value) && !value.endsWith(".facebook.com") && !value.endsWith(".messenger.com")) {
     throw new TypeError("Only Facebook/Messenger cookie domains are accepted");
   }
   return value;
