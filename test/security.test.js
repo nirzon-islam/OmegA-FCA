@@ -2,7 +2,7 @@
 
 const test = require("node:test");
 const assert = require("node:assert/strict");
-const { normalizeCookies, parseCookieHeader, parseNetscapeCookies } = require("../src/security/cookies");
+const { normalizeCookies, validateSessionCookies, parseCookieHeader, parseNetscapeCookies } = require("../src/security/cookies");
 const { redactSecrets } = require("../src/security/redact");
 
 test("normalizes cookie arrays without mutating the input", () => {
@@ -16,10 +16,11 @@ test("normalizes cookie arrays without mutating the input", () => {
 test("parses cookie headers while preserving equals signs in values", () => {
   const result = parseCookieHeader("c_user=123456; xs=abc==");
   assert.equal(result[1].value, "abc==");
+  assert.equal(validateSessionCookies(result).length, 2);
 });
 
-test("parses Netscape cookie rows", () => {
-  const result = parseNetscapeCookies(".facebook.com\\tTRUE\\t/\\tTRUE\\t0\\tc_user\\t123456");
+test("parses Netscape cookie rows with tab delimiters", () => {
+  const result = parseNetscapeCookies(".facebook.com\tTRUE\t/\tTRUE\t0\tc_user\t123456");
   assert.equal(result[0].key, "c_user");
 });
 
