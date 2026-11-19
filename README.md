@@ -23,20 +23,28 @@ OmegA-FCA is the Facebook integration library maintained under the **OmegA Bot**
 - Separate official Meta Messenger Page transport (not a personal-account replacement).
 - TypeScript declarations, signed update-manifest verification, optional Ed25519 licensing.
 
-## Root account.txt configuration loader
+## GoatBot account configuration
 
-The package exports `loadAccountConfig()` to read credentials from the project-root `account.txt`, or AppState from the root `appstate.json`. Environment variables override values in the file. Create `account.txt` in the project root and fill in your own values:
+The GoatBot adapter follows the existing `config.json` structure:
 
-```ini
-fb_username=YOUR_FACEBOOK_USERNAME
-fb_password=YOUR_FACEBOOK_PASSWORD
-# Or use fb_email instead of fb_username.
-# fb_email=you@example.com
-# fb_2fa_code=123456
-# For AppState mode, omit credentials and use root appstate.json.
+```json
+{
+  "facebookAccount": {
+    "email": "you@example.com",
+    "password": "YOUR_FACEBOOK_PASSWORD",
+    "2FASecret": "YOUR_BASE32_TOTP_SECRET",
+    "i_user": "",
+    "proxy": null,
+    "userAgent": "Mozilla/5.0"
+  }
+}
 ```
 
-`account.txt` is ignored by Git; it stays in your local project root and is not automatically pushed to GitHub. The loader only parses and validates configuration. It does **not** perform native Facebook password login or provide MQTT/realtime messaging; those standalone engine components remain incomplete. When `createGoatBotLogin(client)` is called with an empty credentials object, the adapter now reads this root `account.txt` automatically (or falls back to root `appstate.json`) and passes the selected mode to the configured client provider. This is configuration wiring only; it does not make the current client a native Facebook login engine.
+Use `username` instead of `email` if that is the account identifier supported by your login provider. `2FASecret` is a Base32 TOTP seed; the adapter generates a fresh six-digit RFC 6238 code when it starts a credentials login. The secret itself is never used as the one-time code. The exported `generateTotp()` helper supports SHA-1/SHA-256/SHA-512 and 6–8 digits.
+
+For cookie/AppState login, put only the cookie header, Netscape cookie export, or JSON cookie array in the project-root `account.txt`. A non-empty `account.txt` takes precedence over credentials in `config.json`; remove/empty it when you want the configured credentials mode. The root `appstate.json` remains a compatibility fallback.
+
+`account.txt`, `config.json`, passwords, cookies, and 2FA seeds must stay private and must not be committed. This is configuration/TOTP wiring only; it does **not** implement Facebook's native password-login protocol or realtime MQTT transport.
 
 ## Personal AppState session foundation
 
