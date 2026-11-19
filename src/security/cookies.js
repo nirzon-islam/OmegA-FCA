@@ -26,6 +26,11 @@ function normalizeCookies(input) {
     const domain = normalizeDomain(item.domain || "facebook.com");
     const path = item.path === undefined ? "/" : item.path;
     if (typeof path !== "string" || !path.startsWith("/") || path.length > 1024) throw new TypeError("Invalid cookie path");
+    const expires = item.expires === undefined || item.expires === null || item.expires === 0
+      ? null : item.expires;
+    if (expires !== null && (!Number.isSafeInteger(expires) || expires < 0)) {
+      throw new TypeError("Invalid cookie expiry");
+    }
     const identity = [domain, path, key].join("\n");
     if (seen.has(identity)) throw new TypeError("Duplicate cookie entry");
     seen.add(identity);
@@ -38,7 +43,7 @@ function normalizeCookies(input) {
       secure: Boolean(item.secure),
       httpOnly: Boolean(item.httpOnly),
       ...(typeof item.sameSite === "string" ? { sameSite: item.sameSite } : {}),
-      ...(item.expires ? { expires: item.expires } : {})
+      ...(expires !== null ? { expires } : {})
     };
   });
   return result;
@@ -89,7 +94,7 @@ function parseNetscapeCookies(text) {
       hostOnly: includeSubdomains.toUpperCase() !== "TRUE",
       secure: secure.toUpperCase() === "TRUE",
       httpOnly,
-      expires: Number(expires) || null
+      expires: Number(expires)
     });
   }
   return normalizeCookies(rows);
