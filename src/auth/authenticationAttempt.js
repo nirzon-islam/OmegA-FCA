@@ -15,7 +15,7 @@ function publicChallenge(value) {
   // Keep the public prompt generic; the provider retains richer private state.
   const message = "Additional account verification is required.";
   const methods = Array.isArray(value.methods)
-    ? value.methods.filter(item => typeof item === "string").map(item => item.trim().slice(0, 64)).filter(Boolean).slice(0, 10) : [];
+    ? value.methods.filter(item => typeof item === "string" && /^[a-z0-9_-]{1,64}$/i.test(item.trim())).map(item => item.trim()).slice(0, 10) : [];
   return Object.freeze({ type, message, methods: Object.freeze(methods) });
 }
 
