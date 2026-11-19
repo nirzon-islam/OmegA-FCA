@@ -36,7 +36,12 @@
     "docs/DEPLOYMENT.md",
     "docs/PROTOCOL-EVIDENCE.md",
     "docs/AUTHENTICATION-ATTEMPT.md",
-    "docs/IMPLEMENTATION-STATUS.md"
+    "docs/IMPLEMENTATION-STATUS.md",
+    "docs/ARCHITECTURE.md",
+    "docs/GOATBOT-COMPATIBILITY-MATRIX.md",
+    "docs/GOATBOT-INTEGRATION-AUDIT.md",
+    "docs/REFERENCE-AUDIT.md",
+    "docs/NTKHANG-REFERENCE-STUDY.md"
   ],
   "exports": {
     ".": {
