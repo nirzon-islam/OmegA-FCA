@@ -13,8 +13,8 @@ Private, owner-licensed FCA-compatible client library for OmegA projects.
 - Explicit login modes: AppState/cookie and credentials (including manual 2FA/checkpoint handling).
 - Safe session lifecycle, bounded reconnect/backoff, listener deduplication, and redacted diagnostics.
 - AES-256-GCM encrypted session persistence helpers.
-- Ed25519 signed owner-issued license verification.
-- A small adapter surface so GoatBot can migrate without rewriting command handlers.
+- Ed25519 signed owner-issued license verification; production client login requires a valid license by default.
+- GoatBot callback-style login adapter and MQTT listener compatibility surface.
 - Agent Backend integration through its existing signed bridge and one-time recovery handoff.
 
 ## Current implementation
@@ -22,12 +22,14 @@ Private, owner-licensed FCA-compatible client library for OmegA projects.
 - Facebook cookie/AppState input normalization, Cookie header and Netscape format parsing.
 - Required c_user and xs validation at login boundary.
 - Recursive secret redaction for diagnostic payloads.
-- AES-256-GCM session encryption/decryption primitives.
+- AES-256-GCM session encryption/decryption and atomic encrypted file persistence with restrictive permissions.
 - Ed25519 license token verification with issuer, product, expiry, owner, and installation checks.
-- Transport-neutral API facade and connection supervisor with bounded exponential reconnect delay and one active listener.
+- Transport-neutral API facade and connection supervisor with bounded exponential reconnect delay, permanent-error handling, and one active listener.
+- Bounded duplicate-event suppression and per-thread event ordering.
+- GoatBot callback-style login adapter for AppState and email/password input.
 - GitHub Actions CI using Node.js 20 and Node's built-in test runner.
 
-**Not implemented yet:** Facebook authentication/transport protocol, MQTT/event decoding, full message/thread API coverage, the production license issuance/revocation service, and the GoatBot integration adapter. The transport facade currently requires an injected authenticate implementation; it is not yet a working Facebook login client.
+**Not implemented yet:** Facebook authentication/transport protocol, MQTT wire protocol/event decoding, full message/thread API coverage, the production license issuance/revocation service, and the final GoatBot runtime integration. The transport facade currently requires an injected authenticate implementation; it is not yet a working Facebook login client.
 
 ## Security boundaries
 
