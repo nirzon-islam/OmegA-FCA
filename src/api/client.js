@@ -127,7 +127,7 @@ function createClient({ authenticate, options = {}, reconnect = {}, license = {}
       options: reconnect
     });
     const driver = await supervisor.start();
-    if (!driver) throw new Error("Connection stopped before authentication completed");
+    if (!driver) throw lastConnectError || new Error("Connection stopped before authentication completed");
     let currentUserId;
     try {
       currentUserId = typeof driver.getCurrentUserID === "function" ? await driver.getCurrentUserID() : null;
