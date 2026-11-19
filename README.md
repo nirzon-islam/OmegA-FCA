@@ -1,52 +1,80 @@
 # OmegA-FCA
 
-Private, owner-licensed FCA-compatible client library for OmegA projects.
+Independent, security-focused FCA compatibility library for Node.js 20+.
 
-## Status
+**Package:** `@omega/fca`  
+**Status:** `0.1.1` — transport foundation (not a working Facebook login client yet).
 
-**Development: 0.1.0 — transport foundation.** This repository is the private source of truth. Do not place proprietary implementation files in the public OmegA-Goatbot repository.
+## What this package provides
 
-## Design goals
+- CommonJS API for Node.js 20+
+- AppState/cookie normalization and validation
+- Secret redaction for diagnostics
+- AES-256-GCM session encryption and encrypted file persistence helpers
+- Connection supervision with bounded reconnect/backoff
+- Event dispatching with duplicate suppression and per-thread ordering
+- Cookie jar and bounded HTTPS request helper
+- GoatBot callback-style login adapter
+- Optional Ed25519 license verification for deployments that explicitly need it
 
-- Independent implementation; no copied FCA source.
-- Node.js 20+ and CommonJS compatibility for the current GoatBot runtime.
-- Explicit login modes: AppState/cookie and credentials (including manual 2FA/checkpoint handling).
-- Safe session lifecycle, bounded reconnect/backoff, listener deduplication, and redacted diagnostics.
-- AES-256-GCM encrypted session persistence helpers.
-- Ed25519 signed owner-issued license verification; production client login requires a valid license by default.
-- GoatBot callback-style login adapter and MQTT listener compatibility surface.
-- Agent Backend integration through its existing signed bridge and one-time recovery handoff.
+## Important implementation status
 
-## Current implementation
+The package is **not yet a complete Facebook Messenger client**. Facebook authentication, the transport/protocol implementation, MQTT wire protocol and event decoding, and complete message/thread API coverage are not implemented. A caller must inject an independently implemented transport factory into `createClient({ authenticate })`. The library deliberately fails when that provider is absent; it does not pretend that a session is connected.
 
-- Facebook cookie/AppState input normalization, Cookie header and Netscape format parsing.
-- Required c_user and xs validation at login boundary.
-- Recursive secret redaction for diagnostic payloads.
-- AES-256-GCM session encryption/decryption and atomic encrypted file persistence with restrictive permissions.
-- Ed25519 license token verification with issuer, product, expiry, owner, and installation checks.
-- Agent Backend license refresh provider using HTTPS; refresh credentials are sent only in the request body and never logged by this package.
-- Transport-neutral API facade and connection supervisor with bounded exponential reconnect delay, permanent-error handling, and one active listener.
-- Bounded duplicate-event suppression and per-thread event ordering.
-- Domain/path/expiry/secure-aware cookie jar and bounded HTTPS retry client that respects Retry-After and never retries authentication failures by default.
-- GoatBot callback-style login adapter for AppState and email/password input.
-- Explicit transport-driver contract with fail-fast validation; no unverified protocol implementation is silently substituted.
-- Runtime enforcement of owner-approved feature entitlements and protection against overlapping login attempts.
-- GitHub Actions CI using Node.js 20 and Node's built-in test runner.
+Do not use this package as a drop-in replacement for an existing FCA until the Facebook transport and integration tests are complete.
 
-**Not implemented yet:** Facebook authentication/transport protocol, MQTT wire protocol/event decoding, full message/thread API coverage, and the final GoatBot runtime integration. The transport facade currently requires an injected, independently implemented authenticate transport provider; the Facebook authentication and MQTT wire protocol are not yet implemented, so this package is not yet a working Facebook login client.
+## Install
 
-## License setup
+```bash
+npm install @omega/fca
+```
 
-The owner issues an installation-bound license from the Agent Backend. The runtime stores the license ID, one-time license key, installation ID, and Ed25519 public key in its secret manager. Use createLicenseProvider to refresh a 15-minute signed token before client login; createClient verifies the token before allowing authentication. Revoked licenses cannot refresh, and an already-issued token remains usable only until its short expiry.
+## API foundation example
 
-## Security boundaries
+This demonstrates the transport contract only. It does not authenticate to Facebook by itself.
 
-This project does not bypass Facebook checkpoints, 2FA, rate limits, or other account security controls. Unofficial Facebook interfaces can change without notice; no implementation can guarantee an account will never be checkpointed or restricted. Never commit live cookies, passwords, AppState, license keys, or access tokens.
+```js
+const { createClient } = require("@omega/fca");
 
-Session encryption keys must be kept outside source control and supplied by the host through a secret manager/environment variable. Never store raw sessions in logs, task history, or dashboard responses.
+const client = createClient({
+  // Supply a real, independently implemented transport provider.
+  // It must return a driver with listen(callback), plus the API methods
+  // your application intends to call.
+  authenticate: async ({ mode, credentials, options, context }) => {
+    throw new Error("Facebook transport is not implemented");
+  }
+});
+
+client.login({ mode: "appstate", appState: [] })
+  .catch(error => console.error("Login unavailable:", error.message));
+```
+
+## GoatBot compatibility
+
+`createGoatBotLogin(client)` adapts the promise-based client login to GoatBot's callback-style login signature. The adapter does not supply the missing Facebook transport.
+
+## Session security
+
+- Never commit cookies, AppState, passwords, 2FA secrets, session encryption keys, or tokens.
+- Keep encryption keys in the host's secret manager/environment.
+- Never log raw session material.
+- Checkpoint and 2FA challenges must be completed by the account owner through legitimate platform flows.
+- The package does not bypass checkpoints, 2FA, rate limits, or platform security controls.
+- Unofficial platform interfaces can change without notice and can result in account restrictions.
+
+## Optional licensing
+
+Public package use does not require an OmegA owner-issued license. Advanced deployments may opt into the existing Ed25519 license verification by setting `requireLicense: true` and supplying a valid `license` configuration to `createClient`.
 
 ## Development
 
-Run npm test and npm run test:syntax with Node.js 20+.
+```bash
+npm test
+npm run test:syntax
+```
 
-Use synthetic fixtures only. For live-account validation, do not paste credentials into chat or commit them to the repository.
+Use synthetic fixtures for tests. Do not place live account credentials in issues, test fixtures, CI logs, or pull requests.
+
+## License
+
+MIT. See [LICENSE](LICENSE).
