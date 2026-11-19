@@ -5,7 +5,7 @@ Last successful full CI run: #44467563604 on commit `b944f7ebf63c039e69d0cca4156
 ## Implemented and CI-validated
 
 - Node.js 20+ CommonJS package structure and public exports.
-- Cookie/AppState parsing and validation, expanded secret redaction, encrypted session helpers.
+- Cookie/AppState parsing and validation with RFC cookie-octet checks against Cookie-header injection, expanded secret redaction, encrypted session helpers.
 - CookieJar now refuses to send Facebook session cookies over plain HTTP.
 - Atomic encrypted session writes, restrictive file permissions, symlink-resistant session reads.
 - Bounded HTTPS request client with caller cancellation and retry safeguards.
