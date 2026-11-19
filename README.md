@@ -26,12 +26,12 @@ OmegA-FCA is the Facebook integration library maintained under the **OmegA Bot**
 
 ## GoatBot account configuration
 
-The GoatBot adapter follows the existing `config.json` structure:
+Credential login reads the canonical `fb_email` field from `config.json`:
 
 ```json
 {
   "facebookAccount": {
-    "email": "you@example.com",
+    "fb_email": "you@example.com",
     "password": "YOUR_FACEBOOK_PASSWORD",
     "2FASecret": "YOUR_BASE32_TOTP_SECRET",
     "i_user": "",
@@ -41,9 +41,11 @@ The GoatBot adapter follows the existing `config.json` structure:
 }
 ```
 
-Use `username` instead of `email` if that is the account identifier supported by your login provider. `2FASecret` is a Base32 TOTP seed; the adapter generates a fresh six-digit RFC 6238 code when it starts a credentials login. The secret itself is never used as the one-time code. The exported `generateTotp()` helper supports SHA-1/SHA-256/SHA-512 and 6–8 digits.
+The legacy `email` property is accepted as a compatibility alias, but `fb_email` is canonical. `fb_username` / `FB_USERNAME` is not used. `2FASecret` is a Base32 TOTP seed; the adapter generates a fresh six-digit RFC 6238 code when it starts a credentials login. The secret itself is never used as the one-time code.
 
 For cookie/AppState login, put only the cookie header, Netscape cookie export, or JSON cookie array in the project-root `account.txt`. A non-empty `account.txt` takes precedence over credentials in `config.json`; remove/empty it when you want the configured credentials mode. The root `appstate.json` remains a compatibility fallback.
+
+**Important:** `account.txt` is strictly AppState/cookie-only. Never put email, password, username, or 2FA values in it. Credentials and TOTP configuration belong in `config.json → facebookAccount`.
 
 `account.txt`, `config.json`, passwords, cookies, and 2FA seeds must stay private and must not be committed. This is configuration/TOTP wiring only; it does **not** implement Facebook's native password-login protocol or realtime MQTT transport.
 

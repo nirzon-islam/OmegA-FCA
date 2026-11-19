@@ -7,12 +7,18 @@ const { parseCookieHeader, parseNetscapeCookies, normalizeCookies } = require(".
 function resolveProjectFile(root, filePath, label) {
   const target = path.resolve(root, filePath);
   const relative = path.relative(root, target);
-  if (!relative || relative.startsWith("..") || path.isAbsolute(relative)) throw new TypeError(label + " must be inside the project root");
+  if (!relative || relative.startsWith("..") || path.isAbsolute(relative)) {
+    throw new TypeError(label + " must be inside the project root");
+  }
   try {
     const real = fs.realpathSync(target);
     const realRelative = path.relative(root, real);
-    if (!realRelative || realRelative.startsWith("..") || path.isAbsolute(realRelative)) throw new TypeError(label + " must resolve inside the project root");
-  } catch (error) { if (error.code !== "ENOENT") throw error; }
+    if (!realRelative || realRelative.startsWith("..") || path.isAbsolute(realRelative)) {
+      throw new TypeError(label + " must resolve inside the project root");
+    }
+  } catch (error) {
+    if (error.code !== "ENOENT") throw error;
+  }
   return target;
 }
 
@@ -37,10 +43,19 @@ function readJsonConfig(filePath) {
     const parsed = JSON.parse(fs.readFileSync(filePath, "utf8"));
     if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) throw new TypeError("config.json must contain an object");
     return parsed;
-  } catch (error) { if (error.code === "ENOENT") return {}; throw error; }
+  } catch (error) {
+    if (error.code === "ENOENT") return {};
+    throw error;
+  }
 }
 
-function loadAccountConfig({ cwd = process.cwd(), accountFile = "account.txt", configFile = "config.json", appStateFile = null, env = process.env } = {}) {
+function loadAccountConfig({
+  cwd = process.cwd(),
+  accountFile = "account.txt",
+  configFile = "config.json",
+  appStateFile = null,
+  env = process.env
+} = {}) {
   const root = path.resolve(cwd);
   const accountPath = resolveProjectFile(root, accountFile, "accountFile");
   try {
@@ -48,19 +63,30 @@ function loadAccountConfig({ cwd = process.cwd(), accountFile = "account.txt", c
     if (!stat.isFile()) throw new Error("account.txt must be a regular file");
     const raw = fs.readFileSync(accountPath, "utf8").trim();
     if (raw) return Object.freeze({ mode: "appstate", appState: parseAccountText(raw), source: "account.txt" });
-  } catch (error) { if (error.code !== "ENOENT") throw error; }
+  } catch (error) {
+    if (error.code !== "ENOENT") throw error;
+  }
 
   const configPath = resolveProjectFile(root, configFile, "configFile");
   const config = readJsonConfig(configPath);
-  const account = config.facebookAccount && typeof config.facebookAccount === "object" ? config.facebookAccount : {};
-  // fb_email is canonical. email is retained only as a legacy config alias.
-  const fb_email = String(env.FB_EMAIL || account.fb_email || account.email || "").trim();
+  const account = config.facebookAccount && typeof config.facebookAccount === "object"
+    ? config.facebookAccount : {};
+  const username = String(env.FB_USERNAME || account.username || "").trim();
+  const email = String(env.FB_EMAIL || account.email || "").trim();
   const password = String(env.FB_PASSWORD || account.password || "");
   const twoFactorSecret = String(env.FB_2FA_SECRET || account["2FASecret"] || "");
-  if (fb_email || password) {
-    if (!fb_email || !password) throw new Error("config.json facebookAccount requires fb_email and password");
-    return Object.freeze({ mode: "credentials", fb_email, password, twoFactorSecret: twoFactorSecret || null,
-      userAgent: account.userAgent || null, proxy: account.proxy || null });
+  if (username || email || password) {
+    if ((!username && !email) || !password) {
+      throw new Error("config.json facebookAccount requires email (or username) and password");
+    }
+    return Object.freeze({
+      mode: "credentials",
+      ...(username ? { username } : { email }),
+      password,
+      twoFactorSecret: twoFactorSecret || null,
+      userAgent: account.userAgent || null,
+      proxy: account.proxy || null
+    });
   }
 
   const statePath = resolveProjectFile(root, appStateFile || "appstate.json", "AppState file");
@@ -73,7 +99,7 @@ function loadAccountConfig({ cwd = process.cwd(), accountFile = "account.txt", c
     return Object.freeze({ mode: "appstate", appState: normalizeCookies(appState), source: "appstate.json" });
   } catch (error) {
     if (error.code === "ENOENT") {
-      const missing = new Error("No Facebook session or credentials found: add cookies to account.txt or configure facebookAccount.fb_email in config.json");
+      const missing = new Error("No Facebook session or credentials found: add cookies to account.txt or configure facebookAccount in config.json");
       missing.code = "FCA_ACCOUNT_CONFIG_MISSING";
       throw missing;
     }

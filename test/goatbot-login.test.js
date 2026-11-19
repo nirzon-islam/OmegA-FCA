@@ -1,45 +1,174 @@
 "use strict";
+
 const test = require("node:test");
 const assert = require("node:assert/strict");
-const fs = require("node:fs");
-const os = require("node:os");
-const path = require("node:path");
 const { createGoatBotLogin } = require("../src/compat/goatbotLogin");
 
-test("maps AppState and forwards options", async () => {
-  const api = { getCurrentUserID: () => "123456" }; let received; const calls = [];
-  const login = createGoatBotLogin({ async login(credentials, options) { received = { credentials, options }; return api; } });
-  const result = await login({ appState: [{ key: "c_user", value: "123456" }, { key: "xs", value: "synthetic" }] }, { forceLogin: true }, (error, value) => calls.push({ error, value }));
-  assert.equal(result, api); assert.deepEqual(received.options, { forceLogin: true }); assert.equal(received.credentials.mode, "appstate");
-  assert.deepEqual(calls, [{ error: null, value: api }]);
+test("GoatBot adapter maps AppState and forwards options", async () => {
+  const api = { getCurrentUserID: () => "123456" };
+  let received;
+  const login = createGoatBotLogin({
+    async login(credentials, options) {
+      received = { credentials, options };
+      return api;
+    }
+  });
+  const callbacks = [];
+  const result = await login(
+    { appState: [{ key: "c_user", value: "123456" }, { key: "xs", value: "synthetic" }] },
+    { forceLogin: true },
+    (error, value) => callbacks.push({ error, value })
+  );
+  assert.equal(result, api);
+  assert.deepEqual(received.credentials, {
+    mode: "appstate",
+    appState: [{ key: "c_user", value: "123456" }, { key: "xs", value: "synthetic" }]
+  });
+  assert.deepEqual(received.options, { forceLogin: true });
+  assert.deepEqual(callbacks, [{ error: null, value: api }]);
 });
-test("maps fb_email credentials and manual 2FA without persisting secrets", async () => {
-  let received; const login = createGoatBotLogin({ async login(credentials) { received = credentials; return {}; } });
-  await login({ fb_email: "owner@example.test", password: "pw", twoFactorSecret: "secret", twoFactorCode: "123456" }, () => {});
-  assert.deepEqual(received, { mode: "credentials", fb_email: "owner@example.test", password: "pw", twoFactorSecret: "secret", twoFactorCode: "123456", userAgent: null, proxy: null });
+
+test("GoatBot adapter maps credential aliases without persisting secrets", async () => {
+  let received;
+  const login = createGoatBotLogin({
+    async login(credentials) { received = credentials; return {}; }
+  });
+  await login({
+    email: "owner@example.test",
+    pass: "synthetic-password",
+    twoFactorSecret: "synthetic-secret",
+    twoFactorCode: "123456",
+    userAgent: "test-agent",
+    proxy: "http://127.0.0.1:8080"
+  }, () => {});
+  assert.deepEqual(received, {
+    mode: "credentials",
+    email: "owner@example.test",
+    password: "synthetic-password",
+    twoFactorSecret: "synthetic-secret",
+    twoFactorCode: "123456",
+    userAgent: "test-agent",
+    proxy: "http://127.0.0.1:8080"
+  });
 });
-test("legacy email alias normalizes to fb_email", async () => {
-  let received; const login = createGoatBotLogin({ async login(credentials) { received = credentials; return {}; } });
-  await login({ email: "owner@example.test", password: "pw" }, () => {}); assert.equal(received.fb_email, "owner@example.test");
+
+test("GoatBot legacy twoFactorSecretOrCode alias maps to a manual code", async () => {
+  let received;
+  const login = createGoatBotLogin({ async login(credentials) { received = credentials; return {}; } });
+  await login({ email: "owner@example.test", password: "example-password", twoFactorSecretOrCode: "654321" }, () => {});
+  assert.equal(received.twoFactorCode, "654321");
+  assert.equal(received.twoFactorSecret, null);
 });
-test("rejects username-only login", async () => {
-  const login = createGoatBotLogin({ async login() { return {}; } }); let error;
-  assert.equal(await login({ username: "handle", password: "pw" }, e => { error = e; }), null);
-  assert.match(error.message, /fb_email\/password/); assert.equal(error.retryable, false);
+
+test("GoatBot adapter supports callback as second argument", async () => {
+  const api = {};
+  const login = createGoatBotLogin({ login: async () => api });
+  let called = 0;
+  await login({ appState: [] }, (error, value) => {
+    called++;
+    assert.equal(error, null);
+    assert.equal(value, api);
+  });
+  assert.equal(called, 1);
 });
-test("loads credentials from config.json only when account.txt is absent", async () => {
-  const root = fs.mkdtempSync(path.join(os.tmpdir(), "omega-fca-config-"));
+
+test("GoatBot adapter reports login rejection exactly once", async () => {
+  const failure = new Error("synthetic auth failure");
+  const login = createGoatBotLogin({ login: async () => { throw failure; } });
+  const received = [];
+  const result = await login({ appState: [] }, (error, api) => received.push({ error, api }));
+  assert.equal(result, null);
+  assert.deepEqual(received, [{ error: failure, api: undefined }]);
+});
+
+test("GoatBot adapter never calls a callback twice when the success callback throws", async () => {
+  const callbackFailure = new Error("callback failure");
+  const login = createGoatBotLogin({ login: async () => ({}) });
+  let calls = 0;
+  await assert.rejects(login({ appState: [] }, () => {
+    calls++;
+    throw callbackFailure;
+  }), error => error === callbackFailure);
+  assert.equal(calls, 1);
+});
+
+test("GoatBot adapter rejects missing callback and reports unsupported login input", async () => {
+  const login = createGoatBotLogin({ login: async () => ({}) });
+  assert.throws(() => login({ appState: [] }), /callback is required/);
+  let reported;
+  assert.equal(await login({ token: "not-supported" }, error => { reported = error; }), null);
+  assert.match(reported.message, /AppState.*FB_USERNAME.*password/);
+  assert.equal(reported.retryable, false);
+});
+
+test("GoatBot adapter maps FB_USERNAME instead of email", async () => {
+  let received;
+  const login = createGoatBotLogin({
+    async login(credentials) { received = credentials; return {}; }
+  });
+  await login({ username: "fb_handle", password: "synthetic-password" }, () => {});
+  assert.deepEqual(received, {
+    mode: "credentials",
+    username: "fb_handle",
+    password: "synthetic-password",
+    twoFactorSecret: null,
+    twoFactorCode: null,
+    userAgent: null,
+    proxy: null
+  });
+});
+
+test("GoatBot adapter loads root account.txt when no credentials are passed", async () => {
+  const fs = require("node:fs");
+  const os = require("node:os");
+  const path = require("node:path");
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), "omega-goatbot-account-"));
   try {
-    fs.writeFileSync(path.join(root, "config.json"), JSON.stringify({ facebookAccount: { fb_email: "owner@example.test", password: "pw" } }));
-    let received; const login = createGoatBotLogin({ async login(credentials) { received = credentials; return {}; } }, { cwd: root, env: {} });
-    await login({}, () => {}); assert.equal(received.mode, "credentials"); assert.equal(received.fb_email, "owner@example.test");
-  } finally { fs.rmSync(root, { recursive: true, force: true }); }
+    fs.writeFileSync(path.join(root, "account.txt"), "fb_username=owner_handle\nfb_password=private-password\nfb_2fa_code=123456");
+    let received;
+    const login = createGoatBotLogin({
+      async login(credentials) { received = credentials; return { getCurrentUserID: () => "123" }; }
+    }, { cwd: root, env: {} });
+    await login({}, () => {});
+    assert.deepEqual(received, {
+      mode: "credentials",
+      username: "owner_handle",
+      password: "private-password",
+      twoFactorCode: "123456"
+    });
+  } finally {
+    fs.rmSync(root, { recursive: true, force: true });
+  }
 });
-test("account.txt credential text is rejected and never passed to login", async () => {
-  const root = fs.mkdtempSync(path.join(os.tmpdir(), "omega-fca-account-"));
+
+test("GoatBot adapter loads root appstate.json when account.txt is absent", async () => {
+  const fs = require("node:fs");
+  const os = require("node:os");
+  const path = require("node:path");
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), "omega-goatbot-appstate-"));
   try {
-    fs.writeFileSync(path.join(root, "account.txt"), "fb_email=owner@example.test\nfb_password=pw");
-    const login = createGoatBotLogin({ async login() { throw new Error("must not run"); } }, { cwd: root, env: {} }); let error;
-    assert.equal(await login({}, e => { error = e; }), null); assert.ok(error);
-  } finally { fs.rmSync(root, { recursive: true, force: true }); }
+    const appState = [{ key: "c_user", value: "12345", domain: "facebook.com" }, { key: "xs", value: "synthetic", domain: "facebook.com" }];
+    fs.writeFileSync(path.join(root, "appstate.json"), JSON.stringify(appState));
+    let received;
+    const login = createGoatBotLogin({ async login(credentials) { received = credentials; return {}; } }, { cwd: root, env: {} });
+    await login({}, () => {});
+    assert.deepEqual(received, { mode: "appstate", appState });
+  } finally {
+    fs.rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test("GoatBot adapter reports missing root account config through callback", async () => {
+  const fs = require("node:fs");
+  const os = require("node:os");
+  const path = require("node:path");
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), "omega-goatbot-missing-"));
+  try {
+    const login = createGoatBotLogin({ async login() { throw new Error("must not login"); } }, { cwd: root, env: {} });
+    let received;
+    assert.equal(await login({}, error => { received = error; }), null);
+    assert.equal(received.code, "FCA_ACCOUNT_CONFIG_MISSING");
+  } finally {
+    fs.rmSync(root, { recursive: true, force: true });
+  }
 });
