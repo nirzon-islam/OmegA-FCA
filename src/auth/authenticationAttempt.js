@@ -136,12 +136,15 @@ function createAuthenticationAttempt({ authenticate, maxChallengeRounds = 3 } = 
       return Promise.reject(new TypeError("Challenge answer must be a string or an object"));
     }
     const resume = resumeProvider;
+    const cancelPending = cancelProvider;
     resumeProvider = null;
-    cancelProvider = null;
     state = "verifying_challenge";
     operation = Promise.resolve().then(() => resume(answer))
       .then(consume)
-      .catch(error => {
+      .catch(async error => {
+        if (cancelPending) {
+          try { await cancelPending(); } catch {}
+        }
         lastError = error instanceof Error ? error : new Error("Challenge verification failed");
         state = "failed";
         resumeProvider = null;
