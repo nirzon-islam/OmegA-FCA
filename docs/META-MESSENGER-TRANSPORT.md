@@ -53,6 +53,16 @@ Do not parse and re-serialize the body before signature verification: the signat
 
 Normalized event types currently include `message`, `postback`, `delivery`, `read`, `account_linking`, and `referral`.
 
+## Runnable webhook server example
+
+A built-in Node.js HTTP server example is available at `examples/meta-messenger-server.js`. It handles the GET challenge, enforces a 1 MiB POST body limit, verifies the signature against the original request bytes, and returns a generic error body on invalid requests. Put it behind a trusted HTTPS ingress and do not expose the plain HTTP listener directly to the public internet.
+
+Run it with:
+
+```bash
+node examples/meta-messenger-server.js
+```
+
 ## Lifecycle and limitations
 
 Call `await transport.disconnect()` when the host application shuts down. `getCapabilities()` explicitly reports `userSessionEmulation: false` and `mqtt: false`.
