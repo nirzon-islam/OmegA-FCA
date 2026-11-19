@@ -11,7 +11,7 @@ const DRIVER_METHODS = [
   "getThreadHistory", "getMessage", "getFriendsList", "getUserID"
 ];
 
-function createClient({ authenticate, options = {}, reconnect = {}, license = {}, requireLicense = true } = {}) {
+function createClient({ authenticate, options = {}, reconnect = {}, license = {}, requireLicense = true, onLicenseError = () => {} } = {}) {
   if (typeof authenticate !== "function") throw new TypeError("authenticate transport factory is required");
   let supervisor = null;
   let api = null;
@@ -19,15 +19,46 @@ function createClient({ authenticate, options = {}, reconnect = {}, license = {}
   let verifiedLicense = null;
   let detachMqtt = null;
   let mqttErrorHandler = null;
+  let licenseTimer = null;
+  let licenseCheckPromise = null;
 
   async function checkLicense() {
     if (!requireLicense) return null;
-    const token = typeof license.refresh === "function" ? await license.refresh() : license.token;
-    verifiedLicense = verifyLicenseToken(token, license.publicKey, {
-      installationId: license.installationId,
-      ownerId: license.ownerId
-    });
-    return verifiedLicense;
+    if (licenseCheckPromise) return licenseCheckPromise;
+    licenseCheckPromise = (async () => {
+      const token = typeof license.refresh === "function" ? await license.refresh() : license.token;
+      verifiedLicense = verifyLicenseToken(token, license.publicKey, {
+        installationId: license.installationId,
+        ownerId: license.ownerId
+      });
+      return verifiedLicense;
+    })().finally(() => { licenseCheckPromise = null; });
+    return licenseCheckPromise;
+  }
+
+  function startLicenseMonitor() {
+    if (!requireLicense || licenseTimer) return;
+    const interval = Number.isInteger(license.checkIntervalMs) && license.checkIntervalMs >= 30_000
+      ? license.checkIntervalMs : 5 * 60 * 1000;
+    licenseTimer = setInterval(async () => {
+      try {
+        await checkLicense();
+      } catch (error) {
+        clearInterval(licenseTimer);
+        licenseTimer = null;
+        try { if (supervisor) await supervisor.stop(); } catch {}
+        supervisor = null;
+        api = null;
+        userId = null;
+        try { onLicenseError(error); } catch {}
+      }
+    }, interval);
+    if (typeof licenseTimer.unref === "function") licenseTimer.unref();
+  }
+
+  function stopLicenseMonitor() {
+    if (licenseTimer) clearInterval(licenseTimer);
+    licenseTimer = null;
   }
 
   async function login(credentials = {}, loginOptions = options) {
@@ -100,12 +131,14 @@ function createClient({ authenticate, options = {}, reconnect = {}, license = {}
     facade.getConnectionState = () => supervisor.snapshot();
     facade.getLicense = () => verifiedLicense;
     api = Object.freeze(facade);
+    startLicenseMonitor();
     return api;
   }
 
   return Object.freeze({
     login,
     async logout() {
+      stopLicenseMonitor();
       if (detachMqtt) detachMqtt();
       if (supervisor) await supervisor.stop();
       supervisor = null;
