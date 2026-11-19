@@ -7,6 +7,23 @@ export interface Credentials {
   mode: LoginMode; appState?: Cookie[]; cookie?: string; email?: string; password?: string;
   twoFactorSecret?: string | null; twoFactorCode?: string | null; userAgent?: string | null; proxy?: unknown;
 }
+export interface PersonalSessionOptions {
+  appState: Cookie[];
+  fetchImpl?: (input: string | URL, init?: RequestInit) => Promise<Response>;
+  userAgent?: string;
+  timeoutMs?: number;
+}
+export interface PersonalSession {
+  readonly userId: string;
+  readonly state: "active";
+  readonly validatedAt: number;
+  getCookieHeader(url?: string | URL): string;
+  getAppState(): Cookie[];
+  close(): void;
+}
+export function createPersonalSession(options: PersonalSessionOptions): Promise<PersonalSession>;
+export function detectSessionChallenge(response: Response, html: string): "active" | "checkpoint" | "logged_out";
+export function extractIdentity(html: string): string | null;
 export interface ConnectionContext { attempt: number; generation: number; signal: AbortSignal; }
 export interface TransportDriver {
   listen(callback: (error: Error | null, event?: unknown) => void): (() => void) | void;
