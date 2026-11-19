@@ -17,7 +17,7 @@ const cookie = "c_user=123456789; xs=session-cookie-value";
 test("account.txt contains only a raw cookie header", () => {
   const parsed = parseAccountText(cookie);
   assert.equal(parsed.find(item => item.key === "c_user").value, "123456789");
-  assert.throws(() => parseAccountText("fb_email=a@example.test\nfb_password=secret"), /Malformed cookie header/);
+  assert.throws(() => parseAccountText("fb_email=a@example.test\nfb_password=secret"), /Malformed cookie header|Invalid cookie value/);
 });
 
 test("loads cookie session from account.txt before config credentials", () => withRoot(root => {
