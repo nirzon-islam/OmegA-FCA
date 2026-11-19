@@ -88,6 +88,7 @@ function createRequestClient({ fetchImpl = globalThis.fetch, timeoutMs = 20_000,
       } finally {
         combined.cleanup();
       }
+      if (options.signal?.aborted) throw abortReason(options.signal);
       if (!isRetryableStatus(response.status) || !canRetry || attempt + 1 >= maxAttempts) return response;
       try { await response.body?.cancel?.(); } catch {}
       const serverDelay = retryAfterMs(response.headers?.get?.("retry-after"));
@@ -100,4 +101,4 @@ function createRequestClient({ fetchImpl = globalThis.fetch, timeoutMs = 20_000,
   };
 }
 
-module.exports = { createRequestClient, retryAfterMs, isRetryableStatus, waitForRetry };
+module.exports = { createRequestClient, retryAfterMs, isRetryableStatus };
