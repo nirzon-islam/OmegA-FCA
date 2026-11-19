@@ -10,7 +10,7 @@ function findJsonObjectEnd(text, start) {
     const char = text[i];
     if (inString) {
       if (escaped) escaped = false;
-      else if (char === "\\\\") escaped = true;
+      else if (char === "\\") escaped = true;
       else if (char === '"') inString = false;
       continue;
     }
