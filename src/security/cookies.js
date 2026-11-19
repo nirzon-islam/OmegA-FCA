@@ -69,11 +69,28 @@ function parseNetscapeCookies(text) {
   if (typeof text !== "string" || !text.trim() || text.length > 256 * 1024) throw new TypeError("Netscape cookie file must be non-empty text up to 256 KiB");
   const rows = [];
   for (const line of text.split(/\r?\n/)) {
-    if (!line.trim() || line.trimStart().startsWith("#")) continue;
-    const fields = line.split("\t");
+    const trimmed = line.trimStart();
+    if (!trimmed) continue;
+
+    // Netscape cookie files use a special comment-like domain prefix for
+    // HttpOnly cookies. It is data, not a comment: dropping it silently
+    // removes session cookies exported by browsers and cookie managers.
+    const httpOnly = trimmed.startsWith("#HttpOnly_");
+    if (trimmed.startsWith("#") && !httpOnly) continue;
+
+    const fields = (httpOnly ? trimmed.slice("#HttpOnly_".length) : trimmed).split("\t");
     if (fields.length < 7) throw new TypeError("Malformed Netscape cookie row");
     const [domain, includeSubdomains, path, secure, expires, key, ...valueParts] = fields;
-    rows.push({ key, value: valueParts.join("\t"), domain, path, hostOnly: includeSubdomains.toUpperCase() !== "TRUE", secure: secure.toUpperCase() === "TRUE", expires: Number(expires) || null });
+    rows.push({
+      key,
+      value: valueParts.join("\t"),
+      domain,
+      path,
+      hostOnly: includeSubdomains.toUpperCase() !== "TRUE",
+      secure: secure.toUpperCase() === "TRUE",
+      httpOnly,
+      expires: Number(expires) || null
+    });
   }
   return normalizeCookies(rows);
 }
