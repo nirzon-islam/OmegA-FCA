@@ -1,6 +1,6 @@
 # OmegA-FCA implementation status
 
-Last successful full CI run: #44468841892 on commit `94203bc3260b60bd1a73e5c06c36bac28d0c1b8f` (`public-package`). Both Node 20 and Node 22 jobs passed `npm test` and `npm run test:syntax`.
+Last previously verified full CI run: #44468907669 on commit `100927b9c0f4a0196ae6776181f99d765e6134d3` (`public-package`). Both Node 20 and Node 22 jobs passed `npm test` and `npm run test:syntax`.
 
 ## Implemented and CI-validated
 
@@ -12,6 +12,8 @@ Last successful full CI run: #44468841892 on commit `94203bc3260b60bd1a73e5c06c3
 - Connection supervisor with retry/backoff, listener recovery, start/stop race handling, and abortable in-flight connect attempts.
 - Event dispatcher with in-flight duplicate coalescing, success-only acknowledgement, retry after handler failure, and per-thread ordering.
 - Transport contract and injectable provider interface.
+- Credentials providers receive an optional manually entered `twoFactorCode`; this is input plumbing only, not a built-in Facebook challenge solver or checkpoint bypass.
+- Checkpoint recovery remains account-owner controlled; the user resolves the challenge through the platform and retries authentication with the resulting authorized session.
 - GoatBot callback adapter foundation and documented compatibility audit.
 - Optional Ed25519 licensing; public package use does not require a license by default.
 - Official Meta Messenger Page transport:
