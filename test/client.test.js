@@ -74,3 +74,45 @@ test("GoatBot MQTT callback receives (error, event) and can stop listening", asy
   assert.equal(detached, 1);
   await client.logout();
 });
+
+
+test("client refreshes and verifies an owner license before transport authentication", async () => {
+  const crypto = require("node:crypto");
+  const { publicKey, privateKey } = crypto.generateKeyPairSync("ed25519");
+  const now = Math.floor(Date.now() / 1000);
+  const payload = {
+    iss: "OmegA-License-Service",
+    aud: "OmegA-FCA",
+    licenseId: "lic_0123456789abcdef0123456789abcdef",
+    ownerId: "owner-test",
+    installationId: "install-test",
+    iat: now,
+    exp: now + 900,
+    features: ["messaging"]
+  };
+  const bytes = Buffer.from(JSON.stringify(payload));
+  const token = bytes.toString("base64url") + "." + crypto.sign(null, bytes, privateKey).toString("base64url");
+  let refreshCount = 0;
+  let authenticated = false;
+  const client = createClient({
+    license: {
+      refresh: async () => { refreshCount++; return token; },
+      publicKey: publicKey.export({ type: "spki", format: "pem" }).toString(),
+      installationId: "install-test",
+      ownerId: "owner-test",
+      checkIntervalMs: 30_000
+    },
+    authenticate: async ({ license }) => {
+      authenticated = true;
+      assert.equal(license.licenseId, payload.licenseId);
+      return { getCurrentUserID: () => "123456", listen: () => () => {}, disconnect: async () => {} };
+    }
+  });
+  await client.login({ mode: "appstate", appState: [
+    { key: "c_user", value: "123456", domain: "facebook.com" },
+    { key: "xs", value: "synthetic-session-value", domain: "facebook.com" }
+  ] });
+  assert.equal(refreshCount, 1);
+  assert.equal(authenticated, true);
+  await client.logout();
+});
