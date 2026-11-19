@@ -30,6 +30,13 @@ test("keeps unknown binary payloads opaque", () => {
   assert.deepEqual(result.wireFields, []);
 });
 
+test("rejects protobuf varints wider than 64 bits and field numbers outside the wire range", () => {
+  const overWideVarint = Buffer.from([0x08, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x02]);
+  assert.equal(inspectRealtimeBinaryPayload(frame(overWideVarint)).payloadEncoding, "base64-binary-unclassified");
+  const invalidFieldNumber = Buffer.from([0xfa, 0xff, 0xff, 0xff, 0x0f, 0x00]);
+  assert.equal(inspectRealtimeBinaryPayload(frame(invalidFieldNumber)).payloadEncoding, "base64-binary-unclassified");
+});
+
 test("enforces frame and payload limits and rejects unsupported envelopes", () => {
   assert.throws(() => inspectRealtimeBinaryPayload(Buffer.from("not a frame")), {
     code: "FCA_REALTIME_PAYLOAD_ENVELOPE_UNSUPPORTED"
