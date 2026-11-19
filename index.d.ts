@@ -31,6 +31,24 @@ export interface FacebookRequestTokens {
   hsi: string | null; spinR: string | null; spinB: string | null; spinT: string | null;
 }
 export function extractFacebookTokens(html: string): FacebookRequestTokens;
+export interface FacebookWebRequestResult {
+  status: number; headers: Headers; payload: unknown; raw: string;
+}
+export interface FacebookWebClient {
+  request(input: string | URL, options?: {
+    method?: "GET" | "HEAD" | "POST"; query?: Record<string, string | number | boolean>;
+    body?: Record<string, unknown> | URLSearchParams | string | Uint8Array;
+    headers?: HeadersInit; signal?: AbortSignal;
+  }): Promise<FacebookWebRequestResult>;
+  get(input: string | URL, options?: { query?: Record<string, string | number | boolean>; headers?: HeadersInit; signal?: AbortSignal }): Promise<FacebookWebRequestResult>;
+  post(input: string | URL, body?: Record<string, unknown> | URLSearchParams | string | Uint8Array, options?: { headers?: HeadersInit; signal?: AbortSignal }): Promise<FacebookWebRequestResult>;
+}
+export function createFacebookWebClient(options: {
+  session: PersonalSession;
+  normalizeResponse?: typeof normalizeFacebookResponse;
+}): FacebookWebClient;
+export function assertFacebookUrl(input: string | URL): URL;
+export function toFormBody(data: Record<string, unknown>, tokens: FacebookRequestTokens, userId: string): URLSearchParams;
 export interface FacebookResponseError extends Error {
   code: string; status: number | null;
   sessionState: "checkpoint" | "logged_out" | "error";
