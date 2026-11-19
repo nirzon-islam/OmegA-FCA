@@ -15,11 +15,12 @@ Independent, security-focused FCA compatibility library for Node.js 20+.
 - Event dispatching with duplicate suppression and per-thread ordering
 - Cookie jar and bounded HTTPS request helper
 - GoatBot callback-style login adapter
+- Official Meta Messenger Page transport (Page token, Send API, signed webhook ingestion)
 - Optional Ed25519 license verification for deployments that explicitly need it
 
 ## Important implementation status
 
-The package is **not yet a complete Facebook Messenger client**. Facebook authentication, the transport/protocol implementation, MQTT wire protocol and event decoding, and complete message/thread API coverage are not implemented. A caller must inject an independently implemented transport factory into `createClient({ authenticate })`. The library deliberately fails when that provider is absent; it does not pretend that a session is connected.
+The package is **not a drop-in replacement for a personal-account FCA**. The official Meta Messenger Page transport is implemented separately and supports Page-token Send API calls plus HMAC-verified webhook events. Personal-account browser-session authentication, private HTTP/GraphQL actions, MQTT wire protocol, and legacy GoatBot personal-inbox compatibility are not implemented. The generic `createClient({ authenticate })` still requires a transport provider. See [the official Meta transport guide](docs/META-MESSENGER-TRANSPORT.md).
 
 Do not use this package as a drop-in replacement for an existing FCA until the Facebook transport and integration tests are complete.
 
@@ -48,6 +49,10 @@ const client = createClient({
 client.login({ mode: "appstate", appState: [] })
   .catch(error => console.error("Login unavailable:", error.message));
 ```
+
+## Official Meta Messenger transport
+
+For supported Facebook Page messaging, see [docs/META-MESSENGER-TRANSPORT.md](docs/META-MESSENGER-TRANSPORT.md). This uses Meta's supported Page access token and webhook model; it does not provide personal-account FCA behavior.
 
 ## GoatBot compatibility
 
