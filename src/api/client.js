@@ -19,7 +19,7 @@ const DRIVER_METHODS = [
   "getThreadHistory", "getMessage", "getFriendsList", "getUserID"
 ];
 
-function createClient({ authenticate, options = {}, reconnect = {}, license = {}, requireLicense = true, onLicenseError = () => {} } = {}) {
+function createClient({ authenticate, options = {}, reconnect = {}, license = {}, requireLicense = false, onLicenseError = () => {} } = {}) {
   if (typeof authenticate !== "function") throw new TypeError("authenticate transport factory is required");
   let supervisor = null;
   let api = null;
@@ -113,7 +113,8 @@ function createClient({ authenticate, options = {}, reconnect = {}, license = {}
     });
     const driver = await supervisor.start();
     if (!driver) throw new Error("Connection stopped before authentication completed");
-    userId = typeof driver.getCurrentUserID === "function" ? String(driver.getCurrentUserID()) : null;
+    const currentUserId = typeof driver.getCurrentUserID === "function" ? await driver.getCurrentUserID() : null;
+    userId = currentUserId == null ? null : String(currentUserId);
     const facade = {};
     for (const method of DRIVER_METHODS) {
       if (typeof driver[method] === "function") {
