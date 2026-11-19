@@ -1,11 +1,12 @@
 # OmegA-FCA implementation status
 
-Last full CI validation before the TypeScript declaration commits: `5a8481bc93f9dd38e06e98d667ad700dd6189c62` (`public-package`). The declaration-only commits after that point have not yet been validated by CI.
+Last successful full CI run: #44467563604 on commit `b944f7ebf63c039e69d0cca41562e37c1196ce78` (`public-package`). Later security and type-definition changes are pending a fresh full CI run.
 
 ## Implemented and CI-validated
 
 - Node.js 20+ CommonJS package structure and public exports.
-- Cookie/AppState parsing and validation, secret redaction, encrypted session helpers.
+- Cookie/AppState parsing and validation, expanded secret redaction, encrypted session helpers.
+- CookieJar now refuses to send Facebook session cookies over plain HTTP.
 - Atomic encrypted session writes, restrictive file permissions, symlink-resistant session reads.
 - Bounded HTTPS request client with caller cancellation and retry safeguards.
 - Connection supervisor with retry/backoff, listener recovery, start/stop race handling, and abortable in-flight connect attempts.
@@ -23,7 +24,8 @@ Last full CI validation before the TypeScript declaration commits: `5a8481bc93f9
   - Normalization for message, postback, delivery, read, account-linking, and referral events.
   - Callback exception isolation.
 - Runnable Node.js webhook server example and environment template.
-- CI matrix validates Node 20 and 22 with `npm test` and recursive syntax checks, including examples (at the last validated commit above).
+- CI matrix validates Node 20 and 22 with `npm test` and recursive syntax checks, including examples (last successful run above).
+- TypeScript declarations are published through the package `types` entry; package wiring is covered by tests, but a full `tsc` compile check is not yet included.
 - Public TypeScript declaration file and package `types` entry have been added; declaration type-checking is not yet part of CI.
 
 ## Explicitly not implemented

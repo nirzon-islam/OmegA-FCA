@@ -35,7 +35,7 @@ class CookieJar {
     const url = inputUrl instanceof URL ? inputUrl : new URL(inputUrl);
     const host = url.hostname.toLowerCase();
     const requestPath = url.pathname || "/";
-    const secure = url.protocol === "https:";
+    if (url.protocol !== "https:") throw new TypeError("Facebook session cookies may only be sent over HTTPS");
     const now = this.now();
     const matches = this.cookies.filter(cookie => {
       if (cookie.expires) {
@@ -46,7 +46,7 @@ class CookieJar {
       }
       if (!domainMatches(host, cookie.domain, cookie.hostOnly)) return false;
       if (!pathMatches(requestPath, cookie.path)) return false;
-      if (cookie.secure && !secure) return false;
+      if (cookie.secure && url.protocol !== "https:") return false;
       return true;
     }).sort((a, b) => b.path.length - a.path.length);
     return matches.map(cookie => cookie.key + "=" + cookie.value).join("; ");

@@ -85,10 +85,7 @@ test("cookie jar respects domain, path, secure and expiry rules", () => {
     jar.getCookieHeader("https://www.facebook.com/messages/123"),
     "path=p; root=r; secure=s; host=h"
   );
-  assert.equal(
-    jar.getCookieHeader("http://www.facebook.com/"),
-    "root=r; host=h"
-  );
+  assert.throws(() => jar.getCookieHeader("http://www.facebook.com/"), /HTTPS/);
   assert.equal(jar.getCookieHeader("https://m.facebook.com/"), "root=r; secure=s");
   now += 1;
   jar.clear();

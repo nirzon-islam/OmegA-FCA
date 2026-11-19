@@ -177,11 +177,10 @@ export function createClient(options: ClientOptions): {
   getLicense(): VerifiedLicense | null;
 };
 
-export function createGoatBotLogin(client: ReturnType<typeof createClient>): (
-  credentials: Record<string, unknown>,
-  options: Record<string, unknown> | ((error: Error | null, api?: ClientApi | null) => void),
-  callback?: (error: Error | null, api?: ClientApi | null) => void
-) => Promise<ClientApi | null>;
+export function createGoatBotLogin(client: ReturnType<typeof createClient>): {
+  (credentials: Record<string, unknown>, callback: (error: Error | null, api?: ClientApi | null) => void): Promise<ClientApi | null>;
+  (credentials: Record<string, unknown>, options: Record<string, unknown>, callback: (error: Error | null, api?: ClientApi | null) => void): Promise<ClientApi | null>;
+};
 
 export function normalizeCookies(input: Cookie[]): Cookie[];
 export function validateSessionCookies(input: Cookie[]): Cookie[];

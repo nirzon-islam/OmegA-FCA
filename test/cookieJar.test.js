@@ -13,7 +13,7 @@ test("scopes cookies by host, path, secure flag, and expiry", () => {
     { key: "expired", value: "x", domain: "facebook.com", path: "/", expires: now - 1000 }
   ], { now: () => now });
   assert.equal(jar.getCookieHeader("https://m.facebook.com/messages/inbox"), "mobile=m; root=r; secure=s");
-  assert.equal(jar.getCookieHeader("http://m.facebook.com/messages/inbox"), "mobile=m; root=r");
+  assert.throws(() => jar.getCookieHeader("http://m.facebook.com/messages/inbox"), /HTTPS/);
   assert.equal(jar.getCookieHeader("https://www.facebook.com/"), "root=r; secure=s");
   assert.equal(jar.getCookieHeader("https://example.com/"), "");
 });
