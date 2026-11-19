@@ -184,9 +184,9 @@ function decodePacket(buffer, { maxPacketBytes = 1024 * 1024 } = {}) {
   const body = buffer.subarray(remaining.offset, end);
   const packetTypes = ["reserved", "connect", "connack", "publish", "puback", "pubrec", "pubrel", "pubcomp", "subscribe", "suback", "unsubscribe", "unsuback", "pingreq", "pingresp", "disconnect", "reserved"];
   if (type === 0 || type === 15) throw new Error("Reserved MQTT packet type");
-  if (type !== 3 && type !== 6 && type !== 8 && type !== 10 && type !== 12 && type !== 14 && flags !== 0) {
-    const required = { 6: 2, 8: 2, 10: 2 }[type];
-    if (flags !== required) throw new Error("Invalid MQTT fixed-header flags");
+  const requiredFlags = { 1: 0, 2: 0, 4: 0, 5: 0, 6: 2, 7: 0, 8: 2, 9: 0, 10: 2, 11: 0, 12: 0, 13: 0, 14: 0 };
+  if (type !== 3 && flags !== requiredFlags[type]) {
+    throw new Error("Invalid MQTT fixed-header flags");
   }
   if (type === 2) {
     if (body.length !== 2 || body[0] > 1 || body[1] > 5) throw new Error("Invalid MQTT CONNACK");
