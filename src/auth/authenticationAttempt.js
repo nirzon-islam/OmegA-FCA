@@ -11,7 +11,9 @@ function publicChallenge(value) {
   }
   const type = typeof value.type === "string" && value.type.trim()
     ? value.type.trim().slice(0, 64) : "verification";
-  // Provider messages may echo credentials, cookies, or challenge answers.\n  // Keep the public prompt generic; the provider may retain richer private state.\n  const message = "Additional account verification is required.";
+  // Provider messages may echo credentials, cookies, or challenge answers.
+  // Keep the public prompt generic; the provider retains richer private state.
+  const message = "Additional account verification is required.";
   const methods = Array.isArray(value.methods)
     ? value.methods.filter(item => typeof item === "string").map(item => item.trim().slice(0, 64)).filter(Boolean).slice(0, 10) : [];
   return Object.freeze({ type, message, methods: Object.freeze(methods) });
@@ -20,10 +22,9 @@ function publicChallenge(value) {
 /**
  * Owns one authentication attempt and its owner-mediated challenge handoff.
  *
- * The provider must return either { status: "authenticated", session } or
- * { status: "challenge_required", challenge, resume(answer) }. The resume
- * function remains private to this attempt and must continue the same
- * provider-owned session; callers only receive the sanitized challenge.
+ * A provider returns { status: "authenticated", session } or
+ * { status: "challenge_required", challenge, resume(answer), cancel?() }.
+ * The resume and optional cancel functions remain private to this attempt.
  */
 function createAuthenticationAttempt({ authenticate, maxChallengeRounds = 3 } = {}) {
   if (typeof authenticate !== "function") throw new TypeError("authenticate must be a function");
@@ -33,7 +34,8 @@ function createAuthenticationAttempt({ authenticate, maxChallengeRounds = 3 } = 
 
   let state = "idle";
   let challenge = null;
-  let resumeProvider = null;\n  let cancelProvider = null;
+  let resumeProvider = null;
+  let cancelProvider = null;
   let credentials = null;
   let options = null;
   let session = null;
@@ -48,8 +50,9 @@ function createAuthenticationAttempt({ authenticate, maxChallengeRounds = 3 } = 
       challengeRounds,
       authenticated: state === "authenticated",
       error: lastError ? Object.freeze({
-        name: lastError.name || "Error",
-        code: typeof lastError.code === "string" ? lastError.code : null,
+        name: "Error",
+        code: typeof lastError.code === "string" && /^[A-Z0-9_:-]{1,64}$/i.test(lastError.code)
+          ? lastError.code : null,
         message: "Authentication failed; inspect the provider error securely"
       }) : null
     });
@@ -69,6 +72,7 @@ function createAuthenticationAttempt({ authenticate, maxChallengeRounds = 3 } = 
       }
       session = result.session;
       resumeProvider = null;
+      cancelProvider = null;
       challenge = null;
       credentials = null;
       options = null;
@@ -87,6 +91,7 @@ function createAuthenticationAttempt({ authenticate, maxChallengeRounds = 3 } = 
       }
       challenge = publicChallenge(result.challenge);
       resumeProvider = result.resume;
+      cancelProvider = typeof result.cancel === "function" ? result.cancel : null;
       state = "challenge_required";
       return null;
     }
@@ -108,6 +113,7 @@ function createAuthenticationAttempt({ authenticate, maxChallengeRounds = 3 } = 
         lastError = error instanceof Error ? error : new Error("Authentication provider failed");
         state = "failed";
         resumeProvider = null;
+        cancelProvider = null;
         challenge = null;
         credentials = null;
         options = null;
@@ -128,6 +134,7 @@ function createAuthenticationAttempt({ authenticate, maxChallengeRounds = 3 } = 
     }
     const resume = resumeProvider;
     resumeProvider = null;
+    cancelProvider = null;
     state = "verifying_challenge";
     operation = Promise.resolve().then(() => resume(answer))
       .then(consume)
@@ -135,6 +142,7 @@ function createAuthenticationAttempt({ authenticate, maxChallengeRounds = 3 } = 
         lastError = error instanceof Error ? error : new Error("Challenge verification failed");
         state = "failed";
         resumeProvider = null;
+        cancelProvider = null;
         challenge = null;
         credentials = null;
         options = null;
@@ -150,13 +158,19 @@ function createAuthenticationAttempt({ authenticate, maxChallengeRounds = 3 } = 
       try { await operation; } catch {}
     }
     const active = session;
+    const cancel = cancelProvider;
     session = null;
     resumeProvider = null;
+    cancelProvider = null;
     challenge = null;
     credentials = null;
     options = null;
     state = "closed";
-    if (active && typeof active.close === "function") await active.close();
+    try {
+      if (cancel) await cancel();
+    } finally {
+      if (active && typeof active.close === "function") await active.close();
+    }
   }
 
   return Object.freeze({ begin, submitChallenge, close, snapshot });
