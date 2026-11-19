@@ -26,6 +26,9 @@ function parseAccountText(text) {
   if (typeof text !== "string" || !text.trim()) throw new TypeError("account.txt must contain cookie data");
   const source = text.trim();
   if (source.length > 256 * 1024) throw new TypeError("account.txt exceeds 256 KiB");
+  if (/^(?:fb_email|email|fb_username|username|fb_password|password|fb_2fa_secret|2FASecret)\\s*=/im.test(source)) {
+    throw new TypeError("account.txt is AppState/cookie-only; put fb_email, password and 2FASecret in config.json → facebookAccount");
+  }
   if (source.startsWith("[") || source.startsWith("{")) {
     const parsed = JSON.parse(source);
     const cookies = Array.isArray(parsed) ? parsed : parsed && (parsed.appState || parsed.cookies);
@@ -71,17 +74,16 @@ function loadAccountConfig({
   const config = readJsonConfig(configPath);
   const account = config.facebookAccount && typeof config.facebookAccount === "object"
     ? config.facebookAccount : {};
-  const username = String(env.FB_USERNAME || account.username || "").trim();
-  const email = String(env.FB_EMAIL || account.email || "").trim();
+  const email = String(env.FB_EMAIL || account.fb_email || account.email || "").trim();
   const password = String(env.FB_PASSWORD || account.password || "");
   const twoFactorSecret = String(env.FB_2FA_SECRET || account["2FASecret"] || "");
-  if (username || email || password) {
-    if ((!username && !email) || !password) {
-      throw new Error("config.json facebookAccount requires email (or username) and password");
+  if (email || password) {
+    if (!email || !password) {
+      throw new Error("config.json facebookAccount requires fb_email and password");
     }
     return Object.freeze({
       mode: "credentials",
-      ...(username ? { username } : { email }),
+      email,
       password,
       twoFactorSecret: twoFactorSecret || null,
       userAgent: account.userAgent || null,
