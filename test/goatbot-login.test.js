@@ -117,3 +117,43 @@ test("GoatBot adapter maps FB_USERNAME instead of email", async () => {
     proxy: null
   });
 });
+
+test("GoatBot adapter loads root account.txt when no credentials are passed", async () => {
+  const fs = require("node:fs");
+  const os = require("node:os");
+  const path = require("node:path");
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), "omega-goatbot-account-"));
+  try {
+    fs.writeFileSync(path.join(root, "account.txt"), "fb_username=owner_handle\nfb_password=private-password\nfb_2fa_code=123456");
+    let received;
+    const login = createGoatBotLogin({
+      async login(credentials) { received = credentials; return { getCurrentUserID: () => "123" }; }
+    }, { cwd: root, env: {} });
+    await login({}, () => {});
+    assert.deepEqual(received, {
+      mode: "credentials",
+      username: "owner_handle",
+      password: "private-password",
+      twoFactorCode: "123456"
+    });
+  } finally {
+    fs.rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test("GoatBot adapter loads root appstate.json when account.txt is absent", async () => {
+  const fs = require("node:fs");
+  const os = require("node:os");
+  const path = require("node:path");
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), "omega-goatbot-appstate-"));
+  try {
+    const appState = [{ key: "c_user", value: "12345", domain: "facebook.com" }, { key: "xs", value: "synthetic", domain: "facebook.com" }];
+    fs.writeFileSync(path.join(root, "appstate.json"), JSON.stringify(appState));
+    let received;
+    const login = createGoatBotLogin({ async login(credentials) { received = credentials; return {}; } }, { cwd: root, env: {} });
+    await login({}, () => {});
+    assert.deepEqual(received, { mode: "appstate", appState });
+  } finally {
+    fs.rmSync(root, { recursive: true, force: true });
+  }
+});
