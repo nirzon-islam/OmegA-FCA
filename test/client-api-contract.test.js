@@ -129,3 +129,42 @@ test("concurrent login calls cannot create competing transport sessions", async 
   await client.logout();
   assert.equal(disconnects, 1);
 });
+
+
+test("logout during authentication waits and disposes the session", async () => {
+  let resolveAuthentication;
+  let authenticationStarted;
+  const started = new Promise(resolve => { authenticationStarted = resolve; });
+  const pending = new Promise(resolve => { resolveAuthentication = resolve; });
+  let disconnects = 0;
+
+  const client = createClient({
+    authenticate: async () => {
+      authenticationStarted();
+      return pending;
+    }
+  });
+
+  const loggingIn = client.login({ mode: "appstate", appState });
+  await started;
+  const loggingOut = client.logout();
+  await assert.rejects(
+    client.login({ mode: "appstate", appState }),
+    /Logout is already in progress/
+  );
+
+  resolveAuthentication({
+    getCurrentUserID: () => "123456",
+    listen: () => () => {},
+    disconnect: async () => { disconnects++; }
+  });
+
+  await loggingIn;
+  await loggingOut;
+  assert.equal(disconnects, 1);
+  assert.deepEqual(client.getConnectionState(), {
+    state: "idle",
+    connected: false,
+    generation: 0
+  });
+});
