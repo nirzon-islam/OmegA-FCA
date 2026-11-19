@@ -114,6 +114,19 @@ Do not replace GoatBot's current FCA dependency with this package as a standalon
 
 Never commit cookies, AppState, passwords, 2FA secrets, encryption keys, or tokens. The library does not bypass checkpoints, 2FA, rate limits, or platform security controls. Unofficial interfaces may change and may result in account restrictions.
 
+## AppState-first test run
+
+Email/password login is deferred for the current testing phase. To validate an authorized AppState session, place only the cookie export in the project-root `account.txt` (or `appstate.json`) and run:
+
+~~~bash
+npm ci
+npm test
+npm run test:syntax
+npm run test:appstate
+~~~
+
+The live AppState check prints only the account ID and session status; it does not print cookies. It validates the HTTPS session bootstrap only—not Messenger realtime, message sending, or full GoatBot compatibility. See [AppState deployment/test instructions](docs/DEPLOYMENT.md).
+
 ## Development
 
 ```bash
