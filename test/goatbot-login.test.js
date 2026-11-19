@@ -157,3 +157,18 @@ test("GoatBot adapter loads root appstate.json when account.txt is absent", asyn
     fs.rmSync(root, { recursive: true, force: true });
   }
 });
+
+test("GoatBot adapter reports missing root account config through callback", async () => {
+  const fs = require("node:fs");
+  const os = require("node:os");
+  const path = require("node:path");
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), "omega-goatbot-missing-"));
+  try {
+    const login = createGoatBotLogin({ async login() { throw new Error("must not login"); } }, { cwd: root, env: {} });
+    let received;
+    assert.equal(await login({}, error => { received = error; }), null);
+    assert.equal(received.code, "FCA_ACCOUNT_CONFIG_MISSING");
+  } finally {
+    fs.rmSync(root, { recursive: true, force: true });
+  }
+});
