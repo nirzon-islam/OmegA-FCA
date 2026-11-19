@@ -19,6 +19,9 @@ class ConnectionSupervisor extends EventEmitter {
     this.startPromise = null;
     this.stopRequested = false;
     this.listenerAttached = false;
+    this.recovering = false;
+    this.eventCallback = null;
+    this.detachDriverListener = null;
   }
 
   snapshot() { return Object.freeze({ state: this.state, connected: Boolean(this.driver), generation: this.generation }); }
@@ -64,32 +67,75 @@ class ConnectionSupervisor extends EventEmitter {
     if (typeof callback !== "function") throw new TypeError("listener callback is required");
     if (!this.driver) throw new Error("Connection is not ready");
     if (this.listenerAttached) throw new Error("A listener is already attached");
-    this.listenerAttached = true;
-    const generation = this.generation;
-    const detach = this.driver.listen((error, event) => {
-      if (generation !== this.generation || this.stopRequested) return;
-      if (error) {
-        this.emit("listenerError", error);
-        return;
-      }
-      callback(event);
-      this.emit("event", event);
-    });
+    this.eventCallback = callback;
+    this.#attachListener();
     let detached = false;
     return () => {
       if (detached) return;
       detached = true;
-      if (generation === this.generation) this.listenerAttached = false;
-      if (typeof detach === "function") detach();
+      this.eventCallback = null;
+      this.#detachListener();
     };
+  }
+
+  #attachListener() {
+    if (!this.driver || !this.eventCallback || this.listenerAttached) return;
+    this.listenerAttached = true;
+    const generation = this.generation;
+    const callback = this.eventCallback;
+    try {
+      const detach = this.driver.listen((error, event) => {
+        if (generation !== this.generation || this.stopRequested) return;
+        if (error) {
+          this.emit("listenerError", error);
+          void this.#recover(generation);
+          return;
+        }
+        callback(event);
+        this.emit("event", event);
+      });
+      this.detachDriverListener = typeof detach === "function" ? detach : null;
+    } catch (error) {
+      this.listenerAttached = false;
+      this.emit("listenerError", error);
+      void this.#recover(generation);
+    }
+  }
+
+  #detachListener() {
+    const detach = this.detachDriverListener;
+    this.detachDriverListener = null;
+    this.listenerAttached = false;
+    if (detach) {
+      try { detach(); } catch (error) { this.emit("listenerError", error); }
+    }
+  }
+
+  async #recover(failedGeneration) {
+    if (this.recovering || this.stopRequested || failedGeneration !== this.generation) return;
+    this.recovering = true;
+    const previous = this.driver;
+    this.driver = null;
+    this.#detachListener();
+    this.#setState("disconnected");
+    try {
+      if (previous) await this.disconnectDriver(previous);
+      const driver = await this.start();
+      if (driver && !this.stopRequested && this.eventCallback) this.#attachListener();
+    } catch (error) {
+      this.emit("connectionError", error);
+    } finally {
+      this.recovering = false;
+    }
   }
 
   async stop() {
     this.stopRequested = true;
     ++this.generation;
+    this.eventCallback = null;
+    this.#detachListener();
     const driver = this.driver;
     this.driver = null;
-    this.listenerAttached = false;
     if (driver) await this.disconnectDriver(driver);
     this.#setState("stopped");
     this.emit("stopped", this.snapshot());
