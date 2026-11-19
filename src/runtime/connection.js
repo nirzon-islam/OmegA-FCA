@@ -136,6 +136,9 @@ class ConnectionSupervisor extends EventEmitter {
     this.#setState("disconnected");
     try {
       if (previous) await this.disconnectDriver(previous);
+      // stop() may run while the previous driver is being disposed. Do not
+      // let recovery call start() afterward, because start() clears stopRequested.
+      if (this.stopRequested || failedGeneration !== this.generation) return;
       const driver = await this.start();
       if (driver && !this.stopRequested && this.eventCallback) this.#attachListener();
     } catch (error) {
