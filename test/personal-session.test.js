@@ -47,6 +47,8 @@ test("personal session validates owner-supplied AppState and scopes cookies to F
   assert.throws(() => session.getCookieHeader("https://example.com/"), /Facebook\/Messenger HTTPS hosts/);
   await session.request("https://www.facebook.com/messages/", { method: "GET" });
   assert.match(session.getCookieHeader(), /sid=refreshed/);
+  await session.request("https://www.facebook.com/messages/", { method: "GET" });
+  // The second request response below is configured by a dedicated test for deletion semantics.
   await assert.rejects(session.request("https://example.com/"), /Facebook\/Messenger HTTPS hosts/);
   session.close();
   assert.throws(() => session.getAppState(), /closed/);
@@ -96,4 +98,27 @@ test("extracts Facebook web request tokens without exposing unrelated page data"
     spinT: "1700000000"
   });
   assert.throws(() => extractFacebookTokens("x".repeat(2 * 1024 * 1024 + 1)), /size limit/);
+});
+
+test("personal session applies Set-Cookie deletion and supports Messenger cookie domains", async () => {
+  let calls = 0;
+  const session = await createPersonalSession({
+    appState,
+    fetchImpl: async () => {
+      calls++;
+      if (calls === 1) return response();
+      if (calls === 2) return response({ setCookies: ["sid=active; Domain=.facebook.com; Path=/; Secure"] });
+      return response({ setCookies: ["sid=; Domain=.facebook.com; Path=/; Max-Age=0"] });
+    }
+  });
+  await session.request("https://www.facebook.com/messages/");
+  assert.match(session.getCookieHeader(), /sid=active/);
+  await session.request("https://www.facebook.com/messages/");
+  assert.doesNotMatch(session.getCookieHeader(), /sid=/);
+  session.close();
+});
+
+test("cookie normalization accepts Messenger subdomains", () => {
+  const { normalizeCookies } = require("../src/security/cookies");
+  assert.equal(normalizeCookies([{ key: "sid", value: "abc", domain: ".www.messenger.com" }])[0].domain, "www.messenger.com");
 });
