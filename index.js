@@ -25,6 +25,7 @@ const { validateTransportDriver, createTransportFactory } = require("./src/trans
 const { createMetaMessengerTransport, normalizeWebhookPayload, verifyWebhookSignature, verifyWebhookChallenge } = require("./src/transport/metaMessenger");
 const { decodeRealtimeFrame, summarizeRealtimeFrame, DEFAULT_MAX_FRAME_BYTES } = require("./src/transport/realtimeFrameDecoder");
 const { inspectRealtimeBinaryPayload, DEFAULT_MAX_BINARY_PAYLOAD_BYTES } = require("./src/transport/binaryPayloadInspector");
+const { createNativeRealtimeTransport, DEFAULT_CONNECT_TIMEOUT_MS, DEFAULT_CLOSE_TIMEOUT_MS } = require("./src/transport/nativeRealtimeTransport");
 const { parseVersion, compareVersions, verifyUpdateManifest, verifyArtifactDigest } = require("./src/update/manifest");
 
 module.exports = {
@@ -41,6 +42,7 @@ module.exports = {
   normalizeWebhookPayload, verifyWebhookSignature, verifyWebhookChallenge,
   decodeRealtimeFrame, summarizeRealtimeFrame, DEFAULT_MAX_FRAME_BYTES,
   inspectRealtimeBinaryPayload, DEFAULT_MAX_BINARY_PAYLOAD_BYTES,
+  createNativeRealtimeTransport, DEFAULT_CONNECT_TIMEOUT_MS, DEFAULT_CLOSE_TIMEOUT_MS,
   parseVersion, compareVersions, verifyUpdateManifest, verifyArtifactDigest,
   version: require("./package.json").version
 };
