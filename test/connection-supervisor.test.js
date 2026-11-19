@@ -145,3 +145,40 @@ test("application listener exceptions are isolated without reconnecting the tran
   assert.equal(supervisor.snapshot().state, "connected");
   await supervisor.stop();
 });
+
+
+
+test("stopping during listener recovery prevents the supervisor from restarting", async () => {
+  let connectCount = 0;
+  let listener;
+  let releaseDisconnect;
+  let disconnectStarted;
+  const disconnectGate = new Promise(resolve => { releaseDisconnect = resolve; });
+  const disconnectSignal = new Promise(resolve => { disconnectStarted = resolve; });
+  const supervisor = new ConnectionSupervisor({
+    connect: async () => {
+      connectCount++;
+      return {
+        listen(callback) { listener = callback; return () => {}; },
+        disconnect: async () => {
+          disconnectStarted();
+          await disconnectGate;
+        }
+      };
+    },
+    disconnect: driver => driver.disconnect(),
+    options: { maxAttempts: 1 }
+  });
+
+  await supervisor.start();
+  supervisor.listen(() => {});
+  listener(new Error("synthetic listener failure"));
+  await disconnectSignal;
+  await supervisor.stop();
+  releaseDisconnect();
+  await new Promise(resolve => setImmediate(resolve));
+
+  assert.equal(connectCount, 1);
+  assert.equal(supervisor.snapshot().state, "stopped");
+  assert.equal(supervisor.snapshot().connected, false);
+});
