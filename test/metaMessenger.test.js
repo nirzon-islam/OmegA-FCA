@@ -12,7 +12,7 @@ const {
 const config = {
   pageAccessToken: "synthetic-page-token",
   pageId: "123456789012345",
-  apiVersion: "vXX.X",
+  apiVersion: "v99.0",
   appSecret: "synthetic-app-secret"
 };
 
