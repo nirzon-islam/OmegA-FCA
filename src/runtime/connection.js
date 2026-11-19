@@ -51,8 +51,9 @@ class ConnectionSupervisor extends EventEmitter {
           this.connectDriver({ attempt, generation, signal: controller.signal })
         );
         let connectResultConsumed = false;
+        let rejectAbort;
         const abortPromise = new Promise((_, reject) => {
-          const rejectAbort = () => reject(controller.signal.reason ||
+          rejectAbort = () => reject(controller.signal.reason ||
             Object.assign(new Error("Connection attempt aborted"), { name: "AbortError", retryable: false }));
           if (controller.signal.aborted) rejectAbort();
           else controller.signal.addEventListener("abort", rejectAbort, { once: true });
@@ -66,14 +67,14 @@ class ConnectionSupervisor extends EventEmitter {
           // later, dispose its driver instead of leaking an orphaned session.
           void connectPromise.then(lateDriver => {
             if (!connectResultConsumed && lateDriver) {
-              return this.disconnectDriver(lateDriver).catch(disconnectError => {
+              return Promise.resolve().then(() => this.disconnectDriver(lateDriver)).catch(disconnectError => {
                 try { this.emit("connectionError", disconnectError); } catch {}
               });
             }
           }, () => {});
           throw error;
         } finally {
-          controller.signal.onabort = null;
+          if (rejectAbort) controller.signal.removeEventListener("abort", rejectAbort);
           if (this.connectAbortController === controller) this.connectAbortController = null;
         }
         if (this.stopRequested || generation !== this.generation) {
