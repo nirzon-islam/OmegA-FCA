@@ -23,6 +23,7 @@ const { verifyLicenseToken } = require("./src/license/verify");
 const { createLicenseProvider } = require("./src/license/provider");
 const { validateTransportDriver, createTransportFactory } = require("./src/transport/contract");
 const { createMetaMessengerTransport, normalizeWebhookPayload, verifyWebhookSignature, verifyWebhookChallenge } = require("./src/transport/metaMessenger");
+const { decodeRealtimeFrame, summarizeRealtimeFrame, DEFAULT_MAX_FRAME_BYTES } = require("./src/transport/realtimeFrameDecoder");
 const { parseVersion, compareVersions, verifyUpdateManifest, verifyArtifactDigest } = require("./src/update/manifest");
 
 module.exports = {
@@ -37,6 +38,7 @@ module.exports = {
   createGoatBotLogin, createLegacyFcaProvider, verifyLicenseToken, createLicenseProvider,
   validateTransportDriver, createTransportFactory, createMetaMessengerTransport,
   normalizeWebhookPayload, verifyWebhookSignature, verifyWebhookChallenge,
+  decodeRealtimeFrame, summarizeRealtimeFrame, DEFAULT_MAX_FRAME_BYTES,
   parseVersion, compareVersions, verifyUpdateManifest, verifyArtifactDigest,
   version: require("./package.json").version
 };
