@@ -23,6 +23,7 @@ class ConnectionSupervisor extends EventEmitter {
     this.recovering = false;
     this.eventCallback = null;
     this.detachDriverListener = null;
+    this.connectAbortController = null;
   }
 
   snapshot() { return Object.freeze({ state: this.state, connected: Boolean(this.driver), generation: this.generation }); }
@@ -44,7 +45,37 @@ class ConnectionSupervisor extends EventEmitter {
       this.#setState(attempt ? "reconnecting" : "connecting");
       const generation = ++this.generation;
       try {
-        const driver = await this.connectDriver({ attempt, generation });
+        const controller = new AbortController();
+        this.connectAbortController = controller;
+        const connectPromise = Promise.resolve().then(() =>
+          this.connectDriver({ attempt, generation, signal: controller.signal })
+        );
+        let connectResultConsumed = false;
+        const abortPromise = new Promise((_, reject) => {
+          const rejectAbort = () => reject(controller.signal.reason ||
+            Object.assign(new Error("Connection attempt aborted"), { name: "AbortError", retryable: false }));
+          if (controller.signal.aborted) rejectAbort();
+          else controller.signal.addEventListener("abort", rejectAbort, { once: true });
+        });
+        let driver;
+        try {
+          driver = await Promise.race([connectPromise, abortPromise]);
+          connectResultConsumed = true;
+        } catch (error) {
+          // Providers should honor the signal. If one does not and resolves
+          // later, dispose its driver instead of leaking an orphaned session.
+          void connectPromise.then(lateDriver => {
+            if (!connectResultConsumed && lateDriver) {
+              return this.disconnectDriver(lateDriver).catch(disconnectError => {
+                try { this.emit("connectionError", disconnectError); } catch {}
+              });
+            }
+          }, () => {});
+          throw error;
+        } finally {
+          controller.signal.onabort = null;
+          if (this.connectAbortController === controller) this.connectAbortController = null;
+        }
         if (this.stopRequested || generation !== this.generation) {
           await this.disconnectDriver(driver);
           break;
@@ -155,6 +186,9 @@ class ConnectionSupervisor extends EventEmitter {
   stop() {
     if (this.stopPromise) return this.stopPromise;
     this.stopRequested = true;
+    this.connectAbortController?.abort(
+      Object.assign(new Error("Connection stopped"), { name: "AbortError", retryable: false })
+    );
     ++this.generation;
     this.eventCallback = null;
     this.#detachListener();
