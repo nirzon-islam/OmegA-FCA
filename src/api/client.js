@@ -29,6 +29,7 @@ function createClient({ authenticate, options = {}, reconnect = {}, license = {}
   let mqttErrorHandler = null;
   let licenseTimer = null;
   let licenseCheckPromise = null;
+  let loginPromise = null;
 
   async function checkLicense() {
     if (!requireLicense) return null;
@@ -69,7 +70,7 @@ function createClient({ authenticate, options = {}, reconnect = {}, license = {}
     licenseTimer = null;
   }
 
-  async function login(credentials = {}, loginOptions = options) {
+  async function performLogin(credentials = {}, loginOptions = options) {
     if (supervisor && supervisor.snapshot().connected) return api;
     if (supervisor && ["connecting", "reconnecting"].includes(supervisor.snapshot().state)) {
       throw new Error("A login attempt is already in progress");
@@ -185,6 +186,18 @@ function createClient({ authenticate, options = {}, reconnect = {}, license = {}
     api = Object.freeze(facade);
     startLicenseMonitor();
     return api;
+  }
+
+  function login(credentials = {}, loginOptions = options) {
+    if (loginPromise) {
+      return Promise.reject(new Error("A login attempt is already in progress"));
+    }
+    // Reserve the login slot synchronously, before performLogin reaches its
+    // first await, so concurrent callers cannot create two live supervisors.
+    loginPromise = performLogin(credentials, loginOptions).finally(() => {
+      loginPromise = null;
+    });
+    return loginPromise;
   }
 
   return Object.freeze({
