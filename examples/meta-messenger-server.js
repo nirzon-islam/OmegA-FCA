@@ -37,6 +37,10 @@ transport.listen((error, event) => {
 
 const server = http.createServer(async (request, response) => {
   const url = new URL(request.url, "http://localhost");
+  if (request.method === "GET" && url.pathname === "/healthz") {
+    response.writeHead(200, { "content-type": "application/json" }).end(JSON.stringify({ status: "ok" }));
+    return;
+  }
   if (url.pathname !== "/webhook") {
     response.writeHead(404).end("Not found");
     return;
