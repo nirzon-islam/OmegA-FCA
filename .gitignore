@@ -4,6 +4,21 @@ dist/
 .env
 .env.*
 !.env.example
-*.enc
+
+# Local Facebook credentials and session material — never commit these.
+account.txt
+account.json
+account.*
 appstate.json
+appstate.txt
+*.appstate
+*.cookie
+*.cookies
+*.session
+*.session.json
+*.enc
+*.pem
+*.key
+
+# Local test/development secrets
 test-config.json
