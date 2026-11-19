@@ -19,6 +19,7 @@ Current feature and release status: [docs/IMPLEMENTATION-STATUS.md](docs/IMPLEME
 - GoatBot callback-style login adapter
 - Official Meta Messenger Page transport (Page token, Send API, signed webhook ingestion)
 - Optional Ed25519 license verification for deployments that explicitly need it
+- Public TypeScript declarations (`index.d.ts`) for the currently implemented API
 
 ## Important implementation status
 
