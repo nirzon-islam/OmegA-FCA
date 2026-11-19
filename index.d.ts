@@ -188,7 +188,7 @@ export interface MetaMessengerTransportOptions {
   pageId: string;
   apiVersion: string;
   appSecret?: string;
-  fetchImpl?: typeof fetch;
+  fetchImpl?: (...args: any[]) => Promise<any>;
   timeoutMs?: number;
 }
 
@@ -196,7 +196,7 @@ export interface MetaMessengerTransport {
   getCurrentUserID(): string;
   sendMessage(recipientId: string, message: Record<string, unknown>): Promise<Record<string, unknown>>;
   listen(callback: (error: Error | null, event?: MetaWebhookEvent) => void): () => void;
-  publishWebhook(rawBody: Buffer, signature: string): number;
+  publishWebhook(rawBody: Uint8Array, signature: string): number;
   disconnect(): Promise<void>;
   getCapabilities(): Readonly<Record<string, string | boolean>>;
 }
@@ -213,7 +213,7 @@ export interface MetaWebhookEvent {
 
 export function createMetaMessengerTransport(options: MetaMessengerTransportOptions): MetaMessengerTransport;
 export function normalizeWebhookPayload(payload: unknown): MetaWebhookEvent[];
-export function verifyWebhookSignature(rawBody: Buffer, signature: string, appSecret: string): boolean;
+export function verifyWebhookSignature(rawBody: Uint8Array, signature: string, appSecret: string): boolean;
 export function verifyWebhookChallenge(query: Record<string, unknown>, verifyToken: string): string | null;
 export function parseVersion(value: string): number[];
 export function compareVersions(left: string, right: string): number;
