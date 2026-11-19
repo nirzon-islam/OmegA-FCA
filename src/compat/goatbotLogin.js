@@ -1,6 +1,7 @@
 "use strict";
 
 const { loadAccountConfig } = require("../auth/accountConfig");
+const { generateTotp } = require("../auth/totp");
 
 function fromAccountConfig(config) {
   if (config.mode === "appstate") return { mode: "appstate", appState: config.appState };
@@ -9,6 +10,7 @@ function fromAccountConfig(config) {
     ...(config.username ? { username: config.username } : { email: config.email }),
     password: config.password,
     twoFactorSecret: config.twoFactorSecret || null,
+    twoFactorCode: config.twoFactorSecret ? generateTotp(config.twoFactorSecret) : null,
     userAgent: config.userAgent || null,
     proxy: config.proxy || null
   };
@@ -36,7 +38,7 @@ function createGoatBotLogin(client, accountConfigOptions = {}) {
           : { email: input.email }),
         password: input.password || input.pass,
         twoFactorSecret: input.twoFactorSecret || input["2FASecret"] || null,
-        twoFactorCode: input.twoFactorCode || input.twoFactorCodeOrCode || input.twoFactorSecretOrCode || input["2FACode"] || null,
+        twoFactorCode: input.twoFactorCode || input.twoFactorCodeOrCode || input.twoFactorSecretOrCode || input["2FACode"] || ((input.twoFactorSecret || input["2FASecret"]) ? generateTotp(input.twoFactorSecret || input["2FASecret"]) : null),
         userAgent: input.userAgent || null,
         proxy: input.proxy || null
       };
