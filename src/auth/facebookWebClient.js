@@ -93,7 +93,7 @@ function createFacebookWebClient({ session, fetchImpl, normalizeResponse = norma
           code: "FCA_CHECKPOINT_REQUIRED", status: response.status, sessionState: "checkpoint", retryable: false
         });
       }
-      if (/login\\.php|\\/login(?:[/?]|$)/i.test(location)) {
+      if (/login\.php|\/login(?:[/?]|$)/i.test(location)) {
         throw createFacebookError("Facebook session is no longer authenticated", {
           code: "FCA_SESSION_EXPIRED", status: response.status, sessionState: "logged_out", retryable: false
         });
