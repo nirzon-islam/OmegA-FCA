@@ -220,8 +220,9 @@ export function verifyUpdateManifest(manifest: unknown, options?: Record<string,
 export function verifyArtifactDigest(data: string | Uint8Array, digest: string): boolean;
 export const version: string;
 
-export interface AccountConfigOptions { cwd?: string; accountFile?: string; appStateFile?: string | null; env?: NodeJS.ProcessEnv; }
-export type LoadedAccountConfig = ({ mode: "credentials"; username: string; email?: never; password: string; twoFactorCode: string | null } | { mode: "credentials"; email: string; username?: never; password: string; twoFactorCode: string | null } | { mode: "appstate"; appState: Cookie[] });
-export function parseAccountText(text: string): Record<string, string>;
-/** Reads root account.txt (or environment overrides), falling back to root appstate.json. This only loads configuration; it does not implement Facebook password authentication or realtime transport. */
+export interface AccountConfigOptions { cwd?: string; accountFile?: string; configFile?: string; appStateFile?: string | null; env?: NodeJS.ProcessEnv; }
+export type LoadedAccountConfig = ({ mode: "credentials"; username?: string; email?: string; password: string; twoFactorSecret: string | null; userAgent: string | null; proxy: unknown } | { mode: "appstate"; appState: Cookie[]; source?: string });
+export function parseAccountText(text: string): Cookie[];
+export function generateTotp(secret: string, options?: { digits?: number; period?: number; algorithm?: "sha1" | "sha256" | "sha512"; timestamp?: number }): string;
+/** Reads cookie-only account.txt first, then facebookAccount credentials from config.json, with appstate.json as a compatibility fallback. */
 export function loadAccountConfig(options?: AccountConfigOptions): LoadedAccountConfig;
