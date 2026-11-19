@@ -89,7 +89,7 @@ test("provider failures discard pending challenge state", async () => {
   });
   await assert.rejects(attempt.begin({}), /rejected/);
   assert.equal(attempt.snapshot().state, "failed");
-  assert.equal(attempt.snapshot().error.code, undefined);
+  assert.equal(attempt.snapshot().error.code, null);
   assert.equal(attempt.snapshot().error.message, "Authentication failed; inspect the provider error securely");
   assert.equal(JSON.stringify(attempt.snapshot()).includes("hunter2"), false);
   await assert.rejects(attempt.submitChallenge("123456"), /No authentication challenge/);
