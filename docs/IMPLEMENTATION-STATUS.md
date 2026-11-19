@@ -1,6 +1,6 @@
 # OmegA-FCA implementation status
 
-Last successful full CI run: #44468681035 on commit `e4825063e79fe884498f4eff5b034095065b1785` (`public-package`). Both Node 20 and Node 22 jobs passed `npm test` and `npm run test:syntax`.
+Last successful full CI run: #44468841892 on commit `94203bc3260b60bd1a73e5c06c36bac28d0c1b8f` (`public-package`). Both Node 20 and Node 22 jobs passed `npm test` and `npm run test:syntax`.
 
 ## Implemented and CI-validated
 
@@ -19,6 +19,7 @@ Last successful full CI run: #44468681035 on commit `e4825063e79fe884498f4eff5b0
   - Configurable Graph API version.
   - Send API message requests with no automatic retry of POST sends.
   - Typing-on, typing-off, and mark-seen sender actions.
+  - Page-scoped Messenger profile lookup with a constrained field allowlist.
   - Page Conversations list, conversation detail, conversation message history, and individual message reads with bounded pagination and safe Graph API error propagation.
   - HMAC-SHA256 webhook signature verification over original raw bytes.
   - Payload parsing only after signature verification.

@@ -17,7 +17,7 @@ Current feature and release status: [docs/IMPLEMENTATION-STATUS.md](docs/IMPLEME
 - Event dispatching with in-flight duplicate coalescing, retry-safe acknowledgement, and per-thread ordering
 - Cookie jar and bounded HTTPS request helper
 - GoatBot callback-style login adapter
-- Official Meta Messenger Page transport (Page token, send/read conversation APIs, typing/read actions, signed webhook ingestion)
+- Official Meta Messenger Page transport (Page token, user profiles, conversation/message reads, typing/read actions, signed webhook ingestion)
 - Optional Ed25519 license verification for deployments that explicitly need it
 - Public TypeScript declarations (`index.d.ts`) for the currently implemented API
 
