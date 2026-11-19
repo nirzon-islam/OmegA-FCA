@@ -56,7 +56,8 @@ The adapter lets an existing FCA implementation plug into OmegA-FCA without pret
 
 ```js
 const { createClient, createLegacyFcaProvider } = require("@omega/fca");
-// Supply a caller-owned FCA implementation only when testing the migration adapter.\nconst legacyFcaLogin = require("your-existing-fca");
+// Supply a caller-owned FCA implementation only when testing the migration adapter.
+const legacyFcaLogin = require("your-existing-fca");
 
 const authenticate = createLegacyFcaProvider({
   login: legacyFcaLogin,
