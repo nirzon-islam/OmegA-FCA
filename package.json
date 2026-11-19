@@ -32,7 +32,8 @@
     "src/",
     "README.md",
     "LICENSE",
-    "docs/META-MESSENGER-TRANSPORT.md"
+    "docs/META-MESSENGER-TRANSPORT.md",
+    "docs/DEPLOYMENT.md"
   ],
   "exports": {
     ".": {
