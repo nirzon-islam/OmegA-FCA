@@ -254,8 +254,8 @@ test("Meta Page transport reads conversations and messages with bounded paginati
   assert.equal(requests[3].url.pathname, "/v99.0/mid.123456");
   assert.ok(requests.every(item => item.options.headers.authorization === "Bearer " + config.pageAccessToken));
   assert.ok(requests.every(item => !item.url.searchParams.has("access_token")));
-  await assert.rejects(transport.getThreadList(101), /between 1 and 100/);
-  await assert.rejects(transport.getThreadHistory("bad/id"), /conversation ID/);
+  assert.throws(() => transport.getThreadList(101), /between 1 and 100/);
+  assert.throws(() => transport.getThreadHistory("bad/id"), /conversation ID/);
   await transport.disconnect();
 });
 
