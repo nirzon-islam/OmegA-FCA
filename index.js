@@ -6,6 +6,7 @@ const { encryptSession, decryptSession } = require("./src/security/sessionCrypto
 const { saveSession, loadSession, deleteSession } = require("./src/security/sessionStore");
 const { ConnectionSupervisor } = require("./src/runtime/connection");
 const { EventDispatcher } = require("./src/events/dispatcher");
+const { CookieJar } = require("./src/network/cookieJar");
 const { createClient } = require("./src/api/client");
 const { createGoatBotLogin } = require("./src/compat/goatbotLogin");
 const { verifyLicenseToken } = require("./src/license/verify");
@@ -24,6 +25,7 @@ module.exports = {
   deleteSession,
   ConnectionSupervisor,
   EventDispatcher,
+  CookieJar,
   createClient,
   createGoatBotLogin,
   verifyLicenseToken,
