@@ -9,6 +9,20 @@ const appState = [
   { key: "xs", value: "synthetic-session-value", domain: "facebook.com" }
 ];
 
+test("credentials login forwards a manually entered two-factor code to the provider", async () => {
+  let received;
+  const client = createClient({
+    authenticate: async ({ credentials }) => {
+      received = credentials;
+      return { listen: () => () => {}, getCurrentUserID: () => "123456", disconnect: async () => {} };
+    }
+  });
+  await client.login({ mode: "credentials", email: "owner@example.test", password: "synthetic-password", twoFactorCode: "123456" });
+  assert.equal(received.twoFactorCode, "123456");
+  assert.equal(received.twoFactorSecret, null);
+  await client.logout();
+});
+
 test("client facade exposes only methods implemented by its transport driver", async () => {
   const calls = [];
   const client = createClient({
