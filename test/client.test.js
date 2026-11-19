@@ -41,8 +41,8 @@ test("client rejects missing login mode", async () => {
   await assert.rejects(client.login({}), /Login mode/);
 });
 
-test("client requires an owner-signed license by default", async () => {
-  const client = createClient({ authenticate: async () => ({}) });
+test("client enforces owner-signed licensing when explicitly enabled", async () => {
+  const client = createClient({ requireLicense: true, authenticate: async () => ({}) });
   await assert.rejects(client.login({ mode: "credentials", email: "demo@example.com", password: "not-a-real-password" }), /License token is missing/);
 });
 
@@ -95,6 +95,7 @@ test("client refreshes and verifies an owner license before transport authentica
   let refreshCount = 0;
   let authenticated = false;
   const client = createClient({
+    requireLicense: true,
     license: {
       refresh: async () => { refreshCount++; return token; },
       publicKey: publicKey.export({ type: "spki", format: "pem" }).toString(),
@@ -131,6 +132,7 @@ test("client enforces feature entitlements for methods and event listeners", asy
   const bytes = Buffer.from(JSON.stringify(payload));
   const token = bytes.toString("base64url") + "." + crypto.sign(null, bytes, privateKey).toString("base64url");
   const client = createClient({
+    requireLicense: true,
     license: {
       token,
       publicKey: publicKey.export({ type: "spki", format: "pem" }).toString(),
