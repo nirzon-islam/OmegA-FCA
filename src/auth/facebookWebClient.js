@@ -73,10 +73,10 @@ function createFacebookWebClient({ session, fetchImpl, normalizeResponse = norma
     } else if (body !== undefined) {
       throw new TypeError("GET and HEAD requests cannot include a body");
     }
-    const response = await session.request(url, {
+    if (requestBody !== undefined) {\n      const size = typeof requestBody === "string" ? Buffer.byteLength(requestBody, "utf8")\n        : requestBody instanceof URLSearchParams ? Buffer.byteLength(requestBody.toString(), "utf8")\n        : requestBody instanceof Uint8Array ? requestBody.byteLength : 0;\n      if (size > MAX_BODY_BYTES) {\n        throw createFacebookError("Facebook request body exceeded the 2 MiB safety limit", {\n          code: "FCA_REQUEST_TOO_LARGE", retryable: false\n        });\n      }\n    }\n    const response = await session.request(url, {
       method: verb, headers: requestHeaders, body: requestBody, signal, redirect: "manual"
     });
-    const declared = Number(response.headers?.get?.("content-length") || 0);
+    if (response.status >= 300 && response.status < 400) {\n      const location = response.headers?.get?.("location") || "";\n      if (/checkpoint|challenge/i.test(location)) {\n        throw createFacebookError("Facebook requires the account owner to complete a checkpoint", {\n          code: "FCA_CHECKPOINT_REQUIRED", status: response.status, sessionState: "checkpoint", retryable: false\n        });\n      }\n      if (/login\\.php|\\/login(?:[/?]|$)/i.test(location)) {\n        throw createFacebookError("Facebook session is no longer authenticated", {\n          code: "FCA_SESSION_EXPIRED", status: response.status, sessionState: "logged_out", retryable: false\n        });\n      }\n      throw createFacebookError("Facebook returned an unexpected redirect; it was not followed", {\n        code: "FCA_UNEXPECTED_REDIRECT", status: response.status, retryable: false\n      });\n    }\n    const declared = Number(response.headers?.get?.("content-length") || 0);
     if (declared > MAX_BODY_BYTES) {
       throw createFacebookError("Facebook response exceeded the 2 MiB safety limit", {
         code: "FCA_RESPONSE_TOO_LARGE", status: response.status, retryable: false
