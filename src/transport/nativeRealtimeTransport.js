@@ -152,6 +152,7 @@ function createNativeRealtimeTransport(options = {}) {
         if (signal) {
           abortHandler = () => finish(signal.reason || transportError("Connection aborted", "FCA_WS_ABORTED"));
           signal.addEventListener("abort", abortHandler, { once: true });
+          if (signal.aborted) abortHandler();
         }
         if (candidate.readyState === 1) finish();
       });
