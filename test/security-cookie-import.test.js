@@ -39,3 +39,12 @@ test("Netscape import rejects malformed non-comment rows", () => {
     /Malformed Netscape cookie row/
   );
 });
+
+
+test("Netscape import rejects malformed expiry fields instead of treating them as session cookies", () => {
+  const malformed = [
+    "facebook.com\\tFALSE\\t/\\tTRUE\\tnot-a-timestamp\\tc_user\\t123456",
+    "facebook.com\\tFALSE\\t/\\tTRUE\\t0\\txs\\ttoken"
+  ].join("\\n");
+  assert.throws(() => parseNetscapeCookies(malformed), /Invalid cookie expiry/);
+});
