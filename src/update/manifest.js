@@ -11,7 +11,7 @@ function decodeBase64Url(value, label) {
 
 function parseVersion(value) {
   if (typeof value !== "string") throw new Error("Invalid semantic version");
-  const match = /^(0|[1-9]\d*)\\.(0|[1-9]\d*)\\.(0|[1-9]\d*)(?:-([0-9A-Za-z.-]+))?(?:\\+[0-9A-Za-z.-]+)?$/.exec(value);
+  const match = /^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(?:-([0-9A-Za-z.-]+))?(?:\\+[0-9A-Za-z.-]+)?$/.exec(value);
   if (!match) throw new Error("Invalid semantic version");
   return { major: Number(match[1]), minor: Number(match[2]), patch: Number(match[3]), prerelease: match[4] || "" };
 }
