@@ -51,8 +51,7 @@ function createAuthenticationAttempt({ authenticate, maxChallengeRounds = 3 } = 
       authenticated: state === "authenticated",
       error: lastError ? Object.freeze({
         name: "Error",
-        code: typeof lastError.code === "string" && /^[A-Z0-9_:-]{1,64}$/i.test(lastError.code)
-          ? lastError.code : null,
+        // Provider-controlled codes can also contain echoed secrets; expose none.
         message: "Authentication failed; inspect the provider error securely"
       }) : null
     });
@@ -171,6 +170,7 @@ function createAuthenticationAttempt({ authenticate, maxChallengeRounds = 3 } = 
     challenge = null;
     credentials = null;
     options = null;
+    lastError = null;
     state = "closed";
     try {
       if (cancel) await cancel();
