@@ -8,7 +8,7 @@ const { compareVersions, verifyUpdateManifest, verifyArtifactDigest } = require(
 function signedManifest(privateKey, overrides = {}) {
   const now = Date.now();
   const value = {
-    product: "@omegax/fca",
+    product: "@omega/fca",
     version: "0.2.0",
     channel: "stable",
     minNode: "20.0.0",
