@@ -3,6 +3,7 @@
 const { validateSessionCookies, parseCookieHeader } = require("../security/cookies");
 const { ConnectionSupervisor } = require("../runtime/connection");
 const { verifyLicenseToken } = require("../license/verify");
+const { validateTransportDriver } = require("../transport/contract");
 
 const METHOD_FEATURES = Object.freeze({
   sendMessage: "messaging", unsendMessage: "messaging", markAsRead: "messaging", sendTypingIndicator: "messaging",
@@ -103,8 +104,7 @@ function createClient({ authenticate, options = {}, reconnect = {}, license = {}
     supervisor = new ConnectionSupervisor({
       connect: async context => {
         const result = await authenticate({ mode, credentials: normalized, options: loginOptions || {}, context, license: verifiedLicense });
-        if (!result || typeof result !== "object") throw new Error("Authentication returned no transport");
-        return result;
+        return validateTransportDriver(result);
       },
       disconnect: async driver => {
         if (typeof driver.disconnect === "function") await driver.disconnect();
