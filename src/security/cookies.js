@@ -6,7 +6,7 @@ const FACEBOOK_DOMAINS = new Set(["facebook.com", "www.facebook.com", "m.faceboo
 
 function normalizeDomain(domain) {
   if (typeof domain !== "string" || !domain.trim()) throw new TypeError("Cookie domain is required");
-  const value = domain.trim().toLowerCase().replace(/^\\./, "");
+  const value = domain.trim().toLowerCase().replace(/^\./, "");
   if (!FACEBOOK_DOMAINS.has(value) && !value.endsWith(".facebook.com")) {
     throw new TypeError("Only Facebook/Messenger cookie domains are accepted");
   }
@@ -26,7 +26,7 @@ function normalizeCookies(input) {
     const domain = normalizeDomain(item.domain || "facebook.com");
     const path = item.path === undefined ? "/" : item.path;
     if (typeof path !== "string" || !path.startsWith("/") || path.length > 1024) throw new TypeError("Invalid cookie path");
-    const identity = [domain, path, key].join("\\n");
+    const identity = [domain, path, key].join("\n");
     if (seen.has(identity)) throw new TypeError("Duplicate cookie entry");
     seen.add(identity);
     return {
@@ -39,6 +39,15 @@ function normalizeCookies(input) {
     };
   });
   return result;
+}
+
+function validateSessionCookies(input) {
+  const cookies = normalizeCookies(input);
+  const values = new Map(cookies.map(cookie => [cookie.key, cookie.value]));
+  if (!/^\d{5,30}$/.test(values.get("c_user") || "") || !values.get("xs")) {
+    throw new TypeError("Facebook session requires valid c_user and xs cookies");
+  }
+  return cookies;
 }
 
 function parseCookieHeader(header) {
@@ -56,14 +65,14 @@ function parseCookieHeader(header) {
 function parseNetscapeCookies(text) {
   if (typeof text !== "string" || !text.trim() || text.length > 256 * 1024) throw new TypeError("Netscape cookie file must be non-empty text up to 256 KiB");
   const rows = [];
-  for (const line of text.split(/\\r?\\n/)) {
+  for (const line of text.split(/\r?\n/)) {
     if (!line.trim() || line.trimStart().startsWith("#")) continue;
-    const fields = line.split("\\t");
+    const fields = line.split("\t");
     if (fields.length < 7) throw new TypeError("Malformed Netscape cookie row");
     const [domain, includeSubdomains, path, secure, expires, key, ...valueParts] = fields;
-    rows.push({ key, value: valueParts.join("\\t"), domain, path, hostOnly: includeSubdomains.toUpperCase() !== "TRUE", secure: secure.toUpperCase() === "TRUE", expires: Number(expires) || null });
+    rows.push({ key, value: valueParts.join("\t"), domain, path, hostOnly: includeSubdomains.toUpperCase() !== "TRUE", secure: secure.toUpperCase() === "TRUE", expires: Number(expires) || null });
   }
   return normalizeCookies(rows);
 }
 
-module.exports = { normalizeCookies, parseCookieHeader, parseNetscapeCookies };
+module.exports = { normalizeCookies, validateSessionCookies, parseCookieHeader, parseNetscapeCookies };
