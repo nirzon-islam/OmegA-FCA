@@ -1,0 +1,16 @@
+# Copy this file to account.txt in the project root.
+# Keep account.txt private; it is ignored by Git.
+# Use either username/email + password OR appstate_file.
+
+# Login with username:
+fb_username=YOUR_FACEBOOK_USERNAME
+fb_password=YOUR_FACEBOOK_PASSWORD
+# Optional: enter a code you obtained through Facebook's normal 2FA flow.
+# fb_2fa_code=123456
+
+# Or use email instead:
+# fb_email=you@example.com
+# fb_password=YOUR_FACEBOOK_PASSWORD
+
+# Or use AppState instead (root appstate.json by default):
+# appstate_file=appstate.json
