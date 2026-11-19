@@ -138,3 +138,26 @@ test("request client rejects URL credentials and invalid timeout configuration",
   const request = createRequestClient({ fetchImpl: async () => response(200) });
   await assert.rejects(request("https://user:pass@www.facebook.com/"), /credentials/);
 });
+
+
+test("request client preserves caller cancellation and does not retry an aborted request", async () => {
+  const controller = new AbortController();
+  const reason = new Error("owner cancelled request");
+  controller.abort(reason);
+  let calls = 0;
+  const request = createRequestClient({
+    fetchImpl: async (_url, options) => {
+      calls++;
+      assert.equal(options.signal.aborted, true);
+      throw options.signal.reason;
+    },
+    maxAttempts: 3,
+    sleep: async () => {}
+  });
+
+  await assert.rejects(
+    request("https://www.facebook.com/", { signal: controller.signal }),
+    error => error === reason
+  );
+  assert.equal(calls, 1);
+});
