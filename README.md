@@ -23,7 +23,7 @@ OmegA-FCA is the Facebook integration library maintained under the **OmegA Bot**
 
 ## Root account.txt configuration loader
 
-The package exports `loadAccountConfig()` to read credentials from the project-root `account.txt`, or AppState from the root `appstate.json`. Environment variables override values in the file. Copy `account.txt.example` to `account.txt` and fill in your own values:
+The package exports `loadAccountConfig()` to read credentials from the project-root `account.txt`, or AppState from the root `appstate.json`. Environment variables override values in the file. Create `account.txt` in the project root and fill in your own values:
 
 ```ini
 fb_username=YOUR_FACEBOOK_USERNAME
