@@ -52,6 +52,20 @@ test("rejects account and AppState symlinks that escape the project root", () =>
   }
 }));
 
+test("rejects AppState symlinks that escape the project root", () => withRoot(root => {
+  const outside = path.join(os.tmpdir(), "omega-fca-appstate-outside-" + process.pid + ".json");
+  fs.writeFileSync(outside, JSON.stringify([
+    { key: "c_user", value: "12345", domain: "facebook.com" },
+    { key: "xs", value: "synthetic", domain: "facebook.com" }
+  ]));
+  try {
+    fs.symlinkSync(outside, path.join(root, "appstate.json"));
+    assert.throws(() => loadAccountConfig({ cwd: root, env: {} }), /resolve inside the project root/);
+  } finally {
+    fs.rmSync(outside, { force: true });
+  }
+}));
+
 test("rejects unsupported and duplicate account.txt keys", () => {
   assert.throws(() => parseAccountText("password=bad"), /Unsupported account.txt key/);
   assert.throws(() => parseAccountText("fb_email=a\nfb_email=b"), /Duplicate account.txt key/);
