@@ -14,7 +14,7 @@ OmegA-FCA is the Facebook integration library maintained under the **OmegA Bot**
 - `createDiagnosticRecorder()`: bounded request metadata reports that omit header values, query values, body values, response bodies and credentials.
 - Native personal-session bootstrap for owner-supplied AppState, including HTTPS-only Facebook/Messenger requests, cookie rotation, and checkpoint/expiry detection.
 - `createFacebookWebClient()`: bounded authenticated GET/POST/HEAD request layer, session-token injection for POST forms, redirect challenge classification, response normalization, and request/response size limits. It deliberately requires caller-supplied verified paths and payload schemas.
-- `FB_USERNAME` credentials are accepted by the client and GoatBot compatibility mapper; native username/password authentication is not yet implemented.
+- Credential configuration uses `fb_email` (or the legacy `email` alias) and `password` from `config.json → facebookAccount`; native Facebook username/password authentication is not yet implemented.
 - Manual 2FA input plumbing and checkpoint/session-expiry classification. Challenges must be resolved by the account owner.
 - Connection supervision, bounded reconnect/backoff and event dispatch.
 - Bounded realtime binary-frame envelope inspection based only on the observed WebSocket capture; no private protocol assumptions.
@@ -34,16 +34,15 @@ Credential login reads the canonical `fb_email` field from `config.json`:
     "fb_email": "you@example.com",
     "password": "YOUR_FACEBOOK_PASSWORD",
     "2FASecret": "YOUR_BASE32_TOTP_SECRET",
-    "i_user": "",
     "proxy": null,
     "userAgent": "Mozilla/5.0"
   }
 }
 ```
 
-The legacy `email` property is accepted as a compatibility alias, but `fb_email` is canonical. `fb_username` / `FB_USERNAME` is not used. `2FASecret` is a Base32 TOTP seed; the adapter generates a fresh six-digit RFC 6238 code when it starts a credentials login. The secret itself is never used as the one-time code.
+The legacy `email` property and `FB_EMAIL` environment variable are accepted for compatibility, but `fb_email` is canonical. `fb_username` / `FB_USERNAME` is not used. `2FASecret` is a Base32 TOTP seed; the adapter generates a fresh six-digit RFC 6238 code when it starts a credentials login. The secret itself is never used as the one-time code.
 
-For cookie/AppState login, put only the cookie header, Netscape cookie export, or JSON cookie array in the project-root `account.txt`. A non-empty `account.txt` takes precedence over credentials in `config.json`; remove/empty it when you want the configured credentials mode. The root `appstate.json` remains a compatibility fallback.
+For cookie/AppState login, put only the cookie header, Netscape cookie export, or JSON cookie array in the project-root `account.txt`. A non-empty `account.txt` takes precedence over credentials in `config.json`; remove/empty it when you want the configured credentials mode. Credential-like key/value text in `account.txt` is rejected rather than interpreted as cookies. The root `appstate.json` remains a compatibility fallback.
 
 **Important:** `account.txt` is strictly AppState/cookie-only. Never put email, password, username, or 2FA values in it. Credentials and TOTP configuration belong in `config.json → facebookAccount`.
 
