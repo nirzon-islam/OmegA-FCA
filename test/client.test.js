@@ -153,3 +153,27 @@ test("client enforces feature entitlements for methods and event listeners", asy
   assert.throws(() => api.listenMqtt(() => {}), /events feature/);
   await client.logout();
 });
+
+
+test("client rejects overlapping login attempts", async () => {
+  let release;
+  const gate = new Promise(resolve => { release = resolve; });
+  const client = createClient({
+    requireLicense: false,
+    reconnect: { maxAttempts: 1 },
+    authenticate: async () => {
+      await gate;
+      return { listen: () => () => {}, disconnect: async () => {} };
+    }
+  });
+  const credentials = { mode: "appstate", appState: [
+    { key: "c_user", value: "123456", domain: "facebook.com" },
+    { key: "xs", value: "synthetic-session-value", domain: "facebook.com" }
+  ] };
+  const first = client.login(credentials);
+  await new Promise(resolve => setImmediate(resolve));
+  await assert.rejects(client.login(credentials), /already in progress/);
+  release();
+  await first;
+  await client.logout();
+});
