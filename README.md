@@ -53,6 +53,10 @@ client.login({ mode: "appstate", appState: [] })
 
 `createGoatBotLogin(client)` adapts the promise-based client login to GoatBot's callback-style login signature. The adapter does not supply the missing Facebook transport.
 
+## Runtime capabilities
+
+After a successful provider login, `api.getCapabilities()` returns a frozen snapshot of the methods actually supplied by that transport driver, whether event listening is available, and whether optional session-guard support exists. The current package reports E2EE as unavailable. This is a capability report, not proof that a provider's Facebook actions or protocol behavior are correct.
+
 ## Session security
 
 - Never commit cookies, AppState, passwords, 2FA secrets, session encryption keys, or tokens.
