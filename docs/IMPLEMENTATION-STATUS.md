@@ -5,6 +5,7 @@
 - Node.js 20+ CommonJS package, root exports and TypeScript declarations.
 - Cookie/AppState parsing and validation, encrypted session helpers, restrictive file permissions and secret redaction.
 - **Updated:** account configuration now treats `account.txt` as AppState/cookie-only and rejects credential-like key/value text. Credential configuration reads canonical `facebookAccount.fb_email` (legacy `email` and `FB_EMAIL` environment aliases remain supported); it does not read `fb_username`.
+- **New AppState test entry point:** `npm run test:appstate` validates an owner-supplied AppState from `account.txt` (or the documented `appstate.json` fallback), reports only non-secret session metadata, and is deliberately excluded from CI because it requires a real authorized session and network access.
 - **New native personal-session foundation:** `createPersonalSession()` validates an owner-supplied AppState against Facebook over HTTPS, scopes session cookies to Facebook/Messenger hosts, provides bounded-time authenticated web requests, and reports expired sessions/checkpoints without bypassing them.
 - Bounded HTTPS request helper and secure cookie jar.
 - **New safe diagnostics utility:** bounded metadata-only recorder, integrated with AppState-backed personal-session requests; excludes header/query/body/response values and credential material.
@@ -25,7 +26,7 @@ This package is **not yet a standalone, drop-in personal-account FCA replacement
 - OmegA-FCA does not yet implement the full personal-account authentication flow (username/password + 2FA), complete Facebook private HTTP/GraphQL action catalog or endpoint-specific payload schemas. The new AppState session bootstrap and generic authenticated web-client layer are session/request foundations only; they do not constitute the FCA action API. Username/password login is not yet implemented natively; the username field is currently an input contract for the future auth provider.
 - OmegA-FCA does not yet implement Facebook web-client MQTT/WebSocket protocol or event decoding. The legacy adapter remains a temporary compatibility/test utility and is not the target runtime; the goal is a native OmegA-FCA transport.
 - Full parity with every legacy FCA method, event shape, and GoatBot call site has not been proven.
-- No authorized live personal-account end-to-end test has been run from this repository.
+- No authorized live personal-account end-to-end test has been run from this repository. The new AppState smoke-test command is prepared but has not yet been run against a real account.
 - The GoatBot branch has not yet been switched to this package or integration-tested.
 
 The adapter is a compatibility bridge, not a claim that the missing Facebook protocol has been recreated. The Page transport is separate and is not a substitute for a personal account.
