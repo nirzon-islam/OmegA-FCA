@@ -17,6 +17,7 @@ jobs:
       - run: npm test
       - run: node --check index.js
       - run: node --check src/api/client.js
+      - run: node --check src/transport/contract.js
       - run: node --check src/compat/goatbotLogin.js
       - run: node --check src/runtime/connection.js
       - run: node --check src/events/dispatcher.js
