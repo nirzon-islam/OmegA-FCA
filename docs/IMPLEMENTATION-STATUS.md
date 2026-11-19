@@ -1,6 +1,6 @@
 # OmegA-FCA implementation status
 
-Last previously verified full CI run: #44468907669 on commit `100927b9c0f4a0196ae6776181f99d765e6134d3` (`public-package`). Both Node 20 and Node 22 jobs passed `npm test` and `npm run test:syntax`.
+Last verified CI run before the packaging changes: #44471350183 on commit `6b2f0e7d630eb4489fadb68183988b4279df08b5` (`public-package`). Both Node 20 and Node 22 jobs passed `npm test` and `npm run test:syntax`. Packaging/release CI changes are being validated separately.
 
 ## Implemented and CI-validated
 
