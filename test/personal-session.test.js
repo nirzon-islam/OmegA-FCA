@@ -2,7 +2,7 @@
 
 const test = require("node:test");
 const assert = require("node:assert/strict");
-const { createPersonalSession, detectSessionChallenge, extractIdentity } = require("../src/auth/personalSession");
+const { createPersonalSession, detectSessionChallenge, extractIdentity, extractFacebookTokens } = require("../src/auth/personalSession");
 
 const appState = [
   { key: "c_user", value: "123456789012345", domain: ".facebook.com", path: "/", secure: true, httpOnly: true },
@@ -77,4 +77,23 @@ test("identity extraction is conservative and bounded to numeric Facebook IDs", 
   assert.equal(extractIdentity('{"USER_ID":"not-an-id"}'), null);
   assert.equal(detectSessionChallenge(response(), "<html>home</html>"), "active");
   assert.equal(detectSessionChallenge(response(), "<html>checkpoint_required</html>"), "checkpoint");
+});
+
+test("extracts Facebook web request tokens without exposing unrelated page data", () => {
+  const html = `
+    <input type="hidden" name="fb_dtsg" value="dtsg-token">
+    <input type="hidden" name="lsd" value="lsd-token">
+    <input type="hidden" name="jazoest" value="22000">
+    <script>{"hsi":"987654321","__spin_r":123456,"__spin_b":"trunk","__spin_t":1700000000}</script>
+  `;
+  assert.deepEqual(extractFacebookTokens(html), {
+    fbDtsg: "dtsg-token",
+    lsd: "lsd-token",
+    jazoest: "22000",
+    hsi: "987654321",
+    spinR: "123456",
+    spinB: "trunk",
+    spinT: "1700000000"
+  });
+  assert.throws(() => extractFacebookTokens("x".repeat(2 * 1024 * 1024 + 1)), /size limit/);
 });
