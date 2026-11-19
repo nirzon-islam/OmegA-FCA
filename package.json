@@ -42,7 +42,8 @@
     "docs/GOATBOT-INTEGRATION-AUDIT.md",
     "docs/REFERENCE-AUDIT.md",
     "docs/NTKHANG-REFERENCE-STUDY.md",
-    "docs/SAFE-DIAGNOSTICS.md"
+    "docs/SAFE-DIAGNOSTICS.md",
+    "docs/REALTIME-FRAME-EVIDENCE.md"
   ],
   "exports": {
     ".": {
