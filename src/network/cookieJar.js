@@ -31,6 +31,19 @@ class CookieJar {
     return this;
   }
 
+  deleteCookies(cookies) {
+    if (!Array.isArray(cookies)) throw new TypeError("Cookie deletions must be an array");
+    for (const cookie of cookies) {
+      if (!cookie || typeof cookie.key !== "string" || typeof cookie.domain !== "string" || typeof cookie.path !== "string") {
+        throw new TypeError("Invalid cookie deletion");
+      }
+      this.cookies = this.cookies.filter(existing =>
+        !(existing.key === cookie.key && existing.domain === cookie.domain && existing.path === cookie.path)
+      );
+    }
+    return this;
+  }
+
   getCookieHeader(inputUrl) {
     const url = inputUrl instanceof URL ? inputUrl : new URL(inputUrl);
     const host = url.hostname.toLowerCase();
