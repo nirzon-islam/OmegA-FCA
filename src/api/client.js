@@ -164,6 +164,12 @@ function createClient({ authenticate, options = {}, reconnect = {}, license = {}
     facade.stopSessionGuard = typeof driver.stopSessionGuard === "function" ? driver.stopSessionGuard.bind(driver) : undefined;
     facade.sessionGuard = typeof driver.sessionGuard === "function" ? driver.sessionGuard.bind(driver) : undefined;
     facade.setOptions = typeof driver.setOptions === "function" ? driver.setOptions.bind(driver) : undefined;
+    facade.getCapabilities = () => Object.freeze({
+      methods: Object.freeze(DRIVER_METHODS.filter(method => typeof driver[method] === "function")),
+      events: typeof driver.listen === "function",
+      sessionGuard: typeof driver.sessionGuard === "function",
+      e2ee: false
+    });
     facade.getConnectionState = () => supervisor.snapshot();
     facade.getLicense = () => verifiedLicense;
     api = Object.freeze(facade);
