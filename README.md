@@ -11,6 +11,7 @@ OmegA-FCA is the Facebook integration library maintained under the **OmegA Bot**
 ## Included
 
 - AppState/cookie validation, secure encrypted session storage, secret redaction.
+- `createDiagnosticRecorder()`: bounded request metadata reports that omit header values, query values, body values, response bodies and credentials.
 - Native personal-session bootstrap for owner-supplied AppState, including HTTPS-only Facebook/Messenger requests, cookie rotation, and checkpoint/expiry detection.
 - `createFacebookWebClient()`: bounded authenticated GET/POST/HEAD request layer, session-token injection for POST forms, redirect challenge classification, response normalization, and request/response size limits. It deliberately requires caller-supplied verified paths and payload schemas.
 - `FB_USERNAME` credentials are accepted by the client and GoatBot compatibility mapper; native username/password authentication is not yet implemented.
@@ -50,6 +51,12 @@ console.log(session.userId, response.status);
 ```
 
 This is a session foundation only: it does not yet provide the full FCA action API or realtime listener.
+
+## Safe diagnostic reports
+
+A secret-safe diagnostic recorder is available for the current AppState-backed session layer. It records request structure and response metadata, not secrets or payload contents. See [Safe diagnostics](docs/SAFE-DIAGNOSTICS.md) for usage.
+
+**Important:** this currently instruments AppState session requests only. It cannot capture a username/password login trace because native Facebook credential login is not implemented yet.
 
 ## Legacy compatibility adapter (temporary migration/test utility)
 
