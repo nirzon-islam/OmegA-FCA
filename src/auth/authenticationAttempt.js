@@ -9,8 +9,8 @@ function publicChallenge(value) {
   if (!value || typeof value !== "object" || Array.isArray(value)) {
     throw new TypeError("Authentication provider returned an invalid challenge");
   }
-  const type = typeof value.type === "string" && value.type.trim()
-    ? value.type.trim().slice(0, 64) : "verification";
+  const type = typeof value.type === "string" && /^[a-z0-9_-]{1,64}$/i.test(value.type.trim())
+    ? value.type.trim() : "verification";
   // Provider messages may echo credentials, cookies, or challenge answers.
   // Keep the public prompt generic; the provider retains richer private state.
   const message = "Additional account verification is required.";
@@ -85,6 +85,9 @@ function createAuthenticationAttempt({ authenticate, maxChallengeRounds = 3 } = 
       }
       challengeRounds += 1;
       if (challengeRounds > maxChallengeRounds) {
+        if (typeof result.cancel === "function") {
+          try { await result.cancel(); } catch {}
+        }
         throw Object.assign(new Error("Authentication challenge limit exceeded"), {
           code: "FCA_CHALLENGE_LIMIT", retryable: false
         });
