@@ -7,6 +7,7 @@ const { saveSession, loadSession, deleteSession } = require("./src/security/sess
 const { ConnectionSupervisor } = require("./src/runtime/connection");
 const { EventDispatcher } = require("./src/events/dispatcher");
 const { CookieJar } = require("./src/network/cookieJar");
+const { createRequestClient, retryAfterMs, isRetryableStatus } = require("./src/network/requestClient");
 const { createClient } = require("./src/api/client");
 const { createGoatBotLogin } = require("./src/compat/goatbotLogin");
 const { verifyLicenseToken } = require("./src/license/verify");
@@ -26,6 +27,9 @@ module.exports = {
   ConnectionSupervisor,
   EventDispatcher,
   CookieJar,
+  createRequestClient,
+  retryAfterMs,
+  isRetryableStatus,
   createClient,
   createGoatBotLogin,
   verifyLicenseToken,
