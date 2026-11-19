@@ -11,7 +11,7 @@ test("accepts a driver with the required listener method", () => {
 
 test("rejects missing or malformed driver methods without retrying", () => {
   assert.throws(() => validateTransportDriver({}), error => error.code === "FCA_TRANSPORT_CONTRACT_INVALID" && error.retryable === false);
-  assert.throws(() => validateTransportDriver({ listen: true }), /must be a function/);
+  assert.throws(() => validateTransportDriver({ listen() {}, sendMessage: true }), /must be a function/);
 });
 
 test("wraps an injected provider and validates its result", async () => {
