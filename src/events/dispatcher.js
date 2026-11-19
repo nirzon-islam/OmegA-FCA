@@ -15,9 +15,15 @@ class EventDispatcher {
     return typeof id === "string" && id ? id : null;
   }
 
+  #purgeExpired(now = this.now()) {
+    for (const [id, at] of this.seen) {
+      if (now - at > this.ttlMs) this.seen.delete(id);
+    }
+  }
+
   #remember(key) {
     const now = this.now();
-    for (const [id, at] of this.seen) if (now - at > this.ttlMs) this.seen.delete(id);
+    this.#purgeExpired(now);
     this.seen.delete(key);
     this.seen.set(key, now);
     while (this.seen.size > this.maxSeen) this.seen.delete(this.seen.keys().next().value);
@@ -28,6 +34,7 @@ class EventDispatcher {
       return Promise.reject(new TypeError("event and handler are required"));
     }
     const key = this.#eventKey(event);
+    this.#purgeExpired();
     if (key && this.seen.has(key)) return Promise.resolve({ duplicate: true });
     if (key) this.#remember(key);
     const threadId = String(event.threadID || event.threadId || event.senderID || "global");
