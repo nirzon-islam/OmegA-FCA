@@ -44,7 +44,7 @@ function createLegacyFcaProvider({ login, options = {}, timeoutMs = 45_000 } = {
       input = { appState: credentials.map(cookie => ({ ...cookie })) };
     } else if (mode === "credentials") {
       input = {
-        email: credentials.email,
+        ...(credentials.username ? { username: credentials.username } : { email: credentials.email }),
         password: credentials.password,
         twoFactorSecret: credentials.twoFactorSecret || undefined,
         twoFactorCode: credentials.twoFactorCode || undefined,
