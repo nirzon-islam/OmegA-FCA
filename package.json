@@ -1,7 +1,7 @@
 {
-  "name": "@omegax/fca",
-  "version": "0.1.0",
-  "description": "Private, owner-licensed Facebook Messenger client library for OmegA projects",
+  "name": "@omega/fca",
+  "version": "0.1.1",
+  "description": "Independent, security-focused Facebook client compatibility library for Node.js",
   "main": "index.js",
   "type": "commonjs",
   "engines": {
@@ -11,6 +11,11 @@
     "test": "node --test",
     "test:syntax": "node --check index.js && node --check src/api/client.js && node --check src/transport/contract.js && node --check src/compat/goatbotLogin.js && node --check src/runtime/connection.js && node --check src/events/dispatcher.js && node --check src/security/cookies.js && node --check src/security/redact.js && node --check src/security/sessionState.js && node --check src/security/sessionCrypto.js && node --check src/security/sessionStore.js && node --check src/license/verify.js && node --check src/license/provider.js && node --check src/update/manifest.js"
   },
-  "license": "SEE LICENSE IN LICENSE",
-  "private": true
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/nirzon-islam/OmegA-FCA.git"
+  },
+  "homepage": "https://github.com/nirzon-islam/OmegA-FCA#readme",
+  "keywords": ["facebook", "messenger", "fca", "nodejs", "omega"]
 }
