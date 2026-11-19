@@ -1,62 +1,32 @@
 # OmegA-FCA implementation status
 
-Last verified CI run before the packaging changes: #44471350183 on commit `6b2f0e7d630eb4489fadb68183988b4279df08b5` (`public-package`). Both Node 20 and Node 22 jobs passed `npm test` and `npm run test:syntax`. Packaging/release CI changes are being validated separately.
+## Implemented in the current branch
 
-## Implemented and CI-validated
+- Node.js 20+ CommonJS package, root exports and TypeScript declarations.
+- Cookie/AppState parsing and validation, encrypted session helpers, restrictive file permissions and secret redaction.
+- Bounded HTTPS request helper and secure cookie jar.
+- Connection supervisor with bounded reconnect/backoff, listener recovery and abortable connect attempts.
+- Event dispatcher with duplicate coalescing, success-only acknowledgement and per-thread ordering.
+- Injectable transport contract and GoatBot callback-login adapter.
+- **New:** `createLegacyFcaProvider()` bridges an existing callback-style personal-account FCA implementation into OmegA-FCA's transport contract. It maps AppState or credentials login, manual 2FA inputs, current-user lookup, MQTT listener lifecycle and supported FCA methods.
+- Manual 2FA input plumbing; checkpoint and expired-session classification. The owner must resolve Facebook challenges through the platform.
+- Optional Ed25519 licensing and signed update-manifest verification.
+- Separate official Meta Messenger Page transport and webhook example.
 
-- Node.js 20+ CommonJS package structure and public exports.
-- Cookie/AppState parsing and validation with RFC cookie-octet checks against Cookie-header injection, expanded secret redaction, encrypted session helpers.
-- CookieJar now refuses to send Facebook session cookies over plain HTTP.
-- Atomic encrypted session writes, restrictive file permissions, symlink-resistant session reads.
-- Bounded HTTPS request client with caller cancellation and retry safeguards.
-- Connection supervisor with retry/backoff, listener recovery, start/stop race handling, and abortable in-flight connect attempts.
-- Event dispatcher with in-flight duplicate coalescing, success-only acknowledgement, retry after handler failure, and per-thread ordering.
-- Transport contract and injectable provider interface.
-- Credentials providers receive an optional manually entered `twoFactorCode`; this is input plumbing only, not a built-in Facebook challenge solver or checkpoint bypass.
-- Checkpoint and expired-session authentication errors are classified, tagged, and made non-retryable to avoid repeated login attempts. Owners resolve challenges through Facebook and retry with a fresh authorized session or manually entered code.
-- Checkpoint recovery remains account-owner controlled; the user resolves the challenge through the platform and retries authentication with the resulting authorized session.
-- GoatBot callback adapter foundation and documented compatibility audit.
-- Optional Ed25519 licensing; public package use does not require a license by default.
-- Official Meta Messenger Page transport:
-  - Page access token via Authorization header.
-  - Configurable Graph API version.
-  - Send API message requests with no automatic retry of POST sends.
-  - Typing-on, typing-off, and mark-seen sender actions.
-  - Page-scoped Messenger profile lookup with a constrained field allowlist.
-  - Page Conversations list, conversation detail, conversation message history, and individual message reads with bounded pagination and safe Graph API error propagation.
-  - HMAC-SHA256 webhook signature verification over original raw bytes.
-  - Payload parsing only after signature verification.
-  - Webhook challenge verification.
-  - Normalization for message, postback, delivery, read, account-linking, and referral events.
-  - Callback exception isolation.
-- Runnable Node.js webhook server example and environment template.
-- CI matrix validates Node 20 and 22 with `npm test` and recursive syntax checks, including examples (last successful run above).
-- TypeScript declarations are published through the package `types` entry; package wiring is covered by tests, but a full `tsc` compile check is not yet included.
-- Public TypeScript declaration file and package `types` entry have been added; package wiring is covered by tests, but a full `tsc` compile check is not yet included.
+## Not yet implemented — standalone personal FCA blockers
 
-## Explicitly not implemented
+This package is **not yet a standalone, drop-in personal-account FCA replacement**.
 
-This package is **not yet a drop-in personal-account FCA replacement**.
+- OmegA-FCA does not independently implement Facebook personal-account authentication/private HTTP or GraphQL flows.
+- OmegA-FCA does not independently implement Facebook web-client MQTT/WebSocket protocol or event decoding; the new adapter delegates those to the caller-supplied FCA engine.
+- Full parity with every legacy FCA method, event shape, and GoatBot call site has not been proven.
+- No authorized live personal-account end-to-end test has been run from this repository.
+- The GoatBot branch has not yet been switched to this package or integration-tested.
 
-- Personal-account browser-session/AppState authentication against private Facebook endpoints.
-- Private GraphQL/browser HTTP action implementations.
-- Facebook web-client MQTT/WebSocket wire protocol and frame decoding.
-- Full legacy FCA API and GoatBot personal-inbox/group API compatibility.
-- End-to-end integration tests against a real Page/app configuration or an authorized test account.
+The adapter is a compatibility bridge, not a claim that the missing Facebook protocol has been recreated. The Page transport is separate and is not a substitute for a personal account.
 
-The official Meta Messenger transport is a separate supported Page integration. It does not emulate a personal profile, use MQTT, or satisfy legacy personal-account FCA behavior.
+## Verification gate
 
-## Release gate
+Synthetic adapter tests have been added. GitHub Actions must run on the latest branch commit before claiming the test suite passes. A real authorized account test is still required for login, MQTT readiness, message receive/send, group actions, reconnect, and checkpoint/session-expiry reporting.
 
-Do not replace GoatBot's existing FCA dependency or publish a drop-in compatibility release until the intended target is decided, the missing compatibility surface is implemented through an approved approach, and the complete integration suite passes. Never put live Page tokens, app secrets, cookies, or AppState in the repository or CI.
-
-## Packaging and supported deployment preparation
-
-- Explicit npm package file allowlist and root export map for CommonJS require and TypeScript declarations.
-- prepublishOnly runs the unit suite and recursive syntax checks.
-- CI smoke-tests the public package entrypoint and runs npm pack --dry-run --json on Node 20 and 22.
-- Added docs/DEPLOYMENT.md for the supported Meta Messenger Page webhook service, including environment variables, HTTPS ingress, health check, start command, webhook setup, and release gates.
-- The runnable Page webhook example now exposes GET /healthz for hosting-provider health checks.
-- These changes prepare the Page transport package/example for deployment. They do not complete personal-account FCA compatibility and do not authorize switching GoatBot's existing FCA dependency.
-
-Latest packaging changes are being validated by GitHub Actions on this branch. Update this section with the exact run result before declaring the branch ready for a Page-transport deployment.
+Never commit live cookies, AppState, passwords, 2FA material, Page tokens, or encryption keys. Do not bypass checkpoints or platform security controls.
