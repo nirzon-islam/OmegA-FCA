@@ -30,6 +30,10 @@ function readVarint(bytes, state) {
   for (let shift = 0n; shift <= 63n; shift += 7n) {
     if (state.offset >= bytes.length) throw new Error("truncated varint");
     const byte = bytes[state.offset++];
+    // A protobuf varint is at most 64 bits; the tenth byte may only
+    // contribute bit 63. Reject over-wide encodings instead of accepting
+    // arbitrary BigInt values as structurally valid protobuf fields.
+    if (shift === 63n && byte > 1) throw new Error("varint overflow");
     value |= BigInt(byte & 0x7f) << shift;
     if ((byte & 0x80) === 0) return value;
   }
@@ -44,7 +48,10 @@ function inspectWireFields(bytes, maxFields = 512) {
     if (fields.length >= maxFields) throw new Error("field limit exceeded");
     const tag = Number(readVarint(bytes, state));
     const number = Math.floor(tag / 8), wireType = tag & 7;
-    if (number < 1 || wireType === 3 || wireType === 4 || wireType > 5) throw new Error("invalid wire tag");
+    if (number < 1 || number > 0x1fffffff ||
+        wireType === 3 || wireType === 4 || wireType > 5) {
+      throw new Error("invalid wire tag");
+    }
     let byteLength = null;
     if (wireType === 0) readVarint(bytes, state);
     else if (wireType === 1 || wireType === 5) {
