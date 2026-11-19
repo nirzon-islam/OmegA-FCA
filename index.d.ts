@@ -19,6 +19,7 @@ export interface PersonalSessionOptions {
   fetchImpl?: (input: string | URL, init?: RequestInit) => Promise<Response>;
   userAgent?: string;
   timeoutMs?: number;
+  onDiagnostic?: (event: SafeDiagnosticEvent) => void;
 }
 export interface PersonalSession {
   readonly userId: string;
@@ -30,6 +31,9 @@ export interface PersonalSession {
   getAppState(): Cookie[];
   close(): void;
 }
+export interface SafeDiagnosticEvent { readonly at: string; readonly phase: "request" | "response" | "error"; readonly method: string; readonly url: Readonly<{ origin: string | null; path: string | null; queryParameterNames: readonly string[] }>; readonly requestHeaders: readonly string[]; readonly requestBodyBytes: number; readonly requestFieldNames: readonly string[]; readonly sensitiveFieldCount: number; readonly fieldsTruncated: boolean; readonly status?: number; readonly contentType?: string; readonly responseBodyBytes?: number; readonly errorCode?: string; readonly durationMs?: number; }
+export interface DiagnosticRecorder { record(input?: Record<string, unknown>): SafeDiagnosticEvent; snapshot(): Readonly<{ version: number; generatedAt: string; events: readonly SafeDiagnosticEvent[] }>; toJSON(): string; clear(): void; }
+export function createDiagnosticRecorder(options?: { maxEvents?: number; clock?: () => number }): DiagnosticRecorder;
 export function createPersonalSession(options: PersonalSessionOptions): Promise<PersonalSession>;
 export function detectSessionChallenge(response: Response, html: string): "active" | "checkpoint" | "logged_out";
 export function extractIdentity(html: string): string | null;
