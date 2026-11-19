@@ -97,8 +97,18 @@ class ConnectionSupervisor extends EventEmitter {
           void this.#recover(generation);
           return;
         }
-        callback(event);
-        this.emit("event", event);
+        try {
+          callback(event);
+        } catch (error) {
+          // Application callback failures must not escape the transport event
+          // loop or be mistaken for a broken socket that needs reconnecting.
+          try { this.emit("listenerCallbackError", error); } catch {}
+          return;
+        }
+        try { this.emit("event", event); }
+        catch (error) {
+          try { this.emit("observerError", error); } catch {}
+        }
       });
       this.detachDriverListener = typeof detach === "function" ? detach : null;
     } catch (error) {
