@@ -155,3 +155,19 @@ test("webhook ingestion requires an app secret even for a well-formed body", () 
   );
   transport.disconnect();
 });
+
+
+test("webhook delivery isolates application callback exceptions", () => {
+  const raw = Buffer.from(JSON.stringify({
+    object: "page",
+    entry: [{ id: config.pageId, messaging: [{ sender: { id: "987654321098765" }, message: { mid: "callback-mid", text: "hi" } }] }]
+  }));
+  const signature = "sha256=" + createHmac("sha256", config.appSecret).update(raw).digest("hex");
+  const transport = createMetaMessengerTransport(config);
+  let received = 0;
+  transport.listen(() => { throw new Error("synthetic handler failure"); });
+  transport.listen(() => { received++; });
+  assert.equal(transport.publishWebhook(raw, signature), 1);
+  assert.equal(received, 1);
+  transport.disconnect();
+});
