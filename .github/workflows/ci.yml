@@ -1,5 +1,9 @@
 name: OmegA-FCA CI
 
+concurrency:
+  group: omega-fca-ci-${{ github.ref }}
+  cancel-in-progress: true
+
 on:
   push:
     branches: [main, public-package]
