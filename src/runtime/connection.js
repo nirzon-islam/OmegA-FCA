@@ -17,6 +17,7 @@ class ConnectionSupervisor extends EventEmitter {
     this.driver = null;
     this.generation = 0;
     this.startPromise = null;
+    this.stopPromise = null;
     this.stopRequested = false;
     this.listenerAttached = false;
     this.recovering = false;
@@ -27,6 +28,9 @@ class ConnectionSupervisor extends EventEmitter {
   snapshot() { return Object.freeze({ state: this.state, connected: Boolean(this.driver), generation: this.generation }); }
 
   async start() {
+    // A new connection must not clear stopRequested while the previous
+    // driver's disconnect is still in flight.
+    if (this.stopPromise) await this.stopPromise;
     if (this.startPromise) return this.startPromise;
     if (this.state === "connected") return this.driver;
     this.stopRequested = false;
@@ -148,21 +152,27 @@ class ConnectionSupervisor extends EventEmitter {
     }
   }
 
-  async stop() {
+  stop() {
+    if (this.stopPromise) return this.stopPromise;
     this.stopRequested = true;
     ++this.generation;
     this.eventCallback = null;
     this.#detachListener();
     const driver = this.driver;
     this.driver = null;
-    let disconnectError = null;
-    if (driver) {
-      try { await this.disconnectDriver(driver); }
-      catch (error) { disconnectError = error; }
-    }
-    this.#setState("stopped");
-    this.emit("stopped", this.snapshot());
-    if (disconnectError) throw disconnectError;
+    this.stopPromise = (async () => {
+      let disconnectError = null;
+      if (driver) {
+        try { await this.disconnectDriver(driver); }
+        catch (error) { disconnectError = error; }
+      }
+      this.#setState("stopped");
+      this.emit("stopped", this.snapshot());
+      if (disconnectError) throw disconnectError;
+    })().finally(() => {
+      this.stopPromise = null;
+    });
+    return this.stopPromise;
   }
 
   #setState(next) {
