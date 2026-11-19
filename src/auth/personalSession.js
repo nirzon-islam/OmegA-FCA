@@ -28,6 +28,56 @@ function detectSessionChallenge(response, html) {
   return "active";
 }
 
+function collectResponseCookies(response, requestUrl) {
+  const raw = typeof response.headers?.getSetCookie === "function"
+    ? response.headers.getSetCookie()
+    : (response.headers?.get?.("set-cookie") ? [response.headers.get("set-cookie")] : []);
+  const host = requestUrl.hostname.toLowerCase();
+  const accepted = [];
+  for (const line of raw) {
+    if (typeof line !== "string" || line.length > 16_384) continue;
+    const parts = line.split(";");
+    const first = parts.shift();
+    const equals = first.indexOf("=");
+    if (equals <= 0) continue;
+    const key = first.slice(0, equals).trim();
+    const value = first.slice(equals + 1).trim();
+    if (!value) continue;
+    const cookie = { key, value, domain: host, path: "/", hostOnly: true, secure: false, httpOnly: false };
+    let maxAge = null;
+    for (const rawAttribute of parts) {
+      const index = rawAttribute.indexOf("=");
+      const name = (index < 0 ? rawAttribute : rawAttribute.slice(0, index)).trim().toLowerCase();
+      const attributeValue = index < 0 ? "" : rawAttribute.slice(index + 1).trim();
+      if (name === "domain") {
+        const domain = attributeValue.replace(/^\./, "").toLowerCase();
+        if (!domain || !(host === domain || host.endsWith("." + domain))) {
+          cookie.invalidDomain = true;
+          break;
+        }
+        cookie.domain = domain;
+        cookie.hostOnly = false;
+      } else if (name === "path" && attributeValue.startsWith("/")) {
+        cookie.path = attributeValue;
+      } else if (name === "secure") cookie.secure = true;
+      else if (name === "httponly") cookie.httpOnly = true;
+      else if (name === "samesite" && attributeValue) cookie.sameSite = attributeValue;
+      else if (name === "max-age" && /^-?\d+$/.test(attributeValue)) maxAge = Number(attributeValue);
+      else if (name === "expires" && attributeValue) {
+        const timestamp = Date.parse(attributeValue);
+        if (Number.isFinite(timestamp)) cookie.expires = Math.floor(timestamp / 1000);
+      }
+    }
+    if (cookie.invalidDomain || !/^[A-Za-z0-9_-]{1,80}$/.test(key)) continue;
+    if (maxAge !== null) {
+      if (maxAge <= 0) continue;
+      cookie.expires = Math.floor(Date.now() / 1000) + maxAge;
+    }
+    accepted.push(cookie);
+  }
+  return accepted;
+}
+
 function extractIdentity(html) {
   const patterns = [
     /"USER_ID"\s*:\s*"?([0-9]{5,30})"?/,
@@ -142,13 +192,16 @@ async function createPersonalSession({
           else options.signal.addEventListener("abort", onAbort, { once: true });
         }
         try {
-          return await fetchImpl(target, {
+          const response = await fetchImpl(target, {
             ...options,
             method,
             headers,
             redirect: "manual",
             signal: requestController.signal
           });
+          const updatedCookies = collectResponseCookies(response, target);
+          if (updatedCookies.length) jar.setCookies(updatedCookies);
+          return response;
         } finally {
           clearTimeout(timeout);
           options.signal?.removeEventListener("abort", onAbort);
@@ -156,7 +209,7 @@ async function createPersonalSession({
       },
       getAppState() {
         if (closed) throw new Error("Facebook session is closed");
-        return cookies.map(cookie => ({ ...cookie }));
+        return jar.cookies.map(cookie => ({ ...cookie }));
       },
       close() { closed = true; jar.clear(); }
     });
