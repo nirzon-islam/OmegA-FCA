@@ -100,3 +100,20 @@ test("GoatBot adapter rejects missing callback and reports unsupported login inp
   assert.match(reported.message, /AppState array or email\/password/);
   assert.equal(reported.retryable, false);
 });
+
+test("GoatBot adapter maps FB_USERNAME instead of email", async () => {
+  let received;
+  const login = createGoatBotLogin({
+    async login(credentials) { received = credentials; return {}; }
+  });
+  await login({ username: "fb_handle", password: "synthetic-password" }, () => {});
+  assert.deepEqual(received, {
+    mode: "credentials",
+    username: "fb_handle",
+    password: "synthetic-password",
+    twoFactorSecret: null,
+    twoFactorCode: null,
+    userAgent: null,
+    proxy: null
+  });
+});
