@@ -109,11 +109,25 @@ function createClient({ authenticate, options = {}, reconnect = {}, license = {}
     userId = typeof driver.getCurrentUserID === "function" ? String(driver.getCurrentUserID()) : null;
     const facade = {};
     for (const method of DRIVER_METHODS) {
-      if (typeof driver[method] === "function") facade[method] = driver[method].bind(driver);
+      if (typeof driver[method] === "function") {
+        facade[method] = (...args) => {
+          const feature = METHOD_FEATURES[method];
+          if (requireLicense && feature && !verifiedLicense.features.includes(feature)) {
+            const error = new Error("License does not include the " + feature + " feature");
+            error.code = "FCA_LICENSE_FEATURE_DENIED";
+            return Promise.reject(error);
+          }
+          return driver[method](...args);
+        };
+      }
     }
     facade.getCurrentUserID = () => userId;
-    facade.listen = callback => {\n      if (requireLicense && !verifiedLicense.features.includes("events")) throw new Error("License does not include the events feature");\n      return supervisor.listen(callback);\n    };
+    facade.listen = callback => {
+      if (requireLicense && !verifiedLicense.features.includes("events")) throw new Error("License does not include the events feature");
+      return supervisor.listen(callback);
+    };
     facade.listenMqtt = callback => {
+      if (requireLicense && !verifiedLicense.features.includes("events")) throw new Error("License does not include the events feature");
       if (typeof callback !== "function") throw new TypeError("MQTT callback is required");
       if (detachMqtt) throw new Error("MQTT listener is already active");
       mqttErrorHandler = error => callback(error, null);
