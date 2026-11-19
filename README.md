@@ -11,6 +11,7 @@ Current feature and release status: [docs/IMPLEMENTATION-STATUS.md](docs/IMPLEME
 
 - CommonJS API for Node.js 20+
 - AppState/cookie normalization and validation
+- Credentials providers can receive an owner-entered `twoFactorCode`; checkpoint resolution remains manual and owner-controlled
 - Secret redaction for diagnostics
 - AES-256-GCM session encryption and encrypted file persistence helpers (with symlink-resistant reads and atomic writes)
 - Connection supervision with bounded reconnect/backoff
@@ -70,7 +71,7 @@ After a successful provider login, `api.getCapabilities()` returns a frozen snap
 - Never commit cookies, AppState, passwords, 2FA secrets, session encryption keys, or tokens.
 - Keep encryption keys in the host's secret manager/environment.
 - Never log raw session material.
-- Checkpoint and 2FA challenges must be completed by the account owner through legitimate platform flows.
+- Checkpoint challenges must be completed by the account owner through legitimate platform flows. Providers may accept a manually entered `twoFactorCode`; this library does not generate, intercept, or bypass challenges.
 - The package does not bypass checkpoints, 2FA, rate limits, or platform security controls.
 - Unofficial platform interfaces can change without notice and can result in account restrictions.
 
