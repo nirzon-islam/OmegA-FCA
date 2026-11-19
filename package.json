@@ -34,7 +34,9 @@
     "LICENSE",
     "docs/META-MESSENGER-TRANSPORT.md",
     "docs/DEPLOYMENT.md",
-    "docs/PROTOCOL-EVIDENCE.md"
+    "docs/PROTOCOL-EVIDENCE.md",
+    "docs/AUTHENTICATION-ATTEMPT.md",
+    "docs/IMPLEMENTATION-STATUS.md"
   ],
   "exports": {
     ".": {
