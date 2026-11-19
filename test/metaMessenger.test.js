@@ -171,3 +171,35 @@ test("webhook delivery isolates application callback exceptions", () => {
   assert.equal(received, 1);
   transport.disconnect();
 });
+
+
+test("webhook accepts Uint8Array bytes and ignores events for other Pages", () => {
+  const payload = {
+    object: "page",
+    entry: [
+      { id: config.pageId, messaging: [{ sender: { id: "987654321098765" }, message: { mid: "ours", text: "ours" } }] },
+      { id: "999999999999999", messaging: [{ sender: { id: "987654321098765" }, message: { mid: "other", text: "other" } }] }
+    ]
+  };
+  const raw = new Uint8Array(Buffer.from(JSON.stringify(payload)));
+  const signature = "sha256=" + createHmac("sha256", config.appSecret).update(Buffer.from(raw)).digest("hex");
+  const transport = createMetaMessengerTransport(config);
+  const received = [];
+  transport.listen((_error, event) => received.push(event));
+  assert.equal(transport.publishWebhook(raw, signature), 1);
+  assert.equal(received.length, 1);
+  assert.equal(received[0].pageID, config.pageId);
+  assert.equal(received[0].messageID, "ours");
+  transport.disconnect();
+});
+
+test("webhook rejects non-byte payload values and bodies over one MiB", () => {
+  const transport = createMetaMessengerTransport(config);
+  assert.throws(() => transport.publishWebhook("not bytes", "sha256=" + "0".repeat(64)), {
+    code: "META_WEBHOOK_SIGNATURE_INVALID"
+  });
+  assert.throws(() => transport.publishWebhook(new Uint8Array(1024 * 1024 + 1), "sha256=" + "0".repeat(64)), {
+    code: "META_WEBHOOK_SIGNATURE_INVALID"
+  });
+  transport.disconnect();
+});
