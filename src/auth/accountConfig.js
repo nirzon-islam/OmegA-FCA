@@ -50,8 +50,7 @@ function loadAccountConfig({
   env = process.env
 } = {}) {
   const root = path.resolve(cwd);
-  const accountPath = path.resolve(root, accountFile);
-  if (!accountPath.startsWith(root + path.sep)) throw new TypeError("accountFile must be inside the project root");
+  const accountPath = resolveProjectFile(root, accountFile, "accountFile");
   let fileValues = Object.create(null);
   try {
     const stat = fs.statSync(accountPath);
@@ -83,8 +82,7 @@ function loadAccountConfig({
     });
   }
 
-  const statePath = path.resolve(root, statePathValue);
-  if (!statePath.startsWith(root + path.sep)) throw new TypeError("AppState file must be inside the project root");
+  const statePath = resolveProjectFile(root, statePathValue, "AppState file");
   try {
     const stat = fs.statSync(statePath);
     if (!stat.isFile() || stat.size > 1024 * 1024) throw new Error("AppState file must be a regular file no larger than 1 MiB");
