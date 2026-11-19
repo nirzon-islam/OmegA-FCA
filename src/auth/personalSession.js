@@ -118,6 +118,42 @@ async function createPersonalSession({
         }
         return jar.getCookieHeader(target);
       },
+      async request(input, options = {}) {
+        if (closed) throw new Error("Facebook session is closed");
+        const target = input instanceof URL ? new URL(input.href) : new URL(input);
+        if (target.protocol !== "https:" || !/(^|\.)facebook\.com$|(^|\.)messenger\.com$/.test(target.hostname)) {
+          throw new TypeError("Personal session requests are restricted to Facebook/Messenger HTTPS hosts");
+        }
+        const method = String(options.method || "GET").toUpperCase();
+        if (!["GET", "HEAD", "POST"].includes(method)) {
+          throw new TypeError("Personal session request method is not supported");
+        }
+        const headers = new Headers(options.headers || {});
+        if (headers.has("cookie") || headers.has("host")) {
+          throw new TypeError("Cookie and Host headers are managed by the personal session");
+        }
+        headers.set("cookie", jar.getCookieHeader(target));
+        headers.set("user-agent", userAgent);
+        const requestController = new AbortController();
+        const timeout = setTimeout(() => requestController.abort(new Error("Facebook request timed out")), timeoutMs);
+        const onAbort = () => requestController.abort(options.signal.reason);
+        if (options.signal) {
+          if (options.signal.aborted) onAbort();
+          else options.signal.addEventListener("abort", onAbort, { once: true });
+        }
+        try {
+          return await fetchImpl(target, {
+            ...options,
+            method,
+            headers,
+            redirect: "manual",
+            signal: requestController.signal
+          });
+        } finally {
+          clearTimeout(timeout);
+          options.signal?.removeEventListener("abort", onAbort);
+        }
+      },
       getAppState() {
         if (closed) throw new Error("Facebook session is closed");
         return cookies.map(cookie => ({ ...cookie }));
