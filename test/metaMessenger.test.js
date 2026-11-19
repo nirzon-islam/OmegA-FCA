@@ -72,7 +72,7 @@ test("official Meta transport sends through Graph API without putting token in U
 test("official Meta transport refuses unsigned webhook events", () => {
   const transport = createMetaMessengerTransport(config);
   assert.throws(
-    () => transport.publishWebhook({ object: "page", entry: [] }, Buffer.from('{"object":"page"}'), "sha256=" + "0".repeat(64)),
+    () => transport.publishWebhook(Buffer.from('{"object":"page"}'), "sha256=" + "0".repeat(64)),
     { code: "META_WEBHOOK_SIGNATURE_INVALID" }
   );
 });
@@ -86,9 +86,25 @@ test("official Meta transport delivers only verified webhook events to listeners
   const transport = createMetaMessengerTransport(config);
   const received = [];
   const detach = transport.listen((error, event) => received.push({ error, event }));
-  assert.equal(transport.publishWebhook(JSON.parse(raw.toString()), raw, signature), 1);
+  assert.equal(transport.publishWebhook(raw, signature), 1);
   assert.equal(received[0].error, null);
   assert.equal(received[0].event.messageID, "mid.2");
   detach();
+  transport.disconnect();
+});
+
+
+test("Meta transport parses only the raw bytes covered by the webhook signature", () => {
+  const raw = Buffer.from(JSON.stringify({
+    object: "page",
+    entry: [{ id: config.pageId, messaging: [{ sender: { id: "987654321098765" }, message: { mid: "signed-mid", text: "signed" } }] }]
+  }));
+  const signature = "sha256=" + createHmac("sha256", config.appSecret).update(raw).digest("hex");
+  const transport = createMetaMessengerTransport(config);
+  const received = [];
+  transport.listen((error, event) => received.push(event));
+  assert.equal(transport.publishWebhook(raw, signature), 1);
+  assert.equal(received[0].messageID, "signed-mid");
+  assert.equal(received[0].text, "signed");
   transport.disconnect();
 });
