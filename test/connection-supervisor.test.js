@@ -121,3 +121,27 @@ test("supervisor allows only one active listener and detaches idempotently", asy
   assert.equal(detached, 1);
   await supervisor.stop();
 });
+
+
+test("application listener exceptions are isolated without reconnecting the transport", async () => {
+  let connects = 0;
+  const callbackFailure = new Error("synthetic application handler failure");
+  const supervisor = new ConnectionSupervisor({
+    connect: async () => {
+      connects++;
+      return { listen(callback) { this.emitEvent = callback; return () => {}; } };
+    },
+    options: { maxAttempts: 1 }
+  });
+
+  const driver = await supervisor.start();
+  const callbackErrors = [];
+  supervisor.on("listenerCallbackError", error => callbackErrors.push(error));
+  supervisor.listen(() => { throw callbackFailure; });
+  driver.emitEvent(null, { type: "message", messageID: "synthetic-callback-error" });
+
+  assert.deepEqual(callbackErrors, [callbackFailure]);
+  assert.equal(connects, 1);
+  assert.equal(supervisor.snapshot().state, "connected");
+  await supervisor.stop();
+});
