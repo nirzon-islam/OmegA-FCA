@@ -48,6 +48,7 @@ test("challenge answers cannot be submitted before a challenge exists", async ()
 
 test("challenge continuation is single-use and bounded", async () => {
   let resumes = 0;
+  let cancelled = 0;
   const attempt = createAuthenticationAttempt({
     maxChallengeRounds: 1,
     authenticate: async () => ({
@@ -58,7 +59,8 @@ test("challenge continuation is single-use and bounded", async () => {
         return {
           status: "challenge_required",
           challenge: { type: "verification" },
-          resume: async () => ({ status: "authenticated", session: {} })
+          resume: async () => ({ status: "authenticated", session: {} }),
+          cancel: async () => { cancelled += 1; }
         };
       }
     })
@@ -66,6 +68,7 @@ test("challenge continuation is single-use and bounded", async () => {
   await attempt.begin({});
   await assert.rejects(attempt.submitChallenge("first"), /challenge limit exceeded/);
   assert.equal(resumes, 1);
+  assert.equal(cancelled, 1);
   assert.equal(attempt.snapshot().state, "failed");
 });
 
@@ -124,6 +127,23 @@ test("public error snapshot does not expose provider-controlled name or malforme
     name: "Error",
     code: null,
     message: "Authentication failed; inspect the provider error securely"
+  });
+  assert.equal(JSON.stringify(attempt.snapshot()).includes("hunter2"), false);
+});
+
+test("challenge metadata only exposes bounded identifier-like values", async () => {
+  const attempt = createAuthenticationAttempt({
+    authenticate: async () => ({
+      status: "challenge_required",
+      challenge: { type: "password=hunter2", methods: ["totp", "cookie=private", "email"] },
+      resume: async () => ({ status: "authenticated", session: {} })
+    })
+  });
+  await attempt.begin({});
+  assert.deepEqual(attempt.snapshot().challenge, {
+    type: "verification",
+    message: "Additional account verification is required.",
+    methods: ["totp", "email"]
   });
   assert.equal(JSON.stringify(attempt.snapshot()).includes("hunter2"), false);
 });
