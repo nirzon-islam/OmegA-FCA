@@ -43,7 +43,7 @@ test("rejects incomplete credentials and paths outside project root", () => with
 
 test("rejects account and AppState symlinks that escape the project root", () => withRoot(root => {
   const outside = path.join(os.tmpdir(), "omega-fca-outside-" + process.pid + ".txt");
-  fs.writeFileSync(outside, "fb_username=owner\\nfb_password=secret");
+  fs.writeFileSync(outside, "fb_username=owner\nfb_password=secret");
   try {
     fs.symlinkSync(outside, path.join(root, "account.txt"));
     assert.throws(() => loadAccountConfig({ cwd: root, env: {} }), /resolve inside the project root/);
