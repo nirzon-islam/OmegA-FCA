@@ -29,15 +29,19 @@ function createGoatBotLogin(client) {
       return Promise.resolve(null);
     }
 
-    return client.login(loginInput, options || {})
-      .then(api => {
+    // Keep login rejection handling separate from callback execution. A user
+    // callback may itself throw; that must not be mistaken for a login failure
+    // and cause the callback to be invoked a second time.
+    return client.login(loginInput, options || {}).then(
+      api => {
         callback(null, api);
         return api;
-      })
-      .catch(error => {
+      },
+      error => {
         callback(error);
         return null;
-      });
+      }
+    );
   };
 }
 
