@@ -112,8 +112,15 @@ function createClient({ authenticate, options = {}, reconnect = {}, license = {}
         try {
           result = await authenticate({ mode, credentials: normalized, options: loginOptions || {}, context, license: verifiedLicense });
           return validateTransportDriver(result);
-        } catch (error) {
-          const sessionState = classifySessionState(error);
+        } catch (caught) {
+          // Providers are expected to throw Error objects, but third-party
+          // adapters sometimes reject with strings or other primitives.
+          // Normalize those values before attaching structured session data.
+          const error = caught instanceof Error
+            ? caught
+            : new Error(typeof caught === "string" ? caught : "Authentication provider failed");
+          if (error !== caught && caught !== undefined) error.cause = caught;
+          const sessionState = classifySessionState(caught);
           if (sessionState === "checkpoint" || sessionState === "logged_out") {
             error.sessionState = sessionState;
             error.code = error.code || (sessionState === "checkpoint"
