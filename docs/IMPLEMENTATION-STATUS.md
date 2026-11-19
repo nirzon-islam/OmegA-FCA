@@ -13,6 +13,7 @@ Last previously verified full CI run: #44468907669 on commit `100927b9c0f4a0196a
 - Event dispatcher with in-flight duplicate coalescing, success-only acknowledgement, retry after handler failure, and per-thread ordering.
 - Transport contract and injectable provider interface.
 - Credentials providers receive an optional manually entered `twoFactorCode`; this is input plumbing only, not a built-in Facebook challenge solver or checkpoint bypass.
+- Checkpoint and expired-session authentication errors are classified, tagged, and made non-retryable to avoid repeated login attempts. Owners resolve challenges through Facebook and retry with a fresh authorized session or manually entered code.
 - Checkpoint recovery remains account-owner controlled; the user resolves the challenge through the platform and retries authentication with the resulting authorized session.
 - GoatBot callback adapter foundation and documented compatibility audit.
 - Optional Ed25519 licensing; public package use does not require a license by default.
