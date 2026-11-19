@@ -42,7 +42,13 @@ test("loads email/password/TOTP secret from config.json", () => withRoot(root =>
   assert.equal(config.userAgent, "test-agent");
 }));
 
-test("loads fb_email/password through environment overrides", () => withRoot(root => {\n  fs.writeFileSync(path.join(root, "config.json"), "{}");\n  const config = loadAccountConfig({ cwd: root, env: { FB_EMAIL: "owner@example.test", FB_PASSWORD: "pw", FB_2FA_SECRET: "secret" } });\n  assert.equal(config.email, "owner@example.test");\n  assert.equal(config.password, "pw");\n  assert.equal(config.twoFactorSecret, "secret");\n}));
+test("loads fb_email/password through environment overrides", () => withRoot(root => {
+  fs.writeFileSync(path.join(root, "config.json"), "{}");
+  const config = loadAccountConfig({ cwd: root, env: { FB_EMAIL: "owner@example.test", FB_PASSWORD: "pw", FB_2FA_SECRET: "secret" } });
+  assert.equal(config.email, "owner@example.test");
+  assert.equal(config.password, "pw");
+  assert.equal(config.twoFactorSecret, "secret");
+}));
 
 test("loads AppState JSON as backward-compatible fallback", () => withRoot(root => {
   const state = [{ key: "c_user", value: "123456789", domain: "facebook.com" }, { key: "xs", value: "session-cookie-value", domain: "facebook.com" }];
