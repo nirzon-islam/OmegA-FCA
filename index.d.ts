@@ -222,6 +222,8 @@ export interface MetaMessengerTransportOptions {
 export interface MetaMessengerTransport {
   getCurrentUserID(): string;
   sendMessage(recipientId: string, message: Record<string, unknown>): Promise<Record<string, unknown>>;
+  sendTypingIndicator(recipientId: string, typing?: boolean): Promise<Record<string, unknown>>;
+  markAsRead(recipientId: string): Promise<Record<string, unknown>>;
   listen(callback: (error: Error | null, event?: MetaWebhookEvent) => void): () => void;
   publishWebhook(rawBody: Uint8Array, signature: string): number;
   disconnect(): Promise<void>;

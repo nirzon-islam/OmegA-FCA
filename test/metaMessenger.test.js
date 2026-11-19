@@ -203,3 +203,26 @@ test("webhook rejects non-byte payload values and bodies over one MiB", () => {
   });
   transport.disconnect();
 });
+
+
+test("Meta transport exposes official typing and read sender actions without retrying", async () => {
+  const calls = [];
+  const transport = createMetaMessengerTransport({
+    ...config,
+    fetchImpl: async (url, options) => {
+      calls.push({ url: String(url), options });
+      return new Response(JSON.stringify({ recipient_id: "987654321098765" }), { status: 200 });
+    }
+  });
+  await transport.sendTypingIndicator("987654321098765");
+  await transport.sendTypingIndicator("987654321098765", false);
+  await transport.markAsRead("987654321098765");
+  assert.deepEqual(calls.map(call => JSON.parse(call.options.body).sender_action), [
+    "typing_on", "typing_off", "mark_seen"
+  ]);
+  assert.ok(calls.every(call => call.options.method === "POST"));
+  assert.ok(calls.every(call => call.options.retryable === false));
+  await assert.rejects(transport.sendTypingIndicator("987654321098765", "yes"), /boolean/);
+  await assert.rejects(transport.markAsRead("bad-id"), /recipient ID/);
+  await transport.disconnect();
+});

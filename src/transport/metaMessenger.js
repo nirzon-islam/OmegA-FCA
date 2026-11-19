@@ -93,14 +93,8 @@ function createMetaMessengerTransport({
   const events = new EventEmitter();
   let closed = false;
 
-  async function sendMessage(recipientId, message) {
+  async function postSendApi(payload) {
     if (closed) throw new Error("Messenger transport is disconnected");
-    if (typeof recipientId !== "string" || !/^\d{5,30}$/.test(recipientId)) {
-      throw new TypeError("A valid page-scoped recipient ID is required");
-    }
-    if (!message || typeof message !== "object" || Array.isArray(message)) {
-      throw new TypeError("Message must be a Messenger message object");
-    }
     const url = new URL("https://" + GRAPH_HOST + "/" + apiVersion + "/me/messages");
     const response = await request(url, {
       method: "POST",
@@ -109,7 +103,7 @@ function createMetaMessengerTransport({
         authorization: "Bearer " + pageAccessToken,
         "content-type": "application/json"
       },
-      body: JSON.stringify({ recipient: { id: recipientId }, message })
+      body: JSON.stringify(payload)
     });
     const body = await response.json().catch(() => null);
     if (!response.ok || body?.error) {
@@ -120,6 +114,37 @@ function createMetaMessengerTransport({
       throw error;
     }
     return body;
+  }
+
+  function validateRecipientId(recipientId) {
+    if (typeof recipientId !== "string" || !/^\\d{5,30}$/.test(recipientId)) {
+      throw new TypeError("A valid page-scoped recipient ID is required");
+    }
+  }
+
+  async function sendMessage(recipientId, message) {
+    validateRecipientId(recipientId);
+    if (!message || typeof message !== "object" || Array.isArray(message)) {
+      throw new TypeError("Message must be a Messenger message object");
+    }
+    return postSendApi({ recipient: { id: recipientId }, message });
+  }
+
+  async function sendSenderAction(recipientId, action) {
+    validateRecipientId(recipientId);
+    if (!["typing_on", "typing_off", "mark_seen"].includes(action)) {
+      throw new TypeError("Unsupported Messenger sender action");
+    }
+    return postSendApi({ recipient: { id: recipientId }, sender_action: action });
+  }
+
+  function sendTypingIndicator(recipientId, typing = true) {
+    if (typeof typing !== "boolean") throw new TypeError("typing must be a boolean");
+    return sendSenderAction(recipientId, typing ? "typing_on" : "typing_off");
+  }
+
+  function markAsRead(recipientId) {
+    return sendSenderAction(recipientId, "mark_seen");
   }
 
   function listen(callback) {
@@ -167,6 +192,8 @@ function createMetaMessengerTransport({
   return Object.freeze({
     getCurrentUserID: () => pageId,
     sendMessage,
+    sendTypingIndicator,
+    markAsRead,
     listen,
     publishWebhook,
     disconnect,
@@ -174,6 +201,7 @@ function createMetaMessengerTransport({
       authentication: "page-access-token",
       inbound: "verified-webhook",
       outbound: "messenger-send-api",
+      supportedActions: Object.freeze(["sendMessage", "sendTypingIndicator", "markAsRead"]),
       userSessionEmulation: false,
       mqtt: false
     })

@@ -31,7 +31,7 @@ const result = await transport.sendMessage("RECIPIENT_PSID", {
 console.log(result.message_id);
 ```
 
-The Page token is sent as an Authorization Bearer header and is never added to the request URL. Send requests are not automatically retried, avoiding accidental duplicate message sends.
+The Page token is sent as an Authorization Bearer header and is never added to the request URL. Send requests are not automatically retried, avoiding accidental duplicate actions. `sendTypingIndicator(recipientId, typing = true)` maps to Meta sender actions `typing_on` / `typing_off`, and `markAsRead(recipientId)` maps to `mark_seen`.
 
 ## Inbound webhook events
 
