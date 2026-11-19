@@ -218,6 +218,14 @@ export interface VerifiedUpdateManifest {
 }
 export function verifyUpdateManifest(manifest: unknown, options?: Record<string, unknown>): VerifiedUpdateManifest;
 export function verifyArtifactDigest(data: string | Uint8Array, digest: string): boolean;
+export interface DecodedRealtimeEvent { readonly name: string; readonly args: unknown | null; }
+export interface DecodedRealtimeFrame { readonly envelope: Readonly<Record<string, unknown>>; readonly events: readonly DecodedRealtimeEvent[]; }
+export interface RealtimeFrameSummary { readonly eventCount: number; readonly eventNames: readonly string[]; }
+export const DEFAULT_MAX_FRAME_BYTES: number;
+/** Extracts an observed JSON events envelope from a bounded binary frame; does not implement the Messenger wire protocol. */
+export function decodeRealtimeFrame(frame: Buffer | Uint8Array, options?: { maxFrameBytes?: number }): DecodedRealtimeFrame;
+/** Returns event names/count only, omitting event argument values. */
+export function summarizeRealtimeFrame(frame: Buffer | Uint8Array, options?: { maxFrameBytes?: number }): RealtimeFrameSummary;
 export const version: string;
 
 export interface AccountConfigOptions { cwd?: string; accountFile?: string; configFile?: string; appStateFile?: string | null; env?: NodeJS.ProcessEnv; }
