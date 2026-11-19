@@ -48,11 +48,11 @@ async function waitForRetry(delayMs, sleep, signal) {
     };
     const onAbort = () => finish(reject, abortReason(signal));
     signal.addEventListener("abort", onAbort, { once: true });
+    if (signal.aborted) return onAbort();
     Promise.resolve().then(() => sleep(delayMs)).then(
       () => signal.aborted ? finish(reject, abortReason(signal)) : finish(resolve),
       error => finish(reject, error)
     );
-    if (signal.aborted) onAbort();
   });
 }
 
@@ -73,6 +73,7 @@ function createRequestClient({ fetchImpl = globalThis.fetch, timeoutMs = 20_000,
     const { retryable: _retryable, ...fetchOptions } = options;
     let attempt = 0;
     while (true) {
+      if (options.signal?.aborted) throw abortReason(options.signal);
       let response;
       const timeoutSignal = AbortSignal.timeout(timeoutMs);
       const combined = combineAbortSignals([options.signal, timeoutSignal]);
