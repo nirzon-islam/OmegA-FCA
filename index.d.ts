@@ -135,7 +135,7 @@ export function createClient(options: ClientOptions): {
   login(credentials: Credentials, options?: Record<string, unknown>): Promise<ClientApi>;
   logout(): Promise<void>; getConnectionState(): ConnectionSnapshot; getLicense(): VerifiedLicense | null;
 };
-export function createGoatBotLogin(client: ReturnType<typeof createClient>): {
+export function createGoatBotLogin(client: ReturnType<typeof createClient>, accountConfigOptions?: AccountConfigOptions): {
   (credentials: Record<string, unknown>, callback: (error: Error | null, api?: ClientApi | null) => void): Promise<ClientApi | null>;
   (credentials: Record<string, unknown>, options: Record<string, unknown>, callback: (error: Error | null, api?: ClientApi | null) => void): Promise<ClientApi | null>;
 };
