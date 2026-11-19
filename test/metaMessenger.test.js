@@ -60,7 +60,7 @@ test("official Meta transport sends through Graph API without putting token in U
   });
   const result = await transport.sendMessage("987654321098765", { text: "hello" });
   assert.equal(result.message_id, "mid.123");
-  assert.match(requestUrl, /^https:\/\/graph\.facebook\.com\/vXX\.X\/me\/messages$/);
+  assert.match(requestUrl, /^https:\/\/graph\.facebook\.com\/v99\.0\/me\/messages$/);
   assert.equal(requestUrl.includes(config.pageAccessToken), false);
   assert.equal(requestOptions.headers.authorization, "Bearer " + config.pageAccessToken);
   assert.equal(JSON.parse(requestOptions.body).message.text, "hello");
