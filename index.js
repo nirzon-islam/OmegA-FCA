@@ -10,6 +10,7 @@ const { EventDispatcher } = require("./src/events/dispatcher");
 const { CookieJar } = require("./src/network/cookieJar");
 const { createRequestClient, retryAfterMs, isRetryableStatus } = require("./src/network/requestClient");
 const { createPersonalSession, detectSessionChallenge, extractIdentity, extractFacebookTokens } = require("./src/auth/personalSession");
+const { parseAccountText, loadAccountConfig } = require("./src/auth/accountConfig");
 const { normalizeFacebookResponse, stripFacebookJsonPrefix, createFacebookError } = require("./src/auth/facebookResponse");
 const { createFacebookWebClient, assertFacebookUrl, toFormBody } = require("./src/auth/facebookWebClient");
 const { createClient } = require("./src/api/client");
@@ -26,6 +27,7 @@ module.exports = {
   redactSecrets, classifySessionState, describeError, encryptSession, decryptSession,
   saveSession, loadSession, deleteSession, ConnectionSupervisor, EventDispatcher,
   CookieJar, createRequestClient, retryAfterMs, isRetryableStatus, createPersonalSession, detectSessionChallenge, extractIdentity, extractFacebookTokens,
+  parseAccountText, loadAccountConfig,
   normalizeFacebookResponse, stripFacebookJsonPrefix, createFacebookError,
   createFacebookWebClient, assertFacebookUrl, toFormBody, createClient,
   createGoatBotLogin, createLegacyFcaProvider, verifyLicenseToken, createLicenseProvider,
