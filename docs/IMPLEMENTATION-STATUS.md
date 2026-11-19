@@ -4,6 +4,7 @@
 
 - Node.js 20+ CommonJS package, root exports and TypeScript declarations.
 - Cookie/AppState parsing and validation, encrypted session helpers, restrictive file permissions and secret redaction.
+- **New:** `FB_USERNAME` input is normalized by `createClient`, typed in the public API, and mapped by the GoatBot compatibility login adapter while preserving legacy email support.
 - **New native personal-session foundation:** `createPersonalSession()` validates an owner-supplied AppState against Facebook over HTTPS, scopes session cookies to Facebook/Messenger hosts, provides bounded-time authenticated web requests, and reports expired sessions/checkpoints without bypassing them.
 - Bounded HTTPS request helper and secure cookie jar.
 - Connection supervisor with bounded reconnect/backoff, listener recovery and abortable connect attempts.
@@ -18,7 +19,7 @@
 
 This package is **not yet a standalone, drop-in personal-account FCA replacement**.
 
-- OmegA-FCA does not yet implement the full personal-account authentication flow (username/password + 2FA), Facebook private HTTP/GraphQL action layer, or response normalization. The new AppState session bootstrap is only the first authentication/session layer.
+- OmegA-FCA does not yet implement the full personal-account authentication flow (username/password + 2FA), Facebook private HTTP/GraphQL action layer, or response normalization. The new AppState session bootstrap is only the first authentication/session layer. Username/password login is not yet implemented natively; the username field is currently an input contract for the future auth provider.
 - OmegA-FCA does not yet implement Facebook web-client MQTT/WebSocket protocol or event decoding. The legacy adapter remains a temporary compatibility/test utility and is not the target runtime; the goal is a native OmegA-FCA transport.
 - Full parity with every legacy FCA method, event shape, and GoatBot call site has not been proven.
 - No authorized live personal-account end-to-end test has been run from this repository.
