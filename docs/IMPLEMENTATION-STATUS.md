@@ -7,6 +7,7 @@
 - **New:** `FB_USERNAME` input is normalized by `createClient`, typed in the public API, and mapped by the GoatBot compatibility login adapter while preserving legacy email support.
 - **New native personal-session foundation:** `createPersonalSession()` validates an owner-supplied AppState against Facebook over HTTPS, scopes session cookies to Facebook/Messenger hosts, provides bounded-time authenticated web requests, and reports expired sessions/checkpoints without bypassing them.
 - Bounded HTTPS request helper and secure cookie jar.
+- **New safe diagnostics utility:** bounded metadata-only recorder, integrated with AppState-backed personal-session requests; excludes header/query/body/response values and credential material.
 - **New authenticated Facebook web client:** `createFacebookWebClient()` adds token-aware POST form serialization, GET/HEAD/POST handling, strict Facebook/Messenger HTTPS host validation, manual redirect classification (checkpoint/expired/unexpected), normalized JSON/error responses, and 2 MiB inbound/outbound body limits. It intentionally does not invent private action endpoints or payload schemas.
 - Connection supervisor with bounded reconnect/backoff, listener recovery and abortable connect attempts.
 - Event dispatcher with duplicate coalescing, success-only acknowledgement and per-thread ordering.
