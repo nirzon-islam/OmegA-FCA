@@ -182,3 +182,21 @@ test("stopping during listener recovery prevents the supervisor from restarting"
   assert.equal(supervisor.snapshot().state, "stopped");
   assert.equal(supervisor.snapshot().connected, false);
 });
+
+
+
+test("supervisor reaches stopped state even when driver disposal fails", async () => {
+  const failure = new Error("synthetic disconnect failure");
+  const supervisor = new ConnectionSupervisor({
+    connect: async () => ({ listen() {} }),
+    disconnect: async () => { throw failure; },
+    options: { maxAttempts: 1 }
+  });
+  await supervisor.start();
+  await assert.rejects(supervisor.stop(), error => error === failure);
+  assert.deepEqual(supervisor.snapshot(), {
+    state: "stopped",
+    connected: false,
+    generation: 2
+  });
+});
