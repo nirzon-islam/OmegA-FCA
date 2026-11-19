@@ -6,6 +6,7 @@ const { createClient } = require("../src/api/client");
 
 test("client accepts a valid AppState and exposes a narrow API facade", async () => {
   const client = createClient({
+    requireLicense: false,
     authenticate: async ({ mode, credentials }) => {
       assert.equal(mode, "appstate");
       assert.equal(credentials[0].key, "c_user");
@@ -29,13 +30,18 @@ test("client accepts a valid AppState and exposes a narrow API facade", async ()
 });
 
 test("client rejects a session without required auth cookies", async () => {
-  const client = createClient({ authenticate: async () => ({}) });
+  const client = createClient({ requireLicense: false, authenticate: async () => ({}) });
   await assert.rejects(client.login({ mode: "appstate", appState: [
     { key: "c_user", value: "123456", domain: "facebook.com" }
   ] }), /c_user and xs/);
 });
 
 test("client rejects missing login mode", async () => {
-  const client = createClient({ authenticate: async () => ({}) });
+  const client = createClient({ requireLicense: false, authenticate: async () => ({}) });
   await assert.rejects(client.login({}), /Login mode/);
+});
+
+test("client requires an owner-signed license by default", async () => {
+  const client = createClient({ authenticate: async () => ({}) });
+  await assert.rejects(client.login({ mode: "credentials", email: "demo@example.com", password: "not-a-real-password" }), /License token is missing/);
 });
