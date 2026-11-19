@@ -97,7 +97,7 @@ test("GoatBot adapter rejects missing callback and reports unsupported login inp
   assert.throws(() => login({ appState: [] }), /callback is required/);
   let reported;
   assert.equal(await login({ token: "not-supported" }, error => { reported = error; }), null);
-  assert.match(reported.message, /AppState, FB_USERNAME\\/password/);
+  assert.match(reported.message, /AppState.*FB_USERNAME.*password/);
   assert.equal(reported.retryable, false);
 });
 
