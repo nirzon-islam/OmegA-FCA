@@ -94,3 +94,47 @@ test("cookie jar respects domain, path, secure and expiry rules", () => {
   jar.clear();
   assert.equal(jar.size, 0);
 });
+
+
+test("request client strips its retry control before fetch and cancels retried bodies", async () => {
+  let calls = 0;
+  let cancelled = 0;
+  let fetchOptions;
+  const request = createRequestClient({
+    fetchImpl: async (_url, options) => {
+      fetchOptions = options;
+      calls++;
+      return calls === 1
+        ? { ...response(503), body: { cancel: async () => { cancelled++; } } }
+        : response(200);
+    },
+    maxAttempts: 2,
+    baseDelayMs: 1,
+    random: () => 0.5,
+    sleep: async () => {}
+  });
+
+  const result = await request("https://www.facebook.com/", { retryable: true });
+  assert.equal(result.status, 200);
+  assert.equal(calls, 2);
+  assert.equal(cancelled, 1);
+  assert.equal(Object.hasOwn(fetchOptions, "retryable"), false);
+});
+
+test("request client allows callers to disable retries for GET requests", async () => {
+  let calls = 0;
+  const request = createRequestClient({
+    fetchImpl: async () => { calls++; return response(503); },
+    maxAttempts: 3,
+    sleep: async () => {}
+  });
+  const result = await request("https://www.facebook.com/", { retryable: false });
+  assert.equal(result.status, 503);
+  assert.equal(calls, 1);
+});
+
+test("request client rejects URL credentials and invalid timeout configuration", async () => {
+  assert.throws(() => createRequestClient({ timeoutMs: 0 }), /timeoutMs/);
+  const request = createRequestClient({ fetchImpl: async () => response(200) });
+  await assert.rejects(request("https://user:pass@www.facebook.com/"), /credentials/);
+});
