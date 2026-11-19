@@ -33,7 +33,8 @@
     "README.md",
     "LICENSE",
     "docs/META-MESSENGER-TRANSPORT.md",
-    "docs/DEPLOYMENT.md"
+    "docs/DEPLOYMENT.md",
+    "docs/PROTOCOL-EVIDENCE.md"
   ],
   "exports": {
     ".": {
