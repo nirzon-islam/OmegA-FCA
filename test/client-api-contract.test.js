@@ -95,3 +95,37 @@ test("client disposes a connected driver when identity initialization fails", as
     generation: 0
   });
 });
+
+
+test("concurrent login calls cannot create competing transport sessions", async () => {
+  let beginAuthentication;
+  let resolveAuthentication;
+  const authenticationStarted = new Promise(resolve => { beginAuthentication = resolve; });
+  const authentication = new Promise(resolve => { resolveAuthentication = resolve; });
+  let disconnects = 0;
+
+  const client = createClient({
+    authenticate: async () => {
+      beginAuthentication();
+      return authentication;
+    }
+  });
+
+  const firstLogin = client.login({ mode: "appstate", appState });
+  await authenticationStarted;
+  await assert.rejects(
+    client.login({ mode: "appstate", appState }),
+    /already in progress/
+  );
+
+  resolveAuthentication({
+    getCurrentUserID: () => "123456",
+    listen: () => () => {},
+    disconnect: async () => { disconnects++; }
+  });
+
+  const api = await firstLogin;
+  assert.equal(api.getCurrentUserID(), "123456");
+  await client.logout();
+  assert.equal(disconnects, 1);
+});
