@@ -218,6 +218,19 @@ export interface VerifiedUpdateManifest {
 }
 export function verifyUpdateManifest(manifest: unknown, options?: Record<string, unknown>): VerifiedUpdateManifest;
 export function verifyArtifactDigest(data: string | Uint8Array, digest: string): boolean;
+/** Broker-agnostic MQTT 3.1.1 packet codec primitives (OASIS specification). */
+export const mqtt311Codec: {
+  encodeRemainingLength(value: number): Buffer;
+  decodeRemainingLength(buffer: Buffer, offset?: number): Readonly<{ value: number; bytes: number; offset: number }> | null;
+  encodeConnect(options: { clientId: string; keepAlive?: number; cleanSession?: boolean; username?: string; password?: Buffer | Uint8Array | string }): Buffer;
+  encodePublish(options: { topic: string; payload?: Buffer | Uint8Array | string; qos?: 0 | 1 | 2; retain?: boolean; dup?: boolean; packetId?: number }): Buffer;
+  encodeSubscribe(packetId: number, subscriptions: Array<{ topic: string; qos?: 0 | 1 | 2 }>): Buffer;
+  encodePacketId(type: "puback" | "pubrec" | "pubrel" | "pubcomp", packetId: number): Buffer;
+  encodeUnsubscribe(packetId: number, topics: string[]): Buffer;
+  encodePingReq(): Buffer;
+  encodeDisconnect(): Buffer;
+  decodePacket(buffer: Buffer | Uint8Array, options?: { maxPacketBytes?: number }): Readonly<Record<string, unknown>> | null;
+};
 export interface NativeRealtimeSocket {
   readyState?: number;
   send(data: string | Buffer | Uint8Array | ArrayBuffer, callback?: (error?: Error) => void): void;
