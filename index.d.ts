@@ -4,7 +4,7 @@ export interface Cookie {
   secure?: boolean; httpOnly?: boolean; sameSite?: string; expires?: number | null;
 }
 export interface Credentials {
-  mode: LoginMode; appState?: Cookie[]; cookie?: string; email?: string; password?: string;
+  mode: LoginMode; appState?: Cookie[]; cookie?: string; username?: string; email?: string; password?: string;
   twoFactorSecret?: string | null; twoFactorCode?: string | null; userAgent?: string | null; proxy?: unknown;
 }
 export interface PersonalSessionOptions {
