@@ -23,7 +23,8 @@ function normalizeCookies(input) {
     const key = typeof item.key === "string" ? item.key : item.name;
     if (typeof key !== "string" || !/^[A-Za-z0-9_-]{1,80}$/.test(key)) throw new TypeError("Invalid cookie name");
     if (typeof item.value !== "string" || !item.value || item.value.length > MAX_COOKIE_VALUE_LENGTH || !/^[\x21\x23-\x2B\x2D-\x3A\x3C-\x5B\x5D-\x7E]+$/.test(item.value)) throw new TypeError("Invalid cookie value");
-    const domain = normalizeDomain(item.domain || "facebook.com");
+    const rawDomain = item.domain || "facebook.com";
+    const domain = normalizeDomain(rawDomain);
     const path = item.path === undefined ? "/" : item.path;
     if (typeof path !== "string" || !path.startsWith("/") || path.length > 1024) throw new TypeError("Invalid cookie path");
     const expires = item.expires === undefined || item.expires === null || item.expires === 0
@@ -39,7 +40,7 @@ function normalizeCookies(input) {
       value: item.value,
       domain,
       path,
-      hostOnly: item.hostOnly === undefined ? true : Boolean(item.hostOnly),
+      hostOnly: item.hostOnly === undefined ? !(typeof rawDomain === "string" && rawDomain.trim().startsWith(".")) : Boolean(item.hostOnly),
       secure: Boolean(item.secure),
       httpOnly: Boolean(item.httpOnly),
       ...(typeof item.sameSite === "string" ? { sameSite: item.sameSite } : {}),
