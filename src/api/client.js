@@ -113,7 +113,16 @@ function createClient({ authenticate, options = {}, reconnect = {}, license = {}
     });
     const driver = await supervisor.start();
     if (!driver) throw new Error("Connection stopped before authentication completed");
-    const currentUserId = typeof driver.getCurrentUserID === "function" ? await driver.getCurrentUserID() : null;
+    let currentUserId;
+    try {
+      currentUserId = typeof driver.getCurrentUserID === "function" ? await driver.getCurrentUserID() : null;
+    } catch (error) {
+      // A driver that connects but cannot complete identity initialization must
+      // not leave an unreachable live session behind.
+      await supervisor.stop();
+      supervisor = null;
+      throw error;
+    }
     userId = currentUserId == null ? null : String(currentUserId);
     const facade = {};
     for (const method of DRIVER_METHODS) {
