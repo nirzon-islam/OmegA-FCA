@@ -34,7 +34,10 @@ function normalizeCookies(input) {
       value: item.value,
       domain,
       path,
-      hostOnly: Boolean(item.hostOnly),
+      hostOnly: item.hostOnly === undefined ? true : Boolean(item.hostOnly),
+      secure: Boolean(item.secure),
+      httpOnly: Boolean(item.httpOnly),
+      ...(typeof item.sameSite === "string" ? { sameSite: item.sameSite } : {}),
       ...(item.expires ? { expires: item.expires } : {})
     };
   });
@@ -57,7 +60,7 @@ function parseCookieHeader(header) {
   const entries = header.split(";").map(part => part.trim()).filter(Boolean).map(part => {
     const index = part.indexOf("=");
     if (index <= 0) throw new TypeError("Malformed cookie header");
-    return { key: part.slice(0, index).trim(), value: part.slice(index + 1).trim(), domain: "facebook.com", path: "/" };
+    return { key: part.slice(0, index).trim(), value: part.slice(index + 1).trim(), domain: "facebook.com", path: "/", hostOnly: true };
   });
   return normalizeCookies(entries);
 }
