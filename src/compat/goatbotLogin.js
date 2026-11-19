@@ -26,19 +26,18 @@ function createGoatBotLogin(client) {
       const error = new TypeError("GoatBot login requires an AppState array or email/password credentials");
       error.retryable = false;
       callback(error);
-      return Promise.reject(error);
+      return Promise.resolve(null);
     }
 
-    const promise = client.login(loginInput, options || {})
+    return client.login(loginInput, options || {})
       .then(api => {
         callback(null, api);
         return api;
       })
       .catch(error => {
         callback(error);
-        throw error;
+        return null;
       });
-    return promise;
   };
 }
 
