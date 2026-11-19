@@ -1,76 +1,80 @@
-# Deployment and release checklist
+# Deployment and AppState test checklist
 
-This guide covers deployment of the **currently implemented official Meta Messenger Page webhook example**. It does not make this package a personal-account FCA replacement.
+OmegA-FCA is a **Node.js library**, not a standalone web server. For the current testing phase, use the AppState session-validation smoke test. Do not deploy the Meta Page webhook example for personal-account testing.
 
-## Supported deployment target
+## Current test scope
+
+The AppState smoke test validates an owner-supplied Facebook session over HTTPS and reports the account ID, session state, and validation time. It does **not** establish the private Messenger realtime connection, subscribe to events, send messages, or make this package a drop-in GoatBot FCA replacement.
+
+Native email/password login is intentionally deferred. The test runner rejects credential mode and only accepts cookie/AppState data.
+
+## Requirements
 
 - Node.js 20 or 22.
-- A host that can run a long-lived Node.js web service (for example, Railway or Render).
-- A trusted HTTPS ingress in front of the example's HTTP listener.
-- A Meta app and Facebook Page configured for Messenger Platform.
-- A Page access token and the permissions approved for the app.
+- The repository checked out on `public-package`.
+- A valid, owner-controlled AppState/cookie export.
+- Network access to Facebook over HTTPS.
 
-## Required environment
+## Prepare the AppState file
 
-Set these values in the hosting provider's secret/environment settings. Do not commit real values:
+Put only the cookie/AppState data in the project-root `account.txt`. Accepted formats are:
+- Raw cookie header (`c_user=...; xs=...`).
+- Netscape cookie export.
+- JSON cookie array.
 
-- `META_PAGE_ACCESS_TOKEN`
-- `META_PAGE_ID`
-- `META_GRAPH_API_VERSION` — a Graph API version supported by the Meta app.
-- `META_APP_SECRET`
-- `META_WEBHOOK_VERIFY_TOKEN`
-- `PORT` — normally supplied by the hosting provider; the example defaults to 3000.
+Alternatively, put a JSON cookie array in `appstate.json`.
 
-The example does not need the optional OmegA license or session-encryption variables to run the Page webhook transport.
+Do not put email, username, password, 2FA seed/code, or tokens in `account.txt`. Do not commit either file. Both are ignored by `.gitignore`.
 
-## Build and start
+## Run the smoke test
 
-The repository currently has no compile/build step and no runtime npm dependencies. From the repository root:
+From the OmegA-FCA repository root:
 
-```bash
+~~~bash
 npm ci
 npm test
 npm run test:syntax
-npm pack --dry-run
-node examples/meta-messenger-server.js
-```
+npm run test:appstate
+~~~
 
-Configure the hosting provider's start command as:
+The AppState test command is a live network check and is intentionally **not** part of CI. It prints only the Facebook user ID, session state, timestamp, and a safe error summary; it never prints cookie values.
 
-```bash
-node examples/meta-messenger-server.js
-```
+If the package is installed inside a GoatBot project and the account file is in the GoatBot project root, run the example from that project root:
 
-Configure the health check path as `/healthz`. Configure Meta's webhook callback URL as `https://YOUR_DOMAIN/webhook`, with the exact same verify token as `META_WEBHOOK_VERIFY_TOKEN`. Subscribe the Page to the Messenger webhook fields required by the application.
+~~~bash
+node node_modules/@omega/fca/examples/appstate-session-check.js
+~~~
 
-## Network and security requirements
+This command validates the AppState session layer only. It does not prove that GoatBot can receive Messenger events through OmegA-FCA.
 
-- Expose only HTTPS publicly. Terminate TLS at the hosting provider's trusted ingress and keep the Node HTTP listener private behind it.
-- Preserve the original raw POST body. Do not parse/re-serialize JSON before signature verification.
-- Do not log access tokens, app secrets, verify tokens, cookies, AppState, passwords, or 2FA material.
-- Keep the service's environment variables in the provider's secret manager.
-- Restrict access to deployment logs and rotate Page tokens if they are exposed.
-- The example caps webhook request bodies at 1 MiB and returns a generic error response for invalid webhook requests.
-- Configure provider-level restart and resource limits; this sample does not include a durable queue, database, or replay store.
+## Railway / Render notes
 
-## Release checks
+For this phase, deploy the **existing GoatBot application** with its currently working FCA dependency unchanged. Keep its `account.txt` as a private runtime file/volume or use the bot's existing secure session mechanism. Do not bake AppState into the image, commit it, print it in logs, or place it in a public build artifact.
 
-The CI workflow runs on Node 20 and 22 and performs:
+OmegA-FCA can be installed as a package dependency only after the owner deliberately configures access to the private GitHub repository. Do not replace GoatBot's current FCA dependency yet: the full transport and API compatibility gates are not complete.
 
-1. `npm test`
-2. Recursive JavaScript syntax validation.
-3. Root package export smoke test.
-4. `npm pack --dry-run --json` to validate the package archive contents.
+## Release / CI checks
 
-`prepublishOnly` repeats the unit tests and syntax validation before an npm publish command. This branch has not been published. Before publishing, confirm that the npm scope `@omega` is controlled by the project owner and that the intended package name/version are available.
+The repository CI is intended to run on Node 20 and 22 and performs:
+1. `npm ci`
+2. `npm test`
+3. Recursive JavaScript syntax validation.
+4. Root package export smoke test.
+5. `npm pack --dry-run --json`.
 
-## Not deploy-ready as personal-account FCA
+`prepublishOnly` repeats unit tests and syntax validation before npm publishing. This branch is not being published as an npm package during the AppState test phase.
 
-The following capabilities are still absent and are hard blockers for replacing an existing FCA in GoatBot:
+## Not yet deploy-ready as a standalone personal FCA
 
-- Native personal-account authentication and AppState lifecycle.
-- Personal-account HTTP/GraphQL actions and legacy FCA response normalization.
-- Facebook realtime MQTT/WebSocket transport and event decoding.
-- Full GoatBot call-site compatibility and authorized end-to-end integration tests.
+These remain hard blockers for replacing the existing GoatBot FCA:
+- Native email/password login (deferred by current project decision).
+- A complete personal-account action/API layer.
+- Messenger realtime transport, subscriptions, acknowledgements, and event decoding.
+- Full legacy FCA method/event parity and GoatBot call-site coverage.
+- Authorized end-to-end tests for message receive/send, groups, reconnect, and session expiry.
 
-Do not point an existing GoatBot deployment at this package as a drop-in replacement. Deploy the Page webhook example only for the Page-based features described above.
+Do not point the live GoatBot deployment at OmegA-FCA as a drop-in replacement until those gates pass.
+
+## Separate Page webhook example
+
+The repository also contains an official Meta Messenger **Page** webhook example. It is unrelated to personal-profile AppState testing and requires a Page token, Meta app configuration, webhook verification, and separate deployment settings. Do not use it for this task.
