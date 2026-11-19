@@ -6,7 +6,7 @@
 - Cookie/AppState parsing and validation, encrypted session helpers, restrictive file permissions and secret redaction.
 - **New:** `FB_USERNAME` input is normalized by `createClient`, typed in the public API, and mapped by the GoatBot compatibility login adapter while preserving legacy email support.
 - **New native personal-session foundation:** `createPersonalSession()` validates an owner-supplied AppState against Facebook over HTTPS, scopes session cookies to Facebook/Messenger hosts, provides bounded-time authenticated web requests, and reports expired sessions/checkpoints without bypassing them.
-- Bounded HTTPS request helper and secure cookie jar.
+- Bounded HTTPS request helper and secure cookie jar.\n- **New authenticated Facebook web client:** `createFacebookWebClient()` adds token-aware POST form serialization, GET/HEAD/POST handling, strict Facebook/Messenger HTTPS host validation, manual redirect classification (checkpoint/expired/unexpected), normalized JSON/error responses, and 2 MiB inbound/outbound body limits. It intentionally does not invent private action endpoints or payload schemas.
 - Connection supervisor with bounded reconnect/backoff, listener recovery and abortable connect attempts.
 - Event dispatcher with duplicate coalescing, success-only acknowledgement and per-thread ordering.
 - Injectable transport contract and GoatBot callback-login adapter.
@@ -19,7 +19,7 @@
 
 This package is **not yet a standalone, drop-in personal-account FCA replacement**.
 
-- OmegA-FCA does not yet implement the full personal-account authentication flow (username/password + 2FA), Facebook private HTTP/GraphQL action layer, or response normalization. The new AppState session bootstrap is only the first authentication/session layer. Username/password login is not yet implemented natively; the username field is currently an input contract for the future auth provider.
+- OmegA-FCA does not yet implement the full personal-account authentication flow (username/password + 2FA), complete Facebook private HTTP/GraphQL action catalog or endpoint-specific payload schemas. The new AppState session bootstrap and generic authenticated web-client layer are session/request foundations only; they do not constitute the FCA action API. Username/password login is not yet implemented natively; the username field is currently an input contract for the future auth provider.
 - OmegA-FCA does not yet implement Facebook web-client MQTT/WebSocket protocol or event decoding. The legacy adapter remains a temporary compatibility/test utility and is not the target runtime; the goal is a native OmegA-FCA transport.
 - Full parity with every legacy FCA method, event shape, and GoatBot call site has not been proven.
 - No authorized live personal-account end-to-end test has been run from this repository.
@@ -29,6 +29,6 @@ The adapter is a compatibility bridge, not a claim that the missing Facebook pro
 
 ## Verification gate
 
-Synthetic AppState session and adapter tests have been added. GitHub Actions must run on the latest branch commit before claiming the test suite passes. A real authorized account test is still required for login, MQTT readiness, message receive/send, group actions, reconnect, and checkpoint/session-expiry reporting.
+Synthetic AppState session, authenticated web-client, redirect-classification, body-limit and adapter tests have been added. GitHub Actions must run on the latest branch commit before claiming the test suite passes. A real authorized account test is still required for login, MQTT readiness, message receive/send, group actions, reconnect, and checkpoint/session-expiry reporting.
 
 Never commit live cookies, AppState, passwords, 2FA material, Page tokens, or encryption keys. Do not bypass checkpoints or platform security controls.
