@@ -11,7 +11,7 @@ function publicChallenge(value) {
   }
   const type = typeof value.type === "string" && value.type.trim()
     ? value.type.trim().slice(0, 64) : "verification";
-  const message = typeof value.message === "string" ? value.message.slice(0, 500) : null;
+  // Provider messages may echo credentials, cookies, or challenge answers.\n  // Keep the public prompt generic; the provider may retain richer private state.\n  const message = "Additional account verification is required.";
   const methods = Array.isArray(value.methods)
     ? value.methods.filter(item => typeof item === "string").map(item => item.trim().slice(0, 64)).filter(Boolean).slice(0, 10) : [];
   return Object.freeze({ type, message, methods: Object.freeze(methods) });
@@ -33,7 +33,7 @@ function createAuthenticationAttempt({ authenticate, maxChallengeRounds = 3 } = 
 
   let state = "idle";
   let challenge = null;
-  let resumeProvider = null;
+  let resumeProvider = null;\n  let cancelProvider = null;
   let credentials = null;
   let options = null;
   let session = null;
