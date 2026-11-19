@@ -18,7 +18,8 @@ function createGoatBotLogin(client) {
         mode: "credentials",
         email: input.email,
         password: input.password || input.pass,
-        twoFactorSecret: input.twoFactorSecret || input.twoFactorSecretOrCode || input["2FASecret"] || null,
+        twoFactorSecret: input.twoFactorSecret || input["2FASecret"] || null,
+        twoFactorCode: input.twoFactorCode || input.twoFactorCodeOrCode || input["2FACode"] || null,
         userAgent: input.userAgent || null,
         proxy: input.proxy || null
       };
