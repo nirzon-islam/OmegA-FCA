@@ -35,11 +35,10 @@ The Page token is sent as an Authorization Bearer header and is never added to t
 
 ## Inbound webhook events
 
-The host application owns the HTTPS server and Meta webhook subscription. Preserve the exact raw request bytes before parsing JSON, then pass both parsed payload and raw bytes to `publishWebhook`. The provider verifies the HMAC-SHA256 signature before emitting normalized events.
+The host application owns the HTTPS server and Meta webhook subscription. Preserve the exact raw request bytes before parsing JSON, then pass both parsed payload and raw bytes to `publishWebhook`. The provider verifies the HMAC-SHA256 signature over the original bytes, parses JSON from those same verified bytes, and only then emits normalized events. Webhook bodies are limited to 1 MiB.
 
 ```js
 const rawBody = Buffer.from(requestBodyBytes);
-const payload = JSON.parse(rawBody.toString("utf8"));
 const signature = request.headers["x-hub-signature-256"];
 
 transport.listen((error, event) => {
@@ -47,7 +46,7 @@ transport.listen((error, event) => {
   console.log(event.type, event.senderID, event);
 });
 
-transport.publishWebhook(payload, rawBody, signature);
+transport.publishWebhook(rawBody, signature);
 ```
 
 Do not parse and re-serialize the body before signature verification: the signature is calculated over the original bytes. Reject webhook requests that fail verification. Configure the Meta webhook verification handshake and HTTPS endpoint in your application; this package does not create or expose a web server.
