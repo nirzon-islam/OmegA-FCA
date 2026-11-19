@@ -18,6 +18,7 @@ export interface PersonalSession {
   readonly state: "active";
   readonly validatedAt: number;
   getCookieHeader(url?: string | URL): string;
+  request(input: string | URL, options?: RequestInit): Promise<Response>;
   getAppState(): Cookie[];
   close(): void;
 }
