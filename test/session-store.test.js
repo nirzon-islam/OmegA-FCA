@@ -68,3 +68,17 @@ test("session encryption rejects oversized plaintext and malformed base64url env
     /Invalid encrypted session envelope/
   );
 });
+
+
+test("session store refuses symbolic-link session files", { skip: process.platform === "win32" }, () => {
+  const directory = fs.mkdtempSync(path.join(os.tmpdir(), "omega-fca-test-"));
+  const target = path.join(directory, "outside.enc");
+  const link = path.join(directory, "session.enc");
+  try {
+    fs.writeFileSync(target, JSON.stringify({ version: 1, ciphertext: "synthetic" }));
+    fs.symlinkSync(target, link);
+    assert.throws(() => loadSession(link, "a".repeat(64)));
+  } finally {
+    fs.rmSync(directory, { recursive: true, force: true });
+  }
+});
