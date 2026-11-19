@@ -9,7 +9,7 @@ test("scopes cookies by host, path, secure flag, and expiry", () => {
   const jar = new CookieJar([
     { key: "root", value: "r", domain: "facebook.com", path: "/", hostOnly: false },
     { key: "mobile", value: "m", domain: "m.facebook.com", path: "/messages", hostOnly: true },
-    { key: "secure", value: "s", domain: "facebook.com", path: "/", secure: true },
+    { key: "secure", value: "s", domain: "facebook.com", path: "/", hostOnly: false, secure: true },
     { key: "expired", value: "x", domain: "facebook.com", path: "/", expires: now - 1000 }
   ], { now: () => now });
   assert.equal(jar.getCookieHeader("https://m.facebook.com/messages/inbox"), "mobile=m; root=r; secure=s");
