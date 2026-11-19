@@ -36,7 +36,8 @@ test("GoatBot adapter maps credential aliases without persisting secrets", async
   await login({
     email: "owner@example.test",
     pass: "synthetic-password",
-    twoFactorSecretOrCode: "123456",
+    twoFactorSecret: "synthetic-secret",
+    twoFactorCode: "123456",
     userAgent: "test-agent",
     proxy: "http://127.0.0.1:8080"
   }, () => {});
@@ -44,10 +45,19 @@ test("GoatBot adapter maps credential aliases without persisting secrets", async
     mode: "credentials",
     email: "owner@example.test",
     password: "synthetic-password",
-    twoFactorSecret: "123456",
+    twoFactorSecret: "synthetic-secret",
+    twoFactorCode: "123456",
     userAgent: "test-agent",
     proxy: "http://127.0.0.1:8080"
   });
+});
+
+test("GoatBot legacy twoFactorSecretOrCode alias maps to a manual code", async () => {
+  let received;
+  const login = createGoatBotLogin({ async login(credentials) { received = credentials; return {}; } });
+  await login({ email: "owner@example.test", password: "example-password", twoFactorSecretOrCode: "654321" }, () => {});
+  assert.equal(received.twoFactorCode, "654321");
+  assert.equal(received.twoFactorSecret, null);
 });
 
 test("GoatBot adapter supports callback as second argument", async () => {
