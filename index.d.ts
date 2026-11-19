@@ -19,6 +19,7 @@ export interface Credentials {
   email?: string;
   password?: string;
   twoFactorSecret?: string | null;
+  twoFactorCode?: string | null;
   userAgent?: string | null;
   proxy?: unknown;
 }
