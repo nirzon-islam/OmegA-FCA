@@ -6,7 +6,8 @@ function createLicenseProvider({ backendUrl, licenseId, installationId, licenseK
   if (typeof backendUrl !== "string" || !backendUrl.trim()) throw new TypeError("License backend URL is required");
   let parsed;
   try { parsed = new URL(backendUrl); } catch { throw new TypeError("License backend URL is invalid"); }
-  if (parsed.protocol !== "https:" && parsed.hostname !== "localhost") throw new TypeError("License backend must use HTTPS");
+  if (parsed.protocol !== "https:" && !(parsed.protocol === "http:" && parsed.hostname === "localhost")) throw new TypeError("License backend must use HTTPS (HTTP is allowed only on localhost)");
+  if (parsed.username || parsed.password || parsed.search || parsed.hash) throw new TypeError("License backend URL must not contain credentials, query parameters, or a fragment");
   if (typeof fetchImpl !== "function") throw new TypeError("Fetch implementation is unavailable");
   if (typeof licenseId !== "string" || !/^lic_[a-f0-9]{32}$/.test(licenseId) ||
       typeof installationId !== "string" || !installationId ||
