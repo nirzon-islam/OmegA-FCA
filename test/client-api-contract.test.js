@@ -180,7 +180,7 @@ test("client disposes a provider result that violates the transport contract", a
   });
   await assert.rejects(
     client.login({ mode: "appstate", appState }),
-    /Connection stopped before authentication completed/
+    /missing required method: listen/
   );
   assert.equal(disconnects, 1);
   await client.logout();

@@ -103,12 +103,15 @@ function createClient({ authenticate, options = {}, reconnect = {}, license = {}
       throw new TypeError("Login mode must be appstate, cookie, or credentials");
     }
 
+    let lastConnectError = null;
     supervisor = new ConnectionSupervisor({
       connect: async context => {
-        const result = await authenticate({ mode, credentials: normalized, options: loginOptions || {}, context, license: verifiedLicense });
+        let result;
         try {
+          result = await authenticate({ mode, credentials: normalized, options: loginOptions || {}, context, license: verifiedLicense });
           return validateTransportDriver(result);
         } catch (error) {
+          lastConnectError = error;
           // A provider may allocate resources before returning an invalid
           // driver. Dispose it before surfacing the permanent contract error.
           if (result && typeof result.disconnect === "function") {

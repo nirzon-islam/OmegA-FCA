@@ -138,7 +138,7 @@ function createMetaMessengerTransport({
     return postSendApi({ recipient: { id: recipientId }, sender_action: action });
   }
 
-  function sendTypingIndicator(recipientId, typing = true) {
+  async function sendTypingIndicator(recipientId, typing = true) {
     if (typeof typing !== "boolean") throw new TypeError("typing must be a boolean");
     return sendSenderAction(recipientId, typing ? "typing_on" : "typing_off");
   }
