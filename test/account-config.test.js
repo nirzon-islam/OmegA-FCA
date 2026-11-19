@@ -41,6 +41,17 @@ test("rejects incomplete credentials and paths outside project root", () => with
   assert.throws(() => loadAccountConfig({ cwd: root, accountFile: "../outside.txt", env: {} }), /inside the project root/);
 }));
 
+test("rejects account and AppState symlinks that escape the project root", () => withRoot(root => {
+  const outside = path.join(os.tmpdir(), "omega-fca-outside-" + process.pid + ".txt");
+  fs.writeFileSync(outside, "fb_username=owner\\nfb_password=secret");
+  try {
+    fs.symlinkSync(outside, path.join(root, "account.txt"));
+    assert.throws(() => loadAccountConfig({ cwd: root, env: {} }), /resolve inside the project root/);
+  } finally {
+    fs.rmSync(outside, { force: true });
+  }
+}));
+
 test("rejects unsupported and duplicate account.txt keys", () => {
   assert.throws(() => parseAccountText("password=bad"), /Unsupported account.txt key/);
   assert.throws(() => parseAccountText("fb_email=a\nfb_email=b"), /Duplicate account.txt key/);
