@@ -1,0 +1,41 @@
+OmegA-FCA Proprietary License
+Version 1.0 — 19 November 2026
+
+Copyright (c) 2026 NirZon. All rights reserved.
+
+1. Ownership
+OmegA-FCA, including its source code, documentation, designs, and related materials (the "Software"), is proprietary. Except for rights expressly granted in a written license by the copyright holder, all rights are reserved.
+
+2. No automatic license
+Access to this repository, possession of a copy, or receipt of the Software does not by itself grant permission to use, copy, modify, publish, distribute, sublicense, sell, or make the Software available to any other person.
+
+3. Limited use by approved licensees
+A person or organization may install and run the Software only after receiving explicit written authorization from the copyright holder and accepting the applicable license terms. An approved license may be limited by user, project, bot account, deployment, time period, or other scope stated in that authorization.
+
+4. Restrictions
+Unless the copyright holder gives prior written permission, you may not:
+- publish, share, sell, rent, sublicense, or redistribute the Software or any portion of it;
+- make the source code or derivative works available to unauthorized people;
+- remove or alter copyright, license, or proprietary notices;
+- use another person's license key, bypass license checks, or interfere with licensing or security controls;
+- claim ownership of the Software or present it as your own independently developed product.
+
+5. Modifications and contributions
+No right to modify or create derivative works is granted unless the written authorization expressly allows it. Any contribution or proposed change is subject to a separate written agreement; submitting a contribution does not transfer ownership unless agreed in writing.
+
+6. Third-party components
+Some versions may include or depend on third-party software. Those components remain subject to their own licenses. This license does not override third-party license terms. Required third-party notices must be preserved.
+
+7. No warranty
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE, AND NON-INFRINGEMENT. TO THE MAXIMUM EXTENT PERMITTED BY LAW, THE COPYRIGHT HOLDER SHALL NOT BE LIABLE FOR ANY CLAIM, DAMAGES, OR OTHER LIABILITY ARISING FROM THE SOFTWARE OR ITS USE.
+
+8. Compliance and platform rules
+Licensees are responsible for complying with applicable laws and the terms, policies, and security measures of any third-party platform they interact with. This license does not authorize bypassing authentication, checkpoints, rate limits, or other platform security controls.
+
+9. Termination
+Permission ends automatically if a licensee materially breaches these terms. On termination, the licensee must stop using the Software and delete copies under their control, except where retention is required by law. The copyright holder may also suspend or revoke a license as provided in the applicable written authorization.
+
+10. Requests for permission
+For written permission, commercial terms, or a separate license agreement, contact the copyright holder through the official OmegA-FCA project channels.
+
+This license is a project-specific template, not legal advice. Its enforceability and suitability should be reviewed by a qualified lawyer in the relevant jurisdiction before commercial distribution.
