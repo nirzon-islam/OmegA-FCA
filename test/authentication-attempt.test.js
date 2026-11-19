@@ -82,10 +82,12 @@ test("closing an authenticated attempt closes its owned session", async () => {
 
 test("provider failures discard pending challenge state", async () => {
   const attempt = createAuthenticationAttempt({
-    authenticate: async () => { throw Object.assign(new Error("rejected"), { code: "AUTH_REJECTED" }); }
+    authenticate: async () => { throw Object.assign(new Error("provider echoed password hunter2"), { code: "AUTH_REJECTED" }); }
   });
   await assert.rejects(attempt.begin({}), /rejected/);
   assert.equal(attempt.snapshot().state, "failed");
   assert.equal(attempt.snapshot().error.code, "AUTH_REJECTED");
+  assert.equal(attempt.snapshot().error.message, "Authentication failed; inspect the provider error securely");
+  assert.equal(JSON.stringify(attempt.snapshot()).includes("hunter2"), false);
   await assert.rejects(attempt.submitChallenge("123456"), /No authentication challenge/);
 });
