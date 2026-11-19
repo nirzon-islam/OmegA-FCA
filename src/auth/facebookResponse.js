@@ -1,6 +1,6 @@
 "use strict";
 
-const { classifySessionState } = require("./sessionState");
+const { classifySessionState } = require("../security/sessionState");
 
 function createFacebookError(message, { code, status, sessionState = "error", retryable } = {}) {
   const error = new Error(message || "Facebook request failed");
