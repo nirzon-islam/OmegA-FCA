@@ -1,6 +1,6 @@
 # OmegA-FCA implementation status
 
-Last successful full CI run: #44467563604 on commit `b944f7ebf63c039e69d0cca41562e37c1196ce78` (`public-package`). Later security and type-definition changes are pending a fresh full CI run.
+Last successful full CI run: #44468681035 on commit `e4825063e79fe884498f4eff5b034095065b1785` (`public-package`). Both Node 20 and Node 22 jobs passed `npm test` and `npm run test:syntax`.
 
 ## Implemented and CI-validated
 
@@ -18,6 +18,8 @@ Last successful full CI run: #44467563604 on commit `b944f7ebf63c039e69d0cca4156
   - Page access token via Authorization header.
   - Configurable Graph API version.
   - Send API message requests with no automatic retry of POST sends.
+  - Typing-on, typing-off, and mark-seen sender actions.
+  - Page Conversations list, conversation detail, conversation message history, and individual message reads with bounded pagination and safe Graph API error propagation.
   - HMAC-SHA256 webhook signature verification over original raw bytes.
   - Payload parsing only after signature verification.
   - Webhook challenge verification.
@@ -26,7 +28,7 @@ Last successful full CI run: #44467563604 on commit `b944f7ebf63c039e69d0cca4156
 - Runnable Node.js webhook server example and environment template.
 - CI matrix validates Node 20 and 22 with `npm test` and recursive syntax checks, including examples (last successful run above).
 - TypeScript declarations are published through the package `types` entry; package wiring is covered by tests, but a full `tsc` compile check is not yet included.
-- Public TypeScript declaration file and package `types` entry have been added; declaration type-checking is not yet part of CI.
+- Public TypeScript declaration file and package `types` entry have been added; package wiring is covered by tests, but a full `tsc` compile check is not yet included.
 
 ## Explicitly not implemented
 

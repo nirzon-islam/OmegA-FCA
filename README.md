@@ -14,16 +14,16 @@ Current feature and release status: [docs/IMPLEMENTATION-STATUS.md](docs/IMPLEME
 - Secret redaction for diagnostics
 - AES-256-GCM session encryption and encrypted file persistence helpers (with symlink-resistant reads and atomic writes)
 - Connection supervision with bounded reconnect/backoff
-- Event dispatching with duplicate suppression and per-thread ordering
+- Event dispatching with in-flight duplicate coalescing, retry-safe acknowledgement, and per-thread ordering
 - Cookie jar and bounded HTTPS request helper
 - GoatBot callback-style login adapter
-- Official Meta Messenger Page transport (Page token, Send API, signed webhook ingestion)
+- Official Meta Messenger Page transport (Page token, send/read conversation APIs, typing/read actions, signed webhook ingestion)
 - Optional Ed25519 license verification for deployments that explicitly need it
 - Public TypeScript declarations (`index.d.ts`) for the currently implemented API
 
 ## Important implementation status
 
-The package is **not a drop-in replacement for a personal-account FCA**. The official Meta Messenger Page transport is implemented separately and supports Page-token Send API calls plus HMAC-verified webhook events. Personal-account browser-session authentication, private HTTP/GraphQL actions, MQTT wire protocol, and legacy GoatBot personal-inbox compatibility are not implemented. The generic `createClient({ authenticate })` still requires a transport provider. See [the official Meta transport guide](docs/META-MESSENGER-TRANSPORT.md).
+The package is **not a drop-in replacement for a personal-account FCA**. The official Meta Messenger Page transport is implemented separately and supports Page-token Send API calls, Page conversation/message reads, sender actions, and HMAC-verified webhook events. Personal-account browser-session authentication, private HTTP/GraphQL actions, MQTT wire protocol, and legacy GoatBot personal-inbox compatibility are not implemented. The generic `createClient({ authenticate })` still requires a transport provider. See [the official Meta transport guide](docs/META-MESSENGER-TRANSPORT.md).
 
 Do not use this package as a drop-in replacement for an existing FCA until the Facebook transport and integration tests are complete.
 
