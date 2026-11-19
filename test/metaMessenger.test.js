@@ -6,7 +6,8 @@ const { createHmac } = require("node:crypto");
 const {
   createMetaMessengerTransport,
   normalizeWebhookPayload,
-  verifyWebhookSignature
+  verifyWebhookSignature,
+  verifyWebhookChallenge
 } = require("../src/transport/metaMessenger");
 
 const config = {
@@ -107,4 +108,16 @@ test("Meta transport parses only the raw bytes covered by the webhook signature"
   assert.equal(received[0].messageID, "signed-mid");
   assert.equal(received[0].text, "signed");
   transport.disconnect();
+});
+
+
+test("Meta webhook challenge requires subscribe mode and timing-safe token match", () => {
+  const query = {
+    "hub.mode": "subscribe",
+    "hub.verify_token": "synthetic-verify-token",
+    "hub.challenge": "challenge-123"
+  };
+  assert.equal(verifyWebhookChallenge(query, "synthetic-verify-token"), "challenge-123");
+  assert.equal(verifyWebhookChallenge(query, "wrong-token"), null);
+  assert.equal(verifyWebhookChallenge({ ...query, "hub.mode": "unsubscribe" }, "synthetic-verify-token"), null);
 });
