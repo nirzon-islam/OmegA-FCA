@@ -66,6 +66,7 @@ function collectResponseCookies(response, requestUrl) {
     : (response.headers?.get?.("set-cookie") ? [response.headers.get("set-cookie")] : []);
   const host = requestUrl.hostname.toLowerCase();
   const accepted = [];
+  const deletions = [];
   for (const line of raw) {
     if (typeof line !== "string" || line.length > 16_384) continue;
     const parts = line.split(";");
@@ -74,8 +75,7 @@ function collectResponseCookies(response, requestUrl) {
     if (equals <= 0) continue;
     const key = first.slice(0, equals).trim();
     const value = first.slice(equals + 1).trim();
-    if (!value) continue;
-    const cookie = { key, value, domain: host, path: "/", hostOnly: true, secure: false, httpOnly: false };
+    const cookie = { key, value: value || "deleted", domain: host, path: "/", hostOnly: true, secure: false, httpOnly: false };
     let maxAge = null;
     for (const rawAttribute of parts) {
       const index = rawAttribute.indexOf("=");
@@ -101,13 +101,15 @@ function collectResponseCookies(response, requestUrl) {
       }
     }
     if (cookie.invalidDomain || !/^[A-Za-z0-9_-]{1,80}$/.test(key)) continue;
-    if (maxAge !== null) {
-      if (maxAge <= 0) continue;
-      cookie.expires = Math.floor(Date.now() / 1000) + maxAge;
+    const expiredByDate = Number.isFinite(cookie.expires) && cookie.expires <= Math.floor(Date.now() / 1000);
+    if (!value || maxAge !== null && maxAge <= 0 || expiredByDate) {
+      deletions.push({ key, domain: cookie.domain, path: cookie.path });
+      continue;
     }
+    if (maxAge !== null) cookie.expires = Math.floor(Date.now() / 1000) + maxAge;
     accepted.push(cookie);
   }
-  return accepted;
+  return { accepted, deletions };
 }
 
 function extractIdentity(html) {
@@ -236,8 +238,9 @@ async function createPersonalSession({
             redirect: "manual",
             signal: requestController.signal
           });
-          const updatedCookies = collectResponseCookies(response, target);
-          if (updatedCookies.length) jar.setCookies(updatedCookies);
+          const { accepted, deletions } = collectResponseCookies(response, target);
+          if (accepted.length) jar.setCookies(accepted);
+          if (deletions.length) jar.deleteCookies(deletions);
           return response;
         } finally {
           clearTimeout(timeout);
