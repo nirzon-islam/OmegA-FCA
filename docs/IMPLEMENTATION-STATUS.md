@@ -12,6 +12,7 @@
 - Injectable transport contract and GoatBot callback-login adapter.
 - **New:** `createLegacyFcaProvider()` bridges an existing callback-style personal-account FCA implementation into OmegA-FCA's transport contract. It maps AppState or credentials login, manual 2FA inputs, current-user lookup, MQTT listener lifecycle and supported FCA methods.
 - Manual 2FA input plumbing; checkpoint and expired-session classification. The owner must resolve Facebook challenges through the platform.
+- Provider-neutral authentication-attempt coordinator with bounded challenge rounds, single-use continuation, optional provider cleanup on cancellation, and secret-safe public snapshots. This is lifecycle plumbing only; no Facebook credential provider is included.
 - Optional Ed25519 licensing and signed update-manifest verification.
 - Separate official Meta Messenger Page transport and webhook example.
 
