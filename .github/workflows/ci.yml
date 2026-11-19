@@ -25,6 +25,7 @@ jobs:
       - run: npm test
       - run: npm run test:syntax
       - name: Smoke-test package root exports
-        run: node -e "const p=require('.'); for (const k of ['createClient','createGoatBotLogin','createMetaMessengerTransport','verifyWebhookSignature']) if (typeof p[k] !== 'function') throw new Error('Missing export: '+k)"
+        run: |
+          node -e 'const p=require("./"); for (const k of ["createClient","createGoatBotLogin","createMetaMessengerTransport","verifyWebhookSignature"]) if (typeof p[k] !== "function") throw new Error("Missing export "+k)'
       - name: Verify publishable package contents
         run: npm pack --dry-run --json
