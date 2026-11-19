@@ -70,6 +70,13 @@ function createClient({ authenticate, options = {}, reconnect = {}, license = {}
 
   async function login(credentials = {}, loginOptions = options) {
     if (supervisor && supervisor.snapshot().connected) return api;
+    if (supervisor && ["connecting", "reconnecting"].includes(supervisor.snapshot().state)) {
+      throw new Error("A login attempt is already in progress");
+    }
+    if (supervisor && ["failed", "stopped"].includes(supervisor.snapshot().state)) {
+      await supervisor.stop();
+      supervisor = null;
+    }
     await checkLicense();
     const mode = credentials.mode;
     let normalized;
