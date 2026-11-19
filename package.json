@@ -23,5 +23,6 @@
     "fca",
     "nodejs",
     "omega"
-  ]
+  ],
+  "types": "index.d.ts"
 }
