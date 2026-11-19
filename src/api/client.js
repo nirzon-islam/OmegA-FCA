@@ -4,6 +4,13 @@ const { validateSessionCookies, parseCookieHeader } = require("../security/cooki
 const { ConnectionSupervisor } = require("../runtime/connection");
 const { verifyLicenseToken } = require("../license/verify");
 
+const METHOD_FEATURES = Object.freeze({
+  sendMessage: "messaging", unsendMessage: "messaging", markAsRead: "messaging", sendTypingIndicator: "messaging",
+  getUserInfo: "threads", getThreadInfo: "threads", getThreadList: "threads", getThreadHistory: "threads", getMessage: "threads", getFriendsList: "threads", getUserID: "threads",
+  addUserToGroup: "groups", removeUserFromGroup: "groups", createNewGroup: "groups", changeNickname: "groups",
+  setMessageReaction: "reactions"
+});
+
 const DRIVER_METHODS = [
   "sendMessage", "getUserInfo", "getThreadInfo", "getThreadList", "getCurrentUserID",
   "markAsRead", "setMessageReaction", "sendTypingIndicator", "unsendMessage",
@@ -105,7 +112,7 @@ function createClient({ authenticate, options = {}, reconnect = {}, license = {}
       if (typeof driver[method] === "function") facade[method] = driver[method].bind(driver);
     }
     facade.getCurrentUserID = () => userId;
-    facade.listen = callback => supervisor.listen(callback);
+    facade.listen = callback => {\n      if (requireLicense && !verifiedLicense.features.includes("events")) throw new Error("License does not include the events feature");\n      return supervisor.listen(callback);\n    };
     facade.listenMqtt = callback => {
       if (typeof callback !== "function") throw new TypeError("MQTT callback is required");
       if (detachMqtt) throw new Error("MQTT listener is already active");
