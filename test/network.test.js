@@ -183,3 +183,19 @@ test("request client stops during retry backoff when the caller aborts", async (
   finishSleep?.();
   assert.equal(calls, 1);
 });
+
+
+
+test("request client does not return a response after caller cancellation", async () => {
+  const controller = new AbortController();
+  const request = createRequestClient({
+    fetchImpl: async () => {
+      controller.abort(new Error("cancelled while fetching"));
+      return response(200);
+    }
+  });
+  await assert.rejects(
+    request("https://www.facebook.com/", { signal: controller.signal }),
+    /cancelled while fetching/
+  );
+});
