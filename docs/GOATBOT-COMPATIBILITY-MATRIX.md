@@ -11,7 +11,7 @@ This matrix separates what the current OmegA-FCA facade exposes from what still 
 
 | GoatBot expectation | Current OmegA-FCA status | Notes |
 |---|---|---|
-| `login({ appState }, options, callback)` | Partial | `createGoatBotLogin` maps AppState arrays and credential aliases to `createClient.login`; no native Facebook authentication. |
+| `login({ appState }, options, callback)` | Partial | `createGoatBotLogin` maps AppState arrays, credentials, and a separately supplied `twoFactorCode` to `createClient.login`; no native Facebook authentication. |
 | `getCurrentUserID()` | Conditional | Exposed after login; returns the driver identity converted to a string, or null. |
 | `listenMqtt(callback)` | Conditional | Adapts the driver's `listen` to error-first `(error, event)`; requires a working driver. |
 | `stopListening(callback?)` | Implemented at facade boundary | Detaches the active listener and invokes an optional callback. |
@@ -33,7 +33,7 @@ The client exposes each method below only when the injected driver provides that
 
 ## Required work before migration
 
-- Implement and review a legitimate, owner-controlled authentication/session flow, including explicit owner-completed challenge/checkpoint handling.
+- Implement and review a legitimate, owner-controlled authentication/session flow. The provider input now supports a manually entered `twoFactorCode`; checkpoint resolution remains manual and must be completed by the account owner before retrying with the authorized session.
 - Implement HTTP action serialization, response/error normalization, and safe retry policy. Do not automatically retry non-idempotent sends.
 - Implement realtime transport, bounded frame parsing, event decoding/normalization, readiness semantics, reconnect and deterministic shutdown.
 - Inventory every FCA call site across GoatBot commands, events, dashboard, database and custom scripts; this document is not a complete call-site inventory.
