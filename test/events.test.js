@@ -69,3 +69,43 @@ test("validates duplicate cache options", () => {
   assert.throws(() => new EventDispatcher({ ttlMs: Infinity }), /ttlMs/);
   assert.throws(() => new EventDispatcher({ now: 123 }), /now/);
 });
+
+
+test("coalesces concurrent duplicate deliveries while a handler is running", async () => {
+  const dispatcher = new EventDispatcher();
+  let calls = 0;
+  let release;
+  const gate = new Promise(resolve => { release = resolve; });
+  const event = { messageID: "concurrent-1", threadID: "thread-1" };
+  const first = dispatcher.dispatch(event, async () => {
+    calls++;
+    await gate;
+    return "processed";
+  });
+  const second = dispatcher.dispatch(event, async () => {
+    calls++;
+    return "duplicate-handler-ran";
+  });
+  release();
+  assert.deepEqual(await first, { duplicate: false, result: "processed" });
+  assert.deepEqual(await second, { duplicate: true });
+  assert.equal(calls, 1);
+});
+
+test("does not permanently deduplicate an event whose handler failed", async () => {
+  const dispatcher = new EventDispatcher();
+  const event = { messageID: "retry-after-error", threadID: "thread-1" };
+  await assert.rejects(dispatcher.dispatch(event, async () => {
+    throw new Error("temporary handler failure");
+  }), /temporary handler failure/);
+  assert.deepEqual(await dispatcher.dispatch(event, async () => "recovered"), {
+    duplicate: false,
+    result: "recovered"
+  });
+});
+
+test("validates duplicate cache options", () => {
+  assert.throws(() => new EventDispatcher({ ttlMs: 0 }), /ttlMs/);
+  assert.throws(() => new EventDispatcher({ ttlMs: Infinity }), /ttlMs/);
+  assert.throws(() => new EventDispatcher({ now: 123 }), /now/);
+});
