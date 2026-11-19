@@ -2,7 +2,7 @@
 
 const { EventEmitter } = require("node:events");
 
-const DEFAULTS = Object.freeze({ minDelayMs: 1000, maxDelayMs: 30000, factor: 2, jitter: 0.2 });
+const DEFAULTS = Object.freeze({ minDelayMs: 1000, maxDelayMs: 30000, factor: 2, jitter: 0.2, maxAttempts: 8 });
 
 class ConnectionSupervisor extends EventEmitter {
   constructor({ connect, disconnect, options = {}, random = Math.random, sleep = ms => new Promise(resolve => setTimeout(resolve, ms)) } = {}) {
@@ -36,7 +36,7 @@ class ConnectionSupervisor extends EventEmitter {
 
   async #startLoop() {
     let attempt = 0;
-    while (!this.stopRequested) {
+    while (!this.stopRequested && attempt < this.options.maxAttempts) {
       this.#setState(attempt ? "reconnecting" : "connecting");
       const generation = ++this.generation;
       try {
@@ -45,7 +45,11 @@ class ConnectionSupervisor extends EventEmitter {
           await this.disconnectDriver(driver);
           break;
         }
-        if (!driver || typeof driver.listen !== "function") throw new Error("Transport driver must expose listen(callback)");
+        if (!driver || typeof driver.listen !== "function") {
+          const error = new Error("Transport driver must expose listen(callback)");
+          error.retryable = false;
+          throw error;
+        }
         this.driver = driver;
         this.listenerAttached = false;
         this.#setState("connected");
@@ -54,12 +58,14 @@ class ConnectionSupervisor extends EventEmitter {
       } catch (error) {
         this.#setState("disconnected");
         this.emit("connectionError", error);
-        if (this.stopRequested) break;
-        const base = Math.min(this.options.maxDelayMs, this.options.minDelayMs * Math.pow(this.options.factor, attempt++));
+        if (this.stopRequested || error?.retryable === false) break;
+        const base = Math.min(this.options.maxDelayMs, this.options.minDelayMs * Math.pow(this.options.factor, attempt));
+        attempt++;
         const jitter = base * this.options.jitter * ((this.random() * 2) - 1);
-        await this.sleep(Math.max(0, Math.round(base + jitter)));
+        if (attempt < this.options.maxAttempts) await this.sleep(Math.max(0, Math.round(base + jitter)));
       }
     }
+    if (!this.stopRequested && this.state !== "stopped") this.#setState("failed");
     return null;
   }
 
