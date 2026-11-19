@@ -25,3 +25,4 @@ jobs:
       - run: node --check src/security/sessionCrypto.js
       - run: node --check src/security/sessionStore.js
       - run: node --check src/license/verify.js
+      - run: node --check src/license/provider.js
