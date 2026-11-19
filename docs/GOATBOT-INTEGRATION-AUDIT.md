@@ -38,7 +38,7 @@ The current account loader supports several formats before it calls FCA:
 - Legacy email/password/2FA configuration and interactive owner input.
 - Legacy token-based input paths.
 
-The current OmegA-FCA client has explicit `appstate`, `cookie`, and `credentials` modes. The compatibility adapter currently maps AppState arrays and email/password credentials; it does not yet reproduce every legacy account-file parser or interactive login behavior.
+The current OmegA-FCA client has explicit `appstate`, `cookie`, and `credentials` modes. The compatibility adapter currently maps AppState arrays and fb_email/password credentials; it does not yet reproduce every legacy account-file parser or interactive login behavior.
 
 ## Confirmed compatibility gaps
 

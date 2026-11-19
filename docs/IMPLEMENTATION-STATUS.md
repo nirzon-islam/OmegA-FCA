@@ -4,7 +4,7 @@
 
 - Node.js 20+ CommonJS package, root exports and TypeScript declarations.
 - Cookie/AppState parsing and validation, encrypted session helpers, restrictive file permissions and secret redaction.
-- **New:** `FB_USERNAME` input is normalized by `createClient`, typed in the public API, and mapped by the GoatBot compatibility login adapter while preserving legacy email support.
+- **New:** canonical `fb_email` input is normalized by `createClient` and the GoatBot compatibility adapter; legacy `email` remains a read-only config alias. `account.txt` is AppState/cookie-only.
 - **New native personal-session foundation:** `createPersonalSession()` validates an owner-supplied AppState against Facebook over HTTPS, scopes session cookies to Facebook/Messenger hosts, provides bounded-time authenticated web requests, and reports expired sessions/checkpoints without bypassing them.
 - Bounded HTTPS request helper and secure cookie jar.
 - **New safe diagnostics utility:** bounded metadata-only recorder, integrated with AppState-backed personal-session requests; excludes header/query/body/response values and credential material.
