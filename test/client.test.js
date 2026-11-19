@@ -6,7 +6,6 @@ const { createClient } = require("../src/api/client");
 
 test("client accepts a valid AppState and exposes a narrow API facade", async () => {
   const client = createClient({
-    requireLicense: false,
     authenticate: async ({ mode, credentials }) => {
       assert.equal(mode, "appstate");
       assert.equal(credentials[0].key, "c_user");
