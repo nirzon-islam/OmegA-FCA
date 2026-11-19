@@ -51,6 +51,7 @@ function createAuthenticationAttempt({ authenticate, maxChallengeRounds = 3 } = 
       authenticated: state === "authenticated",
       error: lastError ? Object.freeze({
         name: "Error",
+        code: null,
         // Provider-controlled codes can also contain echoed secrets; expose none.
         message: "Authentication failed; inspect the provider error securely"
       }) : null
