@@ -9,25 +9,15 @@ on:
 jobs:
   test:
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        node-version: [20, 22]
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: ${{ matrix.node-version }}
+          cache: npm
       - run: npm test
-      - run: node --check index.js
-      - run: node --check src/api/client.js
-      - run: node --check src/transport/contract.js
-      - run: node --check src/update/manifest.js
-      - run: node --check src/compat/goatbotLogin.js
-      - run: node --check src/runtime/connection.js
-      - run: node --check src/events/dispatcher.js
-      - run: node --check src/network/cookieJar.js
-      - run: node --check src/network/requestClient.js
-      - run: node --check src/security/cookies.js
-      - run: node --check src/security/redact.js
-      - run: node --check src/security/sessionState.js
-      - run: node --check src/security/sessionCrypto.js
-      - run: node --check src/security/sessionStore.js
-      - run: node --check src/license/verify.js
-      - run: node --check src/license/provider.js
+      - run: npm run test:syntax
