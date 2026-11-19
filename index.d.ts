@@ -1,5 +1,3 @@
-/// <reference types="node" />
-
 export type LoginMode = "appstate" | "cookie" | "credentials";
 
 export interface Cookie {
@@ -107,7 +105,25 @@ export interface ClientApi {
   listen(callback: (event: unknown) => void): () => void;
   listenMqtt(callback: (error: Error | null, event?: unknown) => void): () => void;
   stopListening(callback?: () => void): boolean;
-  [method: string]: unknown;
+  sendMessage?: (...args: any[]) => any;
+  getUserInfo?: (...args: any[]) => any;
+  getThreadInfo?: (...args: any[]) => any;
+  getThreadList?: (...args: any[]) => any;
+  markAsRead?: (...args: any[]) => any;
+  setMessageReaction?: (...args: any[]) => any;
+  sendTypingIndicator?: (...args: any[]) => any;
+  unsendMessage?: (...args: any[]) => any;
+  changeNickname?: (...args: any[]) => any;
+  addUserToGroup?: (...args: any[]) => any;
+  removeUserFromGroup?: (...args: any[]) => any;
+  createNewGroup?: (...args: any[]) => any;
+  getThreadHistory?: (...args: any[]) => any;
+  getMessage?: (...args: any[]) => any;
+  getFriendsList?: (...args: any[]) => any;
+  getUserID?: (...args: any[]) => any;
+  sessionGuard?: (...args: any[]) => any;
+  stopSessionGuard?: () => any;
+  setOptions?: (options: Record<string, unknown>) => any;
 }
 
 export interface ConnectionSnapshot {
@@ -175,7 +191,7 @@ export function decryptSession(envelope: Record<string, unknown>, key: string | 
 export function saveSession(filePath: string, session: unknown, key: string | Uint8Array): string;
 export function loadSession(filePath: string, key: string | Uint8Array): unknown;
 export function deleteSession(filePath: string): void;
-export function createRequestClient(options?: Record<string, unknown>): (input: string | URL, options?: RequestInit & { retryable?: boolean }) => Promise<Response>;
+export function createRequestClient(options?: Record<string, unknown>): (input: string | URL, options?: Record<string, unknown> & { retryable?: boolean }) => Promise<any>;
 export function retryAfterMs(value: string | null, now?: number): number | null;
 export function isRetryableStatus(status: number): boolean;
 export function verifyLicenseToken(token: string, publicKey: string, options?: Record<string, unknown>): VerifiedLicense;
