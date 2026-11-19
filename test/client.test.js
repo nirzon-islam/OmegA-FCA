@@ -116,3 +116,40 @@ test("client refreshes and verifies an owner license before transport authentica
   assert.equal(authenticated, true);
   await client.logout();
 });
+
+
+test("client enforces feature entitlements for methods and event listeners", async () => {
+  const crypto = require("node:crypto");
+  const { publicKey, privateKey } = crypto.generateKeyPairSync("ed25519");
+  const now = Math.floor(Date.now() / 1000);
+  const payload = {
+    iss: "OmegA-License-Service", aud: "OmegA-FCA",
+    licenseId: "lic_0123456789abcdef0123456789abcdef",
+    ownerId: "owner-test", installationId: "install-test",
+    iat: now, exp: now + 900, features: ["messaging"]
+  };
+  const bytes = Buffer.from(JSON.stringify(payload));
+  const token = bytes.toString("base64url") + "." + crypto.sign(null, bytes, privateKey).toString("base64url");
+  const client = createClient({
+    license: {
+      token,
+      publicKey: publicKey.export({ type: "spki", format: "pem" }).toString(),
+      installationId: "install-test", ownerId: "owner-test"
+    },
+    authenticate: async () => ({
+      getCurrentUserID: () => "123456",
+      sendMessage: async () => "sent",
+      getThreadInfo: async () => ({}),
+      listen: () => () => {},
+      disconnect: async () => {}
+    })
+  });
+  const api = await client.login({ mode: "appstate", appState: [
+    { key: "c_user", value: "123456", domain: "facebook.com" },
+    { key: "xs", value: "synthetic-session-value", domain: "facebook.com" }
+  ] });
+  assert.equal(await api.sendMessage("hello"), "sent");
+  await assert.rejects(api.getThreadInfo("thread-1"), { code: "FCA_LICENSE_FEATURE_DENIED" });
+  assert.throws(() => api.listenMqtt(() => {}), /events feature/);
+  await client.logout();
+});
