@@ -1,6 +1,6 @@
 "use strict";
 
-const { normalizeCookies, parseCookieHeader } = require("../security/cookies");
+const { validateSessionCookies, parseCookieHeader } = require("../security/cookies");
 const { ConnectionSupervisor } = require("../runtime/connection");
 
 const REQUIRED_DRIVER_METHODS = ["sendMessage", "getUserInfo", "getThreadInfo", "getThreadList"];
@@ -16,9 +16,9 @@ function createClient({ authenticate, options = {}, reconnect = {} } = {}) {
     const mode = credentials.mode;
     let normalized;
     if (mode === "appstate") {
-      normalized = normalizeCookies(credentials.appState);
+      normalized = validateSessionCookies(credentials.appState);
     } else if (mode === "cookie") {
-      normalized = parseCookieHeader(credentials.cookie);
+      normalized = validateSessionCookies(parseCookieHeader(credentials.cookie));
     } else if (mode === "credentials") {
       if (typeof credentials.email !== "string" || !credentials.email.trim() ||
           typeof credentials.password !== "string" || !credentials.password) {
