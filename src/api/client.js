@@ -89,12 +89,13 @@ function createClient({ authenticate, options = {}, reconnect = {}, license = {}
     } else if (mode === "cookie") {
       normalized = validateSessionCookies(parseCookieHeader(credentials.cookie));
     } else if (mode === "credentials") {
-      if (typeof credentials.email !== "string" || !credentials.email.trim() ||
-          typeof credentials.password !== "string" || !credentials.password) {
-        throw new TypeError("Email and password are required for credentials login");
+      const username = typeof credentials.username === "string" ? credentials.username.trim() : "";
+      const email = typeof credentials.email === "string" ? credentials.email.trim() : "";
+      if ((!username && !email) || typeof credentials.password !== "string" || !credentials.password) {
+        throw new TypeError("Username (FB_USERNAME) or email, and password are required for credentials login");
       }
       normalized = {
-        email: credentials.email.trim(),
+        ...(username ? { username } : { email }), 
         password: credentials.password,
         twoFactorSecret: credentials.twoFactorSecret || null,
         twoFactorCode: typeof credentials.twoFactorCode === "string" ? credentials.twoFactorCode.trim() : null,
