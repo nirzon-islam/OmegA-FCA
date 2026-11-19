@@ -5,6 +5,8 @@ Independent, security-focused FCA compatibility library for Node.js 20+.
 **Package:** `@omega/fca`  
 **Status:** `0.1.1` — transport foundation (not a working Facebook login client yet).
 
+Current feature and release status: [docs/IMPLEMENTATION-STATUS.md](docs/IMPLEMENTATION-STATUS.md).
+
 ## What this package provides
 
 - CommonJS API for Node.js 20+
