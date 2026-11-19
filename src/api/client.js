@@ -119,8 +119,9 @@ function createClient({ authenticate, options = {}, reconnect = {}, license = {}
     } catch (error) {
       // A driver that connects but cannot complete identity initialization must
       // not leave an unreachable live session behind.
-      await supervisor.stop();
-      supervisor = null;
+      try { await supervisor.stop(); }
+      catch (cleanupError) { error.cleanupError = cleanupError; }
+      finally { supervisor = null; }
       throw error;
     }
     userId = currentUserId == null ? null : String(currentUserId);
