@@ -16,7 +16,7 @@ The coordinator exposes:
 
 States: `idle`, `authenticating`, `challenge_required`, `verifying_challenge`, `authenticated`, `failed`, and `closed`.
 
-Challenge answers are passed only to the provider's continuation callback. The coordinator does not log or persist them. The default maximum is three challenge rounds (configurable from one to five). Exceeding the limit fails the attempt. Challenge details exposed through `snapshot()` use a generic message and identifier-only type/method names so provider text cannot echo credentials or cookies. Error snapshots also use a fixed message and accept only bounded identifier-like error codes.
+Challenge answers are passed only to the provider's continuation callback. The coordinator does not log or persist them. The default maximum is three challenge rounds (configurable from one to five). Exceeding the limit fails the attempt. Challenge details exposed through `snapshot()` use a generic message and identifier-only type/method names so provider text cannot echo credentials or cookies. Error snapshots use a fixed message and do not expose provider-controlled error codes or names.
 
 ## Minimal provider contract
 
