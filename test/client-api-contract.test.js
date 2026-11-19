@@ -70,3 +70,28 @@ test("listenMqtt uses the error-first callback and stopListening is idempotent",
   assert.equal(detachCount, 1);
   await client.logout();
 });
+
+
+
+test("client disposes a connected driver when identity initialization fails", async () => {
+  let disconnected = 0;
+  const failure = new Error("identity lookup failed");
+  const client = createClient({
+    authenticate: async () => ({
+      listen: () => () => {},
+      getCurrentUserID: async () => { throw failure; },
+      disconnect: async () => { disconnected++; }
+    })
+  });
+
+  await assert.rejects(
+    client.login({ mode: "appstate", appState }),
+    error => error === failure
+  );
+  assert.equal(disconnected, 1);
+  assert.deepEqual(client.getConnectionState(), {
+    state: "idle",
+    connected: false,
+    generation: 0
+  });
+});
