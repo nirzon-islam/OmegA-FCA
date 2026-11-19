@@ -121,3 +121,37 @@ test("Meta webhook challenge requires subscribe mode and timing-safe token match
   assert.equal(verifyWebhookChallenge(query, "wrong-token"), null);
   assert.equal(verifyWebhookChallenge({ ...query, "hub.mode": "unsubscribe" }, "synthetic-verify-token"), null);
 });
+
+
+test("Meta Send API errors are surfaced without retrying unsafe message sends", async () => {
+  let calls = 0;
+  const transport = createMetaMessengerTransport({
+    ...config,
+    fetchImpl: async () => {
+      calls++;
+      return new Response(JSON.stringify({ error: { message: "Recipient unavailable", code: 10, fbtrace_id: "trace-1" } }), {
+        status: 400,
+        headers: { "content-type": "application/json" }
+      });
+    }
+  });
+  await assert.rejects(
+    transport.sendMessage("987654321098765", { text: "hello" }),
+    error => error.status === 400 && error.code === "META_GRAPH_10" && error.fbtraceId === "trace-1"
+  );
+  assert.equal(calls, 1);
+  await transport.disconnect();
+});
+
+test("webhook ingestion requires an app secret even for a well-formed body", () => {
+  const transport = createMetaMessengerTransport({
+    pageAccessToken: config.pageAccessToken,
+    pageId: config.pageId,
+    apiVersion: config.apiVersion
+  });
+  assert.throws(
+    () => transport.publishWebhook(Buffer.from('{"object":"page","entry":[]}'), "sha256=" + "0".repeat(64)),
+    /appSecret is required/
+  );
+  transport.disconnect();
+});
