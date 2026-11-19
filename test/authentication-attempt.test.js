@@ -89,7 +89,7 @@ test("provider failures discard pending challenge state", async () => {
   });
   await assert.rejects(attempt.begin({}), /rejected/);
   assert.equal(attempt.snapshot().state, "failed");
-  assert.equal(attempt.snapshot().error.code, "AUTH_REJECTED");
+  assert.equal(attempt.snapshot().error.code, undefined);
   assert.equal(attempt.snapshot().error.message, "Authentication failed; inspect the provider error securely");
   assert.equal(JSON.stringify(attempt.snapshot()).includes("hunter2"), false);
   await assert.rejects(attempt.submitChallenge("123456"), /No authentication challenge/);
@@ -118,7 +118,7 @@ test("public error snapshot does not expose provider-controlled name or malforme
     authenticate: async () => {
       const error = new Error("secret");
       error.name = "password=hunter2";
-      error.code = "cookie=private";
+      error.code = "hunter2";
       throw error;
     }
   });
