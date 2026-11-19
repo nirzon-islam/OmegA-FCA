@@ -218,6 +218,48 @@ export interface VerifiedUpdateManifest {
 }
 export function verifyUpdateManifest(manifest: unknown, options?: Record<string, unknown>): VerifiedUpdateManifest;
 export function verifyArtifactDigest(data: string | Uint8Array, digest: string): boolean;
+export interface NativeRealtimeSocket {
+  readyState?: number;
+  send(data: string | Buffer | Uint8Array | ArrayBuffer, callback?: (error?: Error) => void): void;
+  close?(): void;
+  on?(event: string, listener: (...args: any[]) => void): unknown;
+  off?(event: string, listener: (...args: any[]) => void): unknown;
+  removeListener?(event: string, listener: (...args: any[]) => void): unknown;
+  addEventListener?(event: string, listener: (event: any) => void): unknown;
+  removeEventListener?(event: string, listener: (event: any) => void): unknown;
+}
+export interface NativeRealtimeProtocolAdapter {
+  authenticate(socket: NativeRealtimeSocket, context: Record<string, unknown>): void | Promise<void>;
+  subscribe(socket: NativeRealtimeSocket, context: Record<string, unknown>): void | Promise<void>;
+  decodeFrame(frame: unknown, options: { isBinary: boolean; maxFrameBytes: number }): { events: unknown[] } | unknown[];
+  encodeAction(action: unknown): string | Buffer | Uint8Array | ArrayBuffer | Promise<string | Buffer | Uint8Array | ArrayBuffer>;
+}
+export interface NativeRealtimeTransportOptions {
+  /** Must be a verified wss:// endpoint; no Facebook endpoint is bundled. */
+  url: string;
+  socketFactory(input: { url: string; protocols?: string | string[]; headers?: Record<string, string>; signal?: AbortSignal }): NativeRealtimeSocket | Promise<NativeRealtimeSocket>;
+  protocol: NativeRealtimeProtocolAdapter;
+  protocols?: string | string[];
+  headers?: Record<string, string>;
+  connectTimeoutMs?: number;
+  closeTimeoutMs?: number;
+  maxFrameBytes?: number;
+  onDiagnostic?: (event: Readonly<Record<string, unknown>>) => void;
+}
+export interface NativeRealtimeTransport {
+  connect(context?: Partial<ConnectionContext>): Promise<TransportDriver & { sendAction(action: unknown): Promise<{ sent: true }>; getConnectionState(): ConnectionSnapshot }>;
+  disconnect(): Promise<void>;
+  getDriver(): (TransportDriver & { sendAction(action: unknown): Promise<{ sent: true }>; getConnectionState(): ConnectionSnapshot });
+  snapshot(): ConnectionSnapshot;
+  on(event: string, callback: (...args: any[]) => void): () => void;
+}
+export const DEFAULT_CONNECT_TIMEOUT_MS: number;
+export const DEFAULT_CLOSE_TIMEOUT_MS: number;
+/**
+ * Protocol-neutral WebSocket runtime. A separately verified adapter must supply
+ * Facebook-specific authentication, subscriptions, decoding and action encoding.
+ */
+export function createNativeRealtimeTransport(options: NativeRealtimeTransportOptions): NativeRealtimeTransport;
 export interface DecodedRealtimeEvent { readonly name: string; readonly args: unknown | null; }
 export interface DecodedRealtimeFrame { readonly envelope: Readonly<Record<string, unknown>>; readonly events: readonly DecodedRealtimeEvent[]; }
 export interface RealtimeFrameSummary { readonly eventCount: number; readonly eventNames: readonly string[]; }
