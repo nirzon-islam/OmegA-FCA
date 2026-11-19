@@ -1,6 +1,6 @@
 # OmegA-FCA implementation status
 
-Last validated branch head: `91f81304285eec173bd5d212e5209a6bee66ebcb` (`public-package`).
+Last full CI validation before the TypeScript declaration commits: `5a8481bc93f9dd38e06e98d667ad700dd6189c62` (`public-package`). The declaration-only commits after that point have not yet been validated by CI.
 
 ## Implemented and CI-validated
 
@@ -23,7 +23,8 @@ Last validated branch head: `91f81304285eec173bd5d212e5209a6bee66ebcb` (`public-
   - Normalization for message, postback, delivery, read, account-linking, and referral events.
   - Callback exception isolation.
 - Runnable Node.js webhook server example and environment template.
-- CI matrix validates Node 20 and 22 with `npm test` and recursive syntax checks, including examples.
+- CI matrix validates Node 20 and 22 with `npm test` and recursive syntax checks, including examples (at the last validated commit above).
+- Public TypeScript declaration file and package `types` entry have been added; declaration type-checking is not yet part of CI.
 
 ## Explicitly not implemented
 
