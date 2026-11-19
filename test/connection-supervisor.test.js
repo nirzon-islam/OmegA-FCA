@@ -44,11 +44,15 @@ test("supervisor does not retry a non-retryable authentication failure", async (
   await supervisor.stop();
 });
 
-test("stopping during an in-flight connect disposes the late driver", async () => {
+test("stopping during an in-flight connect aborts and disposes a late driver", async () => {
   let resolveConnect;
   let disconnected = 0;
+  let signal;
   const supervisor = new ConnectionSupervisor({
-    connect: () => new Promise(resolve => { resolveConnect = resolve; }),
+    connect: ({ signal: connectSignal }) => {
+      signal = connectSignal;
+      return new Promise(resolve => { resolveConnect = resolve; });
+    },
     disconnect: async () => { disconnected++; },
     options: { maxAttempts: 1 }
   });
@@ -56,9 +60,11 @@ test("stopping during an in-flight connect disposes the late driver", async () =
   const starting = supervisor.start();
   await new Promise(resolve => setImmediate(resolve));
   await supervisor.stop();
+  assert.equal(signal.aborted, true);
   resolveConnect({ listen() {} });
 
   assert.equal(await starting, null);
+  await new Promise(resolve => setImmediate(resolve));
   assert.equal(disconnected, 1);
   assert.equal(supervisor.snapshot().state, "stopped");
 });
