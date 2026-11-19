@@ -24,16 +24,21 @@ Private, owner-licensed FCA-compatible client library for OmegA projects.
 - Recursive secret redaction for diagnostic payloads.
 - AES-256-GCM session encryption/decryption and atomic encrypted file persistence with restrictive permissions.
 - Ed25519 license token verification with issuer, product, expiry, owner, and installation checks.
+- Agent Backend license refresh provider using HTTPS; refresh credentials are sent only in the request body and never logged by this package.
 - Transport-neutral API facade and connection supervisor with bounded exponential reconnect delay, permanent-error handling, and one active listener.
 - Bounded duplicate-event suppression and per-thread event ordering.
 - GoatBot callback-style login adapter for AppState and email/password input.
 - GitHub Actions CI using Node.js 20 and Node's built-in test runner.
 
-**Not implemented yet:** Facebook authentication/transport protocol, MQTT wire protocol/event decoding, full message/thread API coverage, the production license issuance/revocation service, and the final GoatBot runtime integration. The transport facade currently requires an injected authenticate implementation; it is not yet a working Facebook login client.
+**Not implemented yet:** Facebook authentication/transport protocol, MQTT wire protocol/event decoding, full message/thread API coverage, and the final GoatBot runtime integration. The transport facade currently requires an injected authenticate implementation; it is not yet a working Facebook login client.
+
+## License setup
+
+The owner issues an installation-bound license from the Agent Backend. The runtime stores the license ID, one-time license key, installation ID, and Ed25519 public key in its secret manager. Use createLicenseProvider to refresh a 15-minute signed token before client login; createClient verifies the token before allowing authentication. Revoked licenses cannot refresh, and an already-issued token remains usable only until its short expiry.
 
 ## Security boundaries
 
-This project does not bypass Facebook checkpoints, 2FA, rate limits, or other account security controls. Unofficial Facebook interfaces can change without notice; no implementation can guarantee an account will never be checkpointed or restricted. Never commit live cookies, passwords, AppState, or access tokens.
+This project does not bypass Facebook checkpoints, 2FA, rate limits, or other account security controls. Unofficial Facebook interfaces can change without notice; no implementation can guarantee an account will never be checkpointed or restricted. Never commit live cookies, passwords, AppState, license keys, or access tokens.
 
 Session encryption keys must be kept outside source control and supplied by the host through a secret manager/environment variable. Never store raw sessions in logs, task history, or dashboard responses.
 
