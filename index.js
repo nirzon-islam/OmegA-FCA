@@ -9,6 +9,7 @@ const { EventDispatcher } = require("./src/events/dispatcher");
 const { createClient } = require("./src/api/client");
 const { createGoatBotLogin } = require("./src/compat/goatbotLogin");
 const { verifyLicenseToken } = require("./src/license/verify");
+const { createLicenseProvider } = require("./src/license/provider");
 
 module.exports = {
   normalizeCookies,
@@ -26,5 +27,6 @@ module.exports = {
   createClient,
   createGoatBotLogin,
   verifyLicenseToken,
+  createLicenseProvider,
   version: require("./package.json").version
 };
