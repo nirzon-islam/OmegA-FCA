@@ -12,7 +12,7 @@ test("authentication attempt resumes the same provider-owned challenge session",
       calls.push(["authenticate", input.credentials.username]);
       return {
         status: "challenge_required",
-        challenge: { type: "two_factor", message: "Enter the code", methods: ["totp"] },
+        challenge: { type: "two_factor", message: "private password hunter2", methods: ["totp"] },
         resume: async answer => {
           calls.push(["resume", answer]);
           return { status: "authenticated", session };
@@ -24,7 +24,7 @@ test("authentication attempt resumes the same provider-owned challenge session",
   assert.equal(await attempt.begin({ username: "owner" }), null);
   assert.deepEqual(attempt.snapshot(), {
     state: "challenge_required",
-    challenge: { type: "two_factor", message: "Enter the code", methods: ["totp"] },
+    challenge: { type: "two_factor", message: "Additional account verification is required.", methods: ["totp"] },
     challengeRounds: 1,
     authenticated: false,
     error: null
@@ -90,4 +90,40 @@ test("provider failures discard pending challenge state", async () => {
   assert.equal(attempt.snapshot().error.message, "Authentication failed; inspect the provider error securely");
   assert.equal(JSON.stringify(attempt.snapshot()).includes("hunter2"), false);
   await assert.rejects(attempt.submitChallenge("123456"), /No authentication challenge/);
+});
+
+test("closing a pending challenge cancels provider-owned state exactly once", async () => {
+  let cancelled = 0;
+  const attempt = createAuthenticationAttempt({
+    authenticate: async () => ({
+      status: "challenge_required",
+      challenge: { type: "two_factor", message: "password=hunter2" },
+      resume: async () => ({ status: "authenticated", session: {} }),
+      cancel: async () => { cancelled += 1; }
+    })
+  });
+  await attempt.begin({});
+  assert.equal(attempt.snapshot().challenge.message, "Additional account verification is required.");
+  assert.equal(JSON.stringify(attempt.snapshot()).includes("hunter2"), false);
+  await attempt.close();
+  await attempt.close();
+  assert.equal(cancelled, 1);
+});
+
+test("public error snapshot does not expose provider-controlled name or malformed code", async () => {
+  const attempt = createAuthenticationAttempt({
+    authenticate: async () => {
+      const error = new Error("secret");
+      error.name = "password=hunter2";
+      error.code = "cookie=private";
+      throw error;
+    }
+  });
+  await assert.rejects(attempt.begin({}));
+  assert.deepEqual(attempt.snapshot().error, {
+    name: "Error",
+    code: null,
+    message: "Authentication failed; inspect the provider error securely"
+  });
+  assert.equal(JSON.stringify(attempt.snapshot()).includes("hunter2"), false);
 });
