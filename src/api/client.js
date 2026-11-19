@@ -2,17 +2,29 @@
 
 const { validateSessionCookies, parseCookieHeader } = require("../security/cookies");
 const { ConnectionSupervisor } = require("../runtime/connection");
+const { verifyLicenseToken } = require("../license/verify");
 
 const REQUIRED_DRIVER_METHODS = ["sendMessage", "getUserInfo", "getThreadInfo", "getThreadList"];
 
-function createClient({ authenticate, options = {}, reconnect = {} } = {}) {
+function createClient({ authenticate, options = {}, reconnect = {}, license = {}, requireLicense = true } = {}) {
   if (typeof authenticate !== "function") throw new TypeError("authenticate transport factory is required");
   let supervisor = null;
   let api = null;
   let userId = null;
+  let verifiedLicense = null;
+
+  function checkLicense() {
+    if (!requireLicense) return null;
+    verifiedLicense = verifyLicenseToken(license.token, license.publicKey, {
+      installationId: license.installationId,
+      ownerId: license.ownerId
+    });
+    return verifiedLicense;
+  }
 
   async function login(credentials = {}) {
     if (supervisor && supervisor.snapshot().connected) return api;
+    checkLicense();
     const mode = credentials.mode;
     let normalized;
     if (mode === "appstate") {
@@ -31,7 +43,7 @@ function createClient({ authenticate, options = {}, reconnect = {} } = {}) {
 
     supervisor = new ConnectionSupervisor({
       connect: async context => {
-        const result = await authenticate({ mode, credentials: normalized, options, context });
+        const result = await authenticate({ mode, credentials: normalized, options, context, license: verifiedLicense });
         if (!result || typeof result !== "object") throw new Error("Authentication returned no transport");
         return result;
       },
@@ -51,6 +63,7 @@ function createClient({ authenticate, options = {}, reconnect = {} } = {}) {
     facade.listen = callback => supervisor.listen(callback);
     facade.stopListening = () => supervisor.stop();
     facade.getConnectionState = () => supervisor.snapshot();
+    facade.getLicense = () => verifiedLicense;
     api = Object.freeze(facade);
     return api;
   }
@@ -63,7 +76,8 @@ function createClient({ authenticate, options = {}, reconnect = {} } = {}) {
       api = null;
       userId = null;
     },
-    getConnectionState: () => supervisor ? supervisor.snapshot() : Object.freeze({ state: "idle", connected: false, generation: 0 })
+    getConnectionState: () => supervisor ? supervisor.snapshot() : Object.freeze({ state: "idle", connected: false, generation: 0 }),
+    getLicense: () => verifiedLicense
   });
 }
 
