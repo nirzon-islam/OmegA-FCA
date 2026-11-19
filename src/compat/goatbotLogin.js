@@ -41,7 +41,12 @@ function createGoatBotLogin(client, accountConfigOptions = {}) {
     } else if (Object.keys(input).length === 0) {
       // With no explicit credentials, use the private project's root account.txt
       // or appstate.json. Secrets are read locally and never copied into logs.
-      loginInput = fromAccountConfig(loadAccountConfig(accountConfigOptions));
+      try {
+        loginInput = fromAccountConfig(loadAccountConfig(accountConfigOptions));
+      } catch (error) {
+        callback(error);
+        return Promise.resolve(null);
+      }
     } else {
       const error = new TypeError("GoatBot login requires AppState, FB_USERNAME/password, or an empty input to load root account.txt");
       error.retryable = false;
