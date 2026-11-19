@@ -72,6 +72,7 @@ function createDiagnosticRecorder({ maxEvents = 100, clock = Date.now } = {}) {
       ...(Number.isInteger(response.status) ? { status: response.status } : {}),
       ...(typeof response.contentType === "string" ? { contentType: response.contentType.split(";")[0].slice(0, 100) } : {}),
       ...(Number.isFinite(response.bodyBytes) ? { responseBodyBytes: Math.max(0, response.bodyBytes) } : {}),
+      ...(Number.isFinite(input.durationMs) ? { durationMs: Math.max(0, input.durationMs) } : {}),
       ...(typeof input.errorCode === "string" && /^[A-Z0-9_-]{1,64}$/.test(input.errorCode) ? { errorCode: input.errorCode } : {})
     });
     events.push(event);
@@ -79,13 +80,15 @@ function createDiagnosticRecorder({ maxEvents = 100, clock = Date.now } = {}) {
     return event;
   }
 
+  function snapshot() {
+    return Object.freeze({ version: 1, generatedAt: new Date(clock()).toISOString(), events: events.slice() });
+  }
+
   return Object.freeze({
     record,
-    snapshot() {
-      return Object.freeze({ version: 1, generatedAt: new Date(clock()).toISOString(), events: events.slice() });
-    },
+    snapshot,
     toJSON() {
-      return JSON.stringify(this.snapshot(), null, 2);
+      return JSON.stringify(snapshot(), null, 2);
     },
     clear() { events.length = 0; }
   });
