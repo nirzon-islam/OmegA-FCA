@@ -32,7 +32,8 @@ const attempt = createAuthenticationAttempt({
       return {
         status: "challenge_required",
         challenge: pending.challenge,
-        resume: answer => pending.continue(answer),\n        cancel: () => pending.cancel?.()
+        resume: answer => pending.continue(answer),
+        cancel: () => pending.cancel?.()
       };
     }
 
