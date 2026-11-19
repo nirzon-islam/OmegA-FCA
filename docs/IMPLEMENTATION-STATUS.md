@@ -49,3 +49,14 @@ The official Meta Messenger transport is a separate supported Page integration. 
 ## Release gate
 
 Do not replace GoatBot's existing FCA dependency or publish a drop-in compatibility release until the intended target is decided, the missing compatibility surface is implemented through an approved approach, and the complete integration suite passes. Never put live Page tokens, app secrets, cookies, or AppState in the repository or CI.
+
+## Packaging and supported deployment preparation
+
+- Explicit npm package file allowlist and root export map for CommonJS require and TypeScript declarations.
+- prepublishOnly runs the unit suite and recursive syntax checks.
+- CI smoke-tests the public package entrypoint and runs npm pack --dry-run --json on Node 20 and 22.
+- Added docs/DEPLOYMENT.md for the supported Meta Messenger Page webhook service, including environment variables, HTTPS ingress, health check, start command, webhook setup, and release gates.
+- The runnable Page webhook example now exposes GET /healthz for hosting-provider health checks.
+- These changes prepare the Page transport package/example for deployment. They do not complete personal-account FCA compatibility and do not authorize switching GoatBot's existing FCA dependency.
+
+Latest packaging changes are being validated by GitHub Actions on this branch. Update this section with the exact run result before declaring the branch ready for a Page-transport deployment.
