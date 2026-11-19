@@ -161,3 +161,25 @@ test("request client preserves caller cancellation and does not retry an aborted
   );
   assert.equal(calls, 1);
 });
+
+
+
+test("request client stops during retry backoff when the caller aborts", async () => {
+  const controller = new AbortController();
+  let calls = 0;
+  let finishSleep;
+  const request = createRequestClient({
+    fetchImpl: async () => { calls++; return response(503); },
+    maxAttempts: 3,
+    sleep: () => new Promise(resolve => { finishSleep = resolve; })
+  });
+
+  const pending = request("https://www.facebook.com/", { signal: controller.signal });
+  await new Promise(resolve => setImmediate(resolve));
+  assert.equal(calls, 1);
+  const reason = new Error("cancel during backoff");
+  controller.abort(reason);
+  await assert.rejects(pending, error => error === reason);
+  finishSleep?.();
+  assert.equal(calls, 1);
+});
