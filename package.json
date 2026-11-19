@@ -1,0 +1,14 @@
+{
+  "name": "@omegax/fca",
+  "version": "0.1.0",
+  "description": "Private, owner-licensed Facebook Messenger client library for OmegA projects",
+  "main": "index.js",
+  "type": "commonjs",
+  "engines": { "node": ">=20" },
+  "scripts": {
+    "test": "node --test",
+    "test:syntax": "node --check index.js && node --check src/security/cookies.js && node --check src/security/redact.js"
+  },
+  "license": "SEE LICENSE IN LICENSE",
+  "private": true
+}
