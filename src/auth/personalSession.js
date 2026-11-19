@@ -1,0 +1,139 @@
+"use strict";
+
+const { CookieJar } = require("../network/cookieJar");
+const { validateSessionCookies } = require("../security/cookies");
+const { classifySessionState } = require("../security/sessionState");
+
+const FACEBOOK_ORIGIN = "https://www.facebook.com";
+const MAX_RESPONSE_BYTES = 2 * 1024 * 1024;
+
+function sessionError(message, code, state) {
+  const error = new Error(message);
+  error.code = code;
+  error.sessionState = state;
+  error.retryable = false;
+  return error;
+}
+
+function detectSessionChallenge(response, html) {
+  const location = response.headers?.get?.("location") || "";
+  const target = location.toLowerCase();
+  if (/checkpoint|challenge/.test(target) || /checkpoint|checkpoint_required|challenge_required/i.test(html)) {
+    return "checkpoint";
+  }
+  if (/login\.php|\/login(?:[/?]|$)/.test(target) ||
+      /name=["'](?:email|pass)["']|id=["']login_form["']/i.test(html)) {
+    return "logged_out";
+  }
+  return "active";
+}
+
+function extractIdentity(html) {
+  const patterns = [
+    /"USER_ID"\s*:\s*"?([0-9]{5,30})"?/,
+    /"actorID"\s*:\s*"?([0-9]{5,30})"?/,
+    /"ACCOUNT_ID"\s*:\s*"?([0-9]{5,30})"?/
+  ];
+  for (const pattern of patterns) {
+    const match = pattern.exec(html);
+    if (match) return match[1];
+  }
+  return null;
+}
+
+/**
+ * Establishes and validates an owner-supplied personal Facebook web session.
+ * This is a session bootstrap layer, not a password-login or MQTT implementation.
+ */
+async function createPersonalSession({
+  appState,
+  fetchImpl = globalThis.fetch,
+  userAgent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/120.0.0.0 Safari/537.36",
+  timeoutMs = 20000
+} = {}) {
+  if (typeof fetchImpl !== "function") throw new TypeError("A Fetch-compatible implementation is required");
+  if (typeof userAgent !== "string" || !userAgent.trim() || userAgent.length > 1024) {
+    throw new TypeError("A valid User-Agent is required");
+  }
+  if (!Number.isInteger(timeoutMs) || timeoutMs < 1000 || timeoutMs > 120000) {
+    throw new TypeError("timeoutMs must be between 1000 and 120000");
+  }
+
+  const cookies = validateSessionCookies(appState);
+  const jar = new CookieJar(cookies);
+  const userId = cookies.find(cookie => cookie.key === "c_user")?.value;
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(new Error("Facebook session validation timed out")), timeoutMs);
+  let closed = false;
+
+  try {
+    const response = await fetchImpl(FACEBOOK_ORIGIN + "/", {
+      method: "GET",
+      redirect: "manual",
+      headers: {
+        accept: "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+        "accept-language": "en-US,en;q=0.9",
+        cookie: jar.getCookieHeader(FACEBOOK_ORIGIN + "/"),
+        "user-agent": userAgent
+      },
+      signal: controller.signal
+    });
+
+    if (response.status >= 500) {
+      throw sessionError("Facebook is temporarily unavailable while validating the session", "FCA_UPSTREAM_UNAVAILABLE", "error");
+    }
+    const declaredLength = Number(response.headers?.get?.("content-length") || 0);
+    if (declaredLength > MAX_RESPONSE_BYTES) {
+      throw sessionError("Facebook session response exceeded the safety limit", "FCA_RESPONSE_TOO_LARGE", "error");
+    }
+    const html = await response.text();
+    if (Buffer.byteLength(html, "utf8") > MAX_RESPONSE_BYTES) {
+      throw sessionError("Facebook session response exceeded the safety limit", "FCA_RESPONSE_TOO_LARGE", "error");
+    }
+    const state = detectSessionChallenge(response, html);
+    if (state === "checkpoint") {
+      throw sessionError("Facebook requires the account owner to complete a checkpoint", "FCA_CHECKPOINT_REQUIRED", state);
+    }
+    if (state === "logged_out" || response.status === 401 || response.status === 403) {
+      throw sessionError("The supplied Facebook AppState is expired or not authenticated", "FCA_SESSION_EXPIRED", "logged_out");
+    }
+    if (!response.ok) {
+      throw sessionError("Facebook session validation failed with HTTP " + response.status, "FCA_SESSION_VALIDATION_FAILED", "error");
+    }
+
+    const pageUserId = extractIdentity(html);
+    if (pageUserId && pageUserId !== userId) {
+      throw sessionError("Facebook returned a different account than the supplied c_user session", "FCA_SESSION_IDENTITY_MISMATCH", "error");
+    }
+
+    return Object.freeze({
+      userId,
+      state: "active",
+      validatedAt: Date.now(),
+      getCookieHeader(url = FACEBOOK_ORIGIN + "/") {
+        if (closed) throw new Error("Facebook session is closed");
+        const target = url instanceof URL ? url : new URL(url);
+        if (target.protocol !== "https:" || !/(^|\.)facebook\.com$|(^|\.)messenger\.com$/.test(target.hostname)) {
+          throw new TypeError("Personal session cookies may only be used with Facebook/Messenger HTTPS hosts");
+        }
+        return jar.getCookieHeader(target);
+      },
+      getAppState() {
+        if (closed) throw new Error("Facebook session is closed");
+        return cookies.map(cookie => ({ ...cookie }));
+      },
+      close() { closed = true; jar.clear(); }
+    });
+  } catch (error) {
+    if (error?.name === "AbortError" || controller.signal.aborted) {
+      throw sessionError("Facebook session validation timed out", "FCA_SESSION_TIMEOUT", "error");
+    }
+    const state = classifySessionState(error);
+    if (state === "checkpoint" || state === "logged_out") throw error;
+    throw error;
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+module.exports = { createPersonalSession, detectSessionChallenge, extractIdentity };
