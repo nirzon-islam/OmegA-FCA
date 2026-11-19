@@ -4,31 +4,39 @@ Private, owner-licensed FCA-compatible client library for OmegA projects.
 
 ## Status
 
-**Development: 0.1.0 — foundation stage.** This repository is the private source of truth. Do not place proprietary implementation files in the public OmegA-Goatbot repository.
+**Development: 0.1.0 — transport foundation.** This repository is the private source of truth. Do not place proprietary implementation files in the public OmegA-Goatbot repository.
 
 ## Design goals
 
 - Independent implementation; no copied FCA source.
 - Node.js 20+ and CommonJS compatibility for the current GoatBot runtime.
-- Explicit login modes: credentials (including manual 2FA/checkpoint handling) and AppState/cookie.
+- Explicit login modes: AppState/cookie and credentials (including manual 2FA/checkpoint handling).
 - Safe session lifecycle, bounded reconnect/backoff, listener deduplication, and redacted diagnostics.
-- Optional owner-controlled license verification for approved installations.
+- AES-256-GCM encrypted session persistence helpers.
+- Ed25519 signed owner-issued license verification.
 - A small adapter surface so GoatBot can migrate without rewriting command handlers.
 - Agent Backend integration through its existing signed bridge and one-time recovery handoff.
+
+## Current implementation
+
+- Facebook cookie/AppState input normalization, Cookie header and Netscape format parsing.
+- Required c_user and xs validation at login boundary.
+- Recursive secret redaction for diagnostic payloads.
+- AES-256-GCM session encryption/decryption primitives.
+- Ed25519 license token verification with issuer, product, expiry, owner, and installation checks.
+- Transport-neutral API facade and connection supervisor with bounded exponential reconnect delay and one active listener.
+- GitHub Actions CI using Node.js 20 and Node's built-in test runner.
+
+**Not implemented yet:** Facebook authentication/transport protocol, MQTT/event decoding, full message/thread API coverage, the production license issuance/revocation service, and the GoatBot integration adapter. The transport facade currently requires an injected authenticate implementation; it is not yet a working Facebook login client.
 
 ## Security boundaries
 
 This project does not bypass Facebook checkpoints, 2FA, rate limits, or other account security controls. Unofficial Facebook interfaces can change without notice; no implementation can guarantee an account will never be checkpointed or restricted. Never commit live cookies, passwords, AppState, or access tokens.
 
-## Current exports
-
-The first foundation milestone exports cookie normalization/parsers and recursive secret redaction. Authentication, transport, listener, messaging methods, license service, and GoatBot adapter are not yet implemented.
+Session encryption keys must be kept outside source control and supplied by the host through a secret manager/environment variable. Never store raw sessions in logs, task history, or dashboard responses.
 
 ## Development
 
-```sh
-npm test
-npm run test:syntax
-```
+Run npm test and npm run test:syntax with Node.js 20+.
 
 Use synthetic fixtures only. For live-account validation, do not paste credentials into chat or commit them to the repository.
