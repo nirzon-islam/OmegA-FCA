@@ -11,7 +11,7 @@ Current feature and release status: [docs/IMPLEMENTATION-STATUS.md](docs/IMPLEME
 
 - CommonJS API for Node.js 20+
 - AppState/cookie normalization and validation
-- Credentials providers can receive an owner-entered `twoFactorCode`; checkpoint resolution remains manual and owner-controlled
+- Credentials providers can receive an owner-entered `twoFactorCode`; checkpoint resolution remains manual and owner-controlled. Checkpoint/expired-session errors are classified, tagged, and stop automatic login retries so owners can resolve the issue and retry with a fresh session.
 - Secret redaction for diagnostics
 - AES-256-GCM session encryption and encrypted file persistence helpers (with symlink-resistant reads and atomic writes)
 - Connection supervision with bounded reconnect/backoff
