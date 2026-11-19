@@ -2,28 +2,7 @@
 
 const fs = require("node:fs");
 const path = require("node:path");
-
-function parseAccountText(text) {
-  if (typeof text !== "string") throw new TypeError("account.txt content must be text");
-  const values = Object.create(null);
-  for (const [index, raw] of text.split(/\r?\n/).entries()) {
-    const line = raw.trim();
-    if (!line || line.startsWith("#")) continue;
-    const separator = line.indexOf("=");
-    if (separator < 1) throw new Error("Invalid account.txt entry on line " + (index + 1));
-    const key = line.slice(0, separator).trim().toLowerCase();
-    let value = line.slice(separator + 1).trim();
-    if (!/^(fb_email|fb_username|fb_password|fb_2fa_code|appstate_file)$/.test(key)) {
-      throw new Error("Unsupported account.txt key on line " + (index + 1) + ": " + key);
-    }
-    if ((value.startsWith('"') && value.endsWith('"')) || (value.startsWith("'") && value.endsWith("'"))) {
-      value = value.slice(1, -1);
-    }
-    if (Object.hasOwn(values, key)) throw new Error("Duplicate account.txt key: " + key);
-    values[key] = value;
-  }
-  return values;
-}
+const { parseCookieHeader, parseNetscapeCookies, normalizeCookies } = require("../security/cookies");
 
 function resolveProjectFile(root, filePath, label) {
   const target = path.resolve(root, filePath);
@@ -43,56 +22,84 @@ function resolveProjectFile(root, filePath, label) {
   return target;
 }
 
+function parseAccountText(text) {
+  if (typeof text !== "string" || !text.trim()) throw new TypeError("account.txt must contain cookie data");
+  const source = text.trim();
+  if (source.length > 256 * 1024) throw new TypeError("account.txt exceeds 256 KiB");
+  if (source.startsWith("[") || source.startsWith("{")) {
+    const parsed = JSON.parse(source);
+    const cookies = Array.isArray(parsed) ? parsed : parsed && (parsed.appState || parsed.cookies);
+    if (!Array.isArray(cookies)) throw new TypeError("account.txt JSON must contain a cookie array");
+    return normalizeCookies(cookies);
+  }
+  if (source.startsWith("#") || source.includes("\t")) return parseNetscapeCookies(source);
+  return parseCookieHeader(source.replace(/\|/g, ";"));
+}
+
+function readJsonConfig(filePath) {
+  try {
+    const stat = fs.statSync(filePath);
+    if (!stat.isFile() || stat.size > 256 * 1024) throw new Error("config.json must be a regular file no larger than 256 KiB");
+    const parsed = JSON.parse(fs.readFileSync(filePath, "utf8"));
+    if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) throw new TypeError("config.json must contain an object");
+    return parsed;
+  } catch (error) {
+    if (error.code === "ENOENT") return {};
+    throw error;
+  }
+}
+
 function loadAccountConfig({
   cwd = process.cwd(),
   accountFile = "account.txt",
+  configFile = "config.json",
   appStateFile = null,
   env = process.env
 } = {}) {
   const root = path.resolve(cwd);
   const accountPath = resolveProjectFile(root, accountFile, "accountFile");
-  let fileValues = Object.create(null);
   try {
     const stat = fs.statSync(accountPath);
-    if (!stat.isFile() || stat.size > 16 * 1024) throw new Error("account.txt must be a regular file no larger than 16 KiB");
-    fileValues = parseAccountText(fs.readFileSync(accountPath, "utf8"));
+    if (!stat.isFile()) throw new Error("account.txt must be a regular file");
+    const raw = fs.readFileSync(accountPath, "utf8").trim();
+    if (raw) return Object.freeze({ mode: "appstate", appState: parseAccountText(raw), source: "account.txt" });
   } catch (error) {
     if (error.code !== "ENOENT") throw error;
   }
 
-  const pick = (envKey, fileKey) => {
-    const value = env[envKey] || fileValues[fileKey];
-    return typeof value === "string" ? value.trim() : "";
-  };
-  const username = pick("FB_USERNAME", "fb_username");
-  const email = pick("FB_EMAIL", "fb_email");
-  const password = pick("FB_PASSWORD", "fb_password");
-  const twoFactorCode = pick("FB_2FA_CODE", "fb_2fa_code") || null;
-  const statePathValue = appStateFile || fileValues.appstate_file || "appstate.json";
-
+  const configPath = resolveProjectFile(root, configFile, "configFile");
+  const config = readJsonConfig(configPath);
+  const account = config.facebookAccount && typeof config.facebookAccount === "object"
+    ? config.facebookAccount : {};
+  const username = String(env.FB_USERNAME || account.username || "").trim();
+  const email = String(env.FB_EMAIL || account.email || "").trim();
+  const password = String(env.FB_PASSWORD || account.password || "");
+  const twoFactorSecret = String(env.FB_2FA_SECRET || account["2FASecret"] || "");
   if (username || email || password) {
     if ((!username && !email) || !password) {
-      throw new Error("account.txt credentials require FB_USERNAME or FB_EMAIL and FB_PASSWORD");
+      throw new Error("config.json facebookAccount requires email (or username) and password");
     }
     return Object.freeze({
       mode: "credentials",
       ...(username ? { username } : { email }),
       password,
-      twoFactorCode
+      twoFactorSecret: twoFactorSecret || null,
+      userAgent: account.userAgent || null,
+      proxy: account.proxy || null
     });
   }
 
-  const statePath = resolveProjectFile(root, statePathValue, "AppState file");
+  const statePath = resolveProjectFile(root, appStateFile || "appstate.json", "AppState file");
   try {
     const stat = fs.statSync(statePath);
     if (!stat.isFile() || stat.size > 1024 * 1024) throw new Error("AppState file must be a regular file no larger than 1 MiB");
     const parsed = JSON.parse(fs.readFileSync(statePath, "utf8"));
-    const appState = Array.isArray(parsed) ? parsed : parsed && parsed.appState;
+    const appState = Array.isArray(parsed) ? parsed : parsed && (parsed.appState || parsed.cookies);
     if (!Array.isArray(appState) || appState.length === 0) throw new Error("AppState file must contain a non-empty cookie array");
-    return Object.freeze({ mode: "appstate", appState });
+    return Object.freeze({ mode: "appstate", appState: normalizeCookies(appState), source: "appstate.json" });
   } catch (error) {
     if (error.code === "ENOENT") {
-      const missing = new Error("No Facebook credentials found: configure account.txt or provide root appstate.json");
+      const missing = new Error("No Facebook session or credentials found: add cookies to account.txt or configure facebookAccount in config.json");
       missing.code = "FCA_ACCOUNT_CONFIG_MISSING";
       throw missing;
     }
