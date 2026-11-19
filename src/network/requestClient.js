@@ -35,7 +35,7 @@ function createRequestClient({ fetchImpl = globalThis.fetch, timeoutMs = 20_000,
         const signal = options.signal ? AbortSignal.any([options.signal, timeoutSignal]) : timeoutSignal;
         response = await fetchImpl(url, { ...fetchOptions, signal });
       } catch (error) {
-        if (!canRetry || attempt + 1 >= maxAttempts || error.name === "AbortError" || error.name === "TimeoutError") throw error;
+        if (!canRetry || options.signal?.aborted || attempt + 1 >= maxAttempts || error.name === "AbortError" || error.name === "TimeoutError") throw error;
         const delay = Math.min(30_000, baseDelayMs * (2 ** attempt)) * (0.8 + random() * 0.4);
         attempt++;
         await sleep(Math.round(delay));
