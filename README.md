@@ -10,7 +10,7 @@ Independent, security-focused FCA compatibility library for Node.js 20+.
 - CommonJS API for Node.js 20+
 - AppState/cookie normalization and validation
 - Secret redaction for diagnostics
-- AES-256-GCM session encryption and encrypted file persistence helpers
+- AES-256-GCM session encryption and encrypted file persistence helpers (with symlink-resistant reads and atomic writes)
 - Connection supervision with bounded reconnect/backoff
 - Event dispatching with duplicate suppression and per-thread ordering
 - Cookie jar and bounded HTTPS request helper
@@ -77,7 +77,7 @@ npm test
 npm run test:syntax
 ```
 
-Use synthetic fixtures for tests. Do not place live account credentials in issues, test fixtures, CI logs, or pull requests.
+Use synthetic fixtures for tests. Do not place live account credentials in issues, test fixtures, CI logs, or pull requests. Session files are written with restrictive permissions; keep their parent directory private and protect the encryption key separately.
 
 ## License
 
