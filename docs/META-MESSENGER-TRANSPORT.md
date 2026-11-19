@@ -35,7 +35,7 @@ The Page token is sent as an Authorization Bearer header and is never added to t
 
 ## Inbound webhook events
 
-The host application owns the HTTPS server and Meta webhook subscription. Preserve the exact raw request bytes before parsing JSON, then pass both parsed payload and raw bytes to `publishWebhook`. The provider verifies the HMAC-SHA256 signature over the original bytes, parses JSON from those same verified bytes, and only then emits normalized events. Webhook bodies are limited to 1 MiB.
+The host application owns the HTTPS server and Meta webhook subscription. Preserve the exact raw request bytes before parsing JSON, then pass the raw bytes and `X-Hub-Signature-256` value to `publishWebhook`. The provider verifies the HMAC-SHA256 signature over the original bytes, parses JSON from those same verified bytes, and only then emits normalized events for the configured Page ID. Events for other Page IDs are ignored. Webhook bodies are limited to 1 MiB.
 
 ```js
 const rawBody = Buffer.from(requestBodyBytes);
