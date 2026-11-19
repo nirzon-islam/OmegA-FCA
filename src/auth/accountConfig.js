@@ -25,6 +25,24 @@ function parseAccountText(text) {
   return values;
 }
 
+function resolveProjectFile(root, filePath, label) {
+  const target = path.resolve(root, filePath);
+  const relative = path.relative(root, target);
+  if (!relative || relative.startsWith("..") || path.isAbsolute(relative)) {
+    throw new TypeError(label + " must be inside the project root");
+  }
+  try {
+    const real = fs.realpathSync(target);
+    const realRelative = path.relative(root, real);
+    if (!realRelative || realRelative.startsWith("..") || path.isAbsolute(realRelative)) {
+      throw new TypeError(label + " must resolve inside the project root");
+    }
+  } catch (error) {
+    if (error.code !== "ENOENT") throw error;
+  }
+  return target;
+}
+
 function loadAccountConfig({
   cwd = process.cwd(),
   accountFile = "account.txt",
@@ -84,4 +102,4 @@ function loadAccountConfig({
   }
 }
 
-module.exports = { parseAccountText, loadAccountConfig };
+module.exports = { parseAccountText, loadAccountConfig, resolveProjectFile };
