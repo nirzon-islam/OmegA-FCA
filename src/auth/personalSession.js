@@ -133,9 +133,12 @@ async function createPersonalSession({
   appState,
   fetchImpl = globalThis.fetch,
   userAgent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/120.0.0.0 Safari/537.36",
-  timeoutMs = 20000
+  timeoutMs = 20000,
+  onDiagnostic = null
 } = {}) {
   if (typeof fetchImpl !== "function") throw new TypeError("A Fetch-compatible implementation is required");
+  if (onDiagnostic !== null && typeof onDiagnostic !== "function") throw new TypeError("onDiagnostic must be a function");
+  const emitDiagnostic = event => { if (onDiagnostic) { try { onDiagnostic(event); } catch {} } };
   if (typeof userAgent !== "string" || !userAgent.trim() || userAgent.length > 1024) {
     throw new TypeError("A valid User-Agent is required");
   }
@@ -151,7 +154,8 @@ async function createPersonalSession({
   let closed = false;
 
   try {
-    const response = await fetchImpl(FACEBOOK_ORIGIN + "/", {
+    const bootstrapStartedAt = Date.now();
+    const bootstrapResponse = await fetchImpl(FACEBOOK_ORIGIN + "/", {
       method: "GET",
       redirect: "manual",
       headers: {
@@ -163,6 +167,8 @@ async function createPersonalSession({
       signal: controller.signal
     });
 
+    const response = bootstrapResponse;
+    emitDiagnostic({ phase: "response", request: { url: FACEBOOK_ORIGIN + "/", method: "GET", headers: { accept: "text/html", "accept-language": "en-US" } }, response: { status: response.status, contentType: response.headers?.get?.("content-type") || "", bodyBytes: Number(response.headers?.get?.("content-length") || 0) }, durationMs: Date.now() - bootstrapStartedAt });
     if (response.status >= 500) {
       throw sessionError("Facebook is temporarily unavailable while validating the session", "FCA_UPSTREAM_UNAVAILABLE", "error");
     }
@@ -230,6 +236,8 @@ async function createPersonalSession({
           if (options.signal.aborted) onAbort();
           else options.signal.addEventListener("abort", onAbort, { once: true });
         }
+        const requestStartedAt = Date.now();
+        const requestBody = options.body;
         try {
           const response = await fetchImpl(target, {
             ...options,
@@ -238,10 +246,14 @@ async function createPersonalSession({
             redirect: "manual",
             signal: requestController.signal
           });
+          emitDiagnostic({ phase: "response", request: { url: target, method, headers, body: requestBody }, response: { status: response.status, contentType: response.headers?.get?.("content-type") || "", bodyBytes: Number(response.headers?.get?.("content-length") || 0) }, durationMs: Date.now() - requestStartedAt });
           const { accepted, deletions } = collectResponseCookies(response, target);
           if (accepted.length) jar.setCookies(accepted);
           if (deletions.length) jar.deleteCookies(deletions);
           return response;
+        } catch (error) {
+          emitDiagnostic({ phase: "error", request: { url: target, method, headers, body: requestBody }, errorCode: typeof error?.code === "string" ? error.code : undefined });
+          throw error;
         } finally {
           clearTimeout(timeout);
           options.signal?.removeEventListener("abort", onAbort);
