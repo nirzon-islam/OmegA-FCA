@@ -13,6 +13,7 @@ const { createRequestClient, retryAfterMs, isRetryableStatus } = require("./src/
 const { createPersonalSession, detectSessionChallenge, extractIdentity, extractFacebookTokens } = require("./src/auth/personalSession");
 const { createAuthenticationAttempt, AUTHENTICATION_ATTEMPT_STATES } = require("./src/auth/authenticationAttempt");
 const { parseAccountText, loadAccountConfig } = require("./src/auth/accountConfig");
+const { generateTotp } = require("./src/auth/totp");
 const { normalizeFacebookResponse, stripFacebookJsonPrefix, createFacebookError } = require("./src/auth/facebookResponse");
 const { createFacebookWebClient, assertFacebookUrl, toFormBody } = require("./src/auth/facebookWebClient");
 const { createClient } = require("./src/api/client");
@@ -30,7 +31,7 @@ module.exports = {
   saveSession, loadSession, deleteSession, ConnectionSupervisor, EventDispatcher,
   CookieJar, createRequestClient, retryAfterMs, isRetryableStatus, createPersonalSession, detectSessionChallenge, extractIdentity, extractFacebookTokens,
   createAuthenticationAttempt, AUTHENTICATION_ATTEMPT_STATES,
-  parseAccountText, loadAccountConfig,
+  parseAccountText, loadAccountConfig, generateTotp,
   normalizeFacebookResponse, stripFacebookJsonPrefix, createFacebookError,
   createFacebookWebClient, assertFacebookUrl, toFormBody, createClient,
   createGoatBotLogin, createLegacyFcaProvider, verifyLicenseToken, createLicenseProvider,
