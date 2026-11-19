@@ -1,4 +1,11 @@
 export type LoginMode = "appstate" | "cookie" | "credentials";
+export type AuthenticationAttemptState = "idle" | "authenticating" | "challenge_required" | "verifying_challenge" | "authenticated" | "failed" | "closed";
+export interface AuthenticationChallenge { readonly type: string; readonly message: string | null; readonly methods: readonly string[]; }
+export interface AuthenticationAttemptSnapshot { readonly state: AuthenticationAttemptState; readonly challenge: AuthenticationChallenge | null; readonly challengeRounds: number; readonly authenticated: boolean; readonly error: Readonly<{ name: string; code: string | null; message: string }> | null; }
+export interface AuthenticationAttemptSession { close?(): void | Promise<void>; [key: string]: unknown; }
+export interface AuthenticationAttemptProviderResult { status: "authenticated"; session: AuthenticationAttemptSession; } | { status: "challenge_required"; challenge: { type?: string; message?: string; methods?: string[] }; resume(answer: string | Record<string, unknown>): Promise<AuthenticationAttemptProviderResult> | AuthenticationAttemptProviderResult; }
+export function createAuthenticationAttempt(options: { authenticate(input: { credentials: Record<string, unknown>; options: Record<string, unknown> }): Promise<AuthenticationAttemptProviderResult> | AuthenticationAttemptProviderResult; maxChallengeRounds?: number }): Readonly<{ begin(credentials: Record<string, unknown>, options?: Record<string, unknown>): Promise<AuthenticationAttemptSession | null>; submitChallenge(answer: string | Record<string, unknown>): Promise<AuthenticationAttemptSession | null>; close(): Promise<void>; snapshot(): AuthenticationAttemptSnapshot }>;
+export const AUTHENTICATION_ATTEMPT_STATES: readonly AuthenticationAttemptState[];
 export interface Cookie {
   key: string; value: string; domain?: string; path?: string; hostOnly?: boolean;
   secure?: boolean; httpOnly?: boolean; sameSite?: string; expires?: number | null;
