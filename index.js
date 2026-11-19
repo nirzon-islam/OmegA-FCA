@@ -9,6 +9,7 @@ const { ConnectionSupervisor } = require("./src/runtime/connection");
 const { EventDispatcher } = require("./src/events/dispatcher");
 const { CookieJar } = require("./src/network/cookieJar");
 const { createRequestClient, retryAfterMs, isRetryableStatus } = require("./src/network/requestClient");
+const { createPersonalSession, detectSessionChallenge, extractIdentity } = require("./src/auth/personalSession");
 const { createClient } = require("./src/api/client");
 const { createGoatBotLogin } = require("./src/compat/goatbotLogin");
 const { createLegacyFcaProvider } = require("./src/compat/legacyFcaTransport");
@@ -22,7 +23,7 @@ module.exports = {
   normalizeCookies, validateSessionCookies, parseCookieHeader, parseNetscapeCookies,
   redactSecrets, classifySessionState, describeError, encryptSession, decryptSession,
   saveSession, loadSession, deleteSession, ConnectionSupervisor, EventDispatcher,
-  CookieJar, createRequestClient, retryAfterMs, isRetryableStatus, createClient,
+  CookieJar, createRequestClient, retryAfterMs, isRetryableStatus, createPersonalSession, detectSessionChallenge, extractIdentity, createClient,
   createGoatBotLogin, createLegacyFcaProvider, verifyLicenseToken, createLicenseProvider,
   validateTransportDriver, createTransportFactory, createMetaMessengerTransport,
   normalizeWebhookPayload, verifyWebhookSignature, verifyWebhookChallenge,
