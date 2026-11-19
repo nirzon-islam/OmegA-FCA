@@ -47,7 +47,7 @@ test("personal session validates owner-supplied AppState and scopes cookies to F
   assert.throws(() => session.getCookieHeader("https://example.com/"), /Facebook\/Messenger HTTPS hosts/);
   await session.request("https://www.facebook.com/messages/", { method: "GET" });
   assert.match(session.getCookieHeader(), /sid=refreshed/);
-  assert.throws(() => session.request("https://example.com/"), /Facebook\/Messenger HTTPS hosts/);
+  await assert.rejects(session.request("https://example.com/"), /Facebook\/Messenger HTTPS hosts/);
   session.close();
   assert.throws(() => session.getAppState(), /closed/);
 });
