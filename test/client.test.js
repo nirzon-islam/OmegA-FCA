@@ -4,7 +4,7 @@ const test = require("node:test");
 const assert = require("node:assert/strict");
 const { createClient } = require("../src/api/client");
 
-test("client accepts AppState mode and exposes a narrow API facade", async () => {
+test("client accepts a valid AppState and exposes a narrow API facade", async () => {
   const client = createClient({
     authenticate: async ({ mode, credentials }) => {
       assert.equal(mode, "appstate");
@@ -17,12 +17,22 @@ test("client accepts AppState mode and exposes a narrow API facade", async () =>
       };
     }
   });
-  const api = await client.login({ mode: "appstate", appState: [{ key: "c_user", value: "123456", domain: "facebook.com" }] });
+  const api = await client.login({ mode: "appstate", appState: [
+    { key: "c_user", value: "123456", domain: "facebook.com" },
+    { key: "xs", value: "synthetic-session-value", domain: "facebook.com" }
+  ] });
   assert.equal(api.getCurrentUserID(), "123456");
   assert.equal(typeof api.sendMessage, "function");
   assert.equal(typeof api.listen, "function");
   await client.logout();
   assert.equal(client.getConnectionState().state, "idle");
+});
+
+test("client rejects a session without required auth cookies", async () => {
+  const client = createClient({ authenticate: async () => ({}) });
+  await assert.rejects(client.login({ mode: "appstate", appState: [
+    { key: "c_user", value: "123456", domain: "facebook.com" }
+  ] }), /c_user and xs/);
 });
 
 test("client rejects missing login mode", async () => {
