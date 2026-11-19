@@ -99,7 +99,7 @@ function createNativeRealtimeTransport(options = {}) {
     terminalError = error instanceof Error ? error : new Error(String(error));
     state = "disconnected";
     diagnostic("socket_error", { code: terminalError.code || null });
-    emitter.emit("error", terminalError);
+    emitter.emit("transportError", terminalError);
     if (listener) {
       const callback = listener;
       listener = null;
@@ -133,10 +133,12 @@ function createNativeRealtimeTransport(options = {}) {
       await new Promise((resolve, reject) => {
         let settled = false;
         let timer;
+        let abortHandler = null;
         const finish = (error) => {
           if (settled) return;
           settled = true;
           clearTimeout(timer);
+          if (signal && abortHandler) signal.removeEventListener("abort", abortHandler);
           removeOpen();
           removeError();
           removeClose();
@@ -148,15 +150,8 @@ function createNativeRealtimeTransport(options = {}) {
         const removeClose = attach(candidate, "close", () => finish(transportError("WebSocket closed before opening", "FCA_WS_CLOSED_EARLY", true)));
         timer = setTimeout(() => finish(transportError("WebSocket connection timed out", "FCA_WS_CONNECT_TIMEOUT", true)), connectTimeoutMs);
         if (signal) {
-          const abort = () => finish(signal.reason || transportError("Connection aborted", "FCA_WS_ABORTED"));
-          signal.addEventListener("abort", abort, { once: true });
-          const previousFinish = finish;
-          // Remove the abort listener once the open wait settles.
-          const originalResolve = resolve;
-          const originalReject = reject;
-          void previousFinish;
-          void originalResolve;
-          void originalReject;
+          abortHandler = () => finish(signal.reason || transportError("Connection aborted", "FCA_WS_ABORTED"));
+          signal.addEventListener("abort", abortHandler, { once: true });
         }
         if (candidate.readyState === 1) finish();
       });
