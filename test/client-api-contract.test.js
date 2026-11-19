@@ -168,3 +168,20 @@ test("logout during authentication waits and disposes the session", async () => 
     generation: 0
   });
 });
+
+
+test("client disposes a provider result that violates the transport contract", async () => {
+  let disconnects = 0;
+  const client = createClient({
+    authenticate: async () => ({
+      listen: "not-a-function",
+      disconnect: async () => { disconnects++; }
+    })
+  });
+  await assert.rejects(
+    client.login({ mode: "appstate", appState }),
+    /Transport driver method must be a function/
+  );
+  assert.equal(disconnects, 1);
+  await client.logout();
+});

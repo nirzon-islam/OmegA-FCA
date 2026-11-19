@@ -221,7 +221,8 @@ test("Meta transport exposes official typing and read sender actions without ret
     "typing_on", "typing_off", "mark_seen"
   ]);
   assert.ok(calls.every(call => call.options.method === "POST"));
-  assert.ok(calls.every(call => call.options.retryable === false));
+  assert.ok(calls.every(call => !Object.hasOwn(call.options, "retryable")));
+  assert.equal(calls.length, 3);
   await assert.rejects(transport.sendTypingIndicator("987654321098765", "yes"), /boolean/);
   await assert.rejects(transport.markAsRead("bad-id"), /recipient ID/);
   await transport.disconnect();

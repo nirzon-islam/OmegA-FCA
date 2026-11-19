@@ -84,6 +84,10 @@ class ConnectionSupervisor extends EventEmitter {
         if (!driver || typeof driver.listen !== "function") {
           const error = new Error("Transport driver must expose listen(callback)");
           error.retryable = false;
+          if (driver && typeof driver === "object") {
+            try { await this.disconnectDriver(driver); }
+            catch (cleanupError) { error.cleanupError = cleanupError; }
+          }
           throw error;
         }
         this.driver = driver;

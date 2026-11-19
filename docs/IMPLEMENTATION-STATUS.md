@@ -10,7 +10,7 @@ Last successful full CI run: #44467563604 on commit `b944f7ebf63c039e69d0cca4156
 - Atomic encrypted session writes, restrictive file permissions, symlink-resistant session reads.
 - Bounded HTTPS request client with caller cancellation and retry safeguards.
 - Connection supervisor with retry/backoff, listener recovery, start/stop race handling, and abortable in-flight connect attempts.
-- Event dispatcher with duplicate suppression and per-thread ordering.
+- Event dispatcher with in-flight duplicate coalescing, success-only acknowledgement, retry after handler failure, and per-thread ordering.
 - Transport contract and injectable provider interface.
 - GoatBot callback adapter foundation and documented compatibility audit.
 - Optional Ed25519 licensing; public package use does not require a license by default.

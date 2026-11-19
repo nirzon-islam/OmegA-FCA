@@ -106,7 +106,17 @@ function createClient({ authenticate, options = {}, reconnect = {}, license = {}
     supervisor = new ConnectionSupervisor({
       connect: async context => {
         const result = await authenticate({ mode, credentials: normalized, options: loginOptions || {}, context, license: verifiedLicense });
-        return validateTransportDriver(result);
+        try {
+          return validateTransportDriver(result);
+        } catch (error) {
+          // A provider may allocate resources before returning an invalid
+          // driver. Dispose it before surfacing the permanent contract error.
+          if (result && typeof result.disconnect === "function") {
+            try { await result.disconnect(); }
+            catch (cleanupError) { error.cleanupError = cleanupError; }
+          }
+          throw error;
+        }
       },
       disconnect: async driver => {
         if (typeof driver.disconnect === "function") await driver.disconnect();
