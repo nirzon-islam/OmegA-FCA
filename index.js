@@ -13,6 +13,7 @@ const { createClient } = require("./src/api/client");
 const { createGoatBotLogin } = require("./src/compat/goatbotLogin");
 const { verifyLicenseToken } = require("./src/license/verify");
 const { createLicenseProvider } = require("./src/license/provider");
+const { validateTransportDriver, createTransportFactory } = require("./src/transport/contract");
 
 module.exports = {
   normalizeCookies,
@@ -37,5 +38,7 @@ module.exports = {
   createGoatBotLogin,
   verifyLicenseToken,
   createLicenseProvider,
+  validateTransportDriver,
+  createTransportFactory,
   version: require("./package.json").version
 };
