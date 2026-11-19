@@ -3,6 +3,7 @@
 const test = require("node:test");
 const assert = require("node:assert/strict");
 const { createLegacyFcaProvider } = require("../src/compat/legacyFcaTransport");
+const { createClient } = require("../src/api/client");
 
 function fakeApi() {
   let callback;
@@ -90,4 +91,33 @@ test("legacy FCA provider rejects timeout and invalid login APIs", async () => {
     mode: "appstate",
     credentials: [{ key: "c_user", value: "123456789" }, { key: "xs", value: "x" }]
   }), /incompatible personal-account API/);
+});
+
+
+test("legacy adapter integrates with createClient and preserves cookie attributes", async () => {
+  const fixture = fakeApi();
+  let receivedCookies;
+  const authenticate = createLegacyFcaProvider({
+    login(input, _options, callback) {
+      receivedCookies = input.appState;
+      callback(null, fixture.api);
+    }
+  });
+  const client = createClient({ authenticate, reconnect: { maxAttempts: 1 } });
+  const api = await client.login({ mode: "appstate", appState: [
+    { key: "c_user", value: "123456789", domain: "facebook.com", secure: true, httpOnly: true },
+    { key: "xs", value: "synthetic-session", domain: "facebook.com", path: "/", sameSite: "None" }
+  ] });
+  assert.equal(receivedCookies[0].secure, true);
+  assert.equal(receivedCookies[0].httpOnly, true);
+  assert.equal(receivedCookies[1].sameSite, "None");
+
+  const events = [];
+  api.listenMqtt((error, event) => events.push({ error, event }));
+  fixture.emit({ type: "message", body: "integration" });
+  assert.equal(events.length, 1);
+  assert.equal(events[0].error, null);
+  assert.equal(events[0].event.body, "integration");
+  api.stopListening();
+  await client.logout();
 });
