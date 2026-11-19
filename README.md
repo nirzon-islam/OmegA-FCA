@@ -11,6 +11,8 @@ OmegA-FCA is the Facebook integration library maintained under the **OmegA Bot**
 ## Included
 
 - AppState/cookie validation, secure encrypted session storage, secret redaction.
+- Native personal-session bootstrap for owner-supplied AppState, including HTTPS-only Facebook/Messenger requests, cookie rotation, and checkpoint/expiry detection.
+- `FB_USERNAME` credentials are accepted by the client and GoatBot compatibility mapper; native username/password authentication is not yet implemented.
 - Manual 2FA input plumbing and checkpoint/session-expiry classification. Challenges must be resolved by the account owner.
 - Connection supervision, bounded reconnect/backoff and event dispatch.
 - `createLegacyFcaProvider()`: adapter for an existing callback-style personal-account FCA implementation.
@@ -19,13 +21,27 @@ OmegA-FCA is the Facebook integration library maintained under the **OmegA Bot**
 - Separate official Meta Messenger Page transport (not a personal-account replacement).
 - TypeScript declarations, signed update-manifest verification, optional Ed25519 licensing.
 
-## Personal-account adapter
+## Personal AppState session foundation
+
+The first native session layer can validate an owner-supplied AppState and issue bounded HTTPS requests only to Facebook/Messenger hosts. It preserves scoped response cookies and stops with an explicit checkpoint or expired-session error; it does not bypass either state.
+
+```js
+const { createPersonalSession } = require("@omega/fca");
+const session = await createPersonalSession({ appState: require("./account.json") });
+const response = await session.request("https://www.facebook.com/");
+console.log(session.userId, response.status);
+// Call session.close() when finished.
+```
+
+This is a session foundation only: it does not yet provide the full FCA action API or realtime listener.
+
+## Legacy compatibility adapter (temporary migration/test utility)
 
 The adapter lets an existing FCA implementation plug into OmegA-FCA without pretending that the Facebook protocol has been reimplemented:
 
 ```js
 const { createClient, createLegacyFcaProvider } = require("@omega/fca");
-const legacyFcaLogin = require("@eryxenx/fca");
+// Supply a caller-owned FCA implementation only when testing the migration adapter.\nconst legacyFcaLogin = require("your-existing-fca");
 
 const authenticate = createLegacyFcaProvider({
   login: legacyFcaLogin,
@@ -45,11 +61,11 @@ api.listenMqtt((error, event) => {
 
 Use only an account and session you own or are authorized to operate. Keep `account.json`, passwords, 2FA secrets, and session keys outside source control. If Facebook presents a checkpoint, resolve it through Facebook as the account owner and then retry with a fresh authorized session.
 
-The adapter maps the existing FCA's callback login, AppState/credentials input, identity lookup, MQTT listener, and supported API methods into OmegA-FCA's transport contract. It does **not** create a new Facebook transport implementation.
+This legacy adapter is not the OmegA-FCA engine and is not used by the native session foundation. It exists only as an optional migration/test shim. The target runtime is being implemented inside OmegA-FCA itself.
 
 ## What is still required for a standalone replacement
 
-- Independently implemented personal-account authentication and session lifecycle.
+- Native username/password authentication (including owner-controlled 2FA and checkpoint handoff), plus full session lifecycle.
 - Independently implemented Facebook realtime transport and event decoding.
 - Complete legacy FCA behavior parity and real authorized-account end-to-end tests.
 - GoatBot integration test on the target bot branch.
