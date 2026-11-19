@@ -41,7 +41,8 @@
     "docs/GOATBOT-COMPATIBILITY-MATRIX.md",
     "docs/GOATBOT-INTEGRATION-AUDIT.md",
     "docs/REFERENCE-AUDIT.md",
-    "docs/NTKHANG-REFERENCE-STUDY.md"
+    "docs/NTKHANG-REFERENCE-STUDY.md",
+    "docs/SAFE-DIAGNOSTICS.md"
   ],
   "exports": {
     ".": {
