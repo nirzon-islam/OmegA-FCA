@@ -1,6 +1,18 @@
 "use strict";
 
-function createGoatBotLogin(client) {
+const { loadAccountConfig } = require("../auth/accountConfig");
+
+function fromAccountConfig(config) {
+  if (config.mode === "appstate") return { mode: "appstate", appState: config.appState };
+  return {
+    mode: "credentials",
+    ...(config.username ? { username: config.username } : { email: config.email }),
+    password: config.password,
+    twoFactorCode: config.twoFactorCode || null
+  };
+}
+
+function createGoatBotLogin(client, accountConfigOptions = {}) {
   if (!client || typeof client.login !== "function") throw new TypeError("OmegA-FCA client is required");
 
   return function goatBotLogin(credentials, options, callback) {
@@ -26,8 +38,12 @@ function createGoatBotLogin(client) {
         userAgent: input.userAgent || null,
         proxy: input.proxy || null
       };
+    } else if (Object.keys(input).length === 0) {
+      // With no explicit credentials, use the private project's root account.txt
+      // or appstate.json. Secrets are read locally and never copied into logs.
+      loginInput = fromAccountConfig(loadAccountConfig(accountConfigOptions));
     } else {
-      const error = new TypeError("GoatBot login requires an AppState array or FB_USERNAME/password credentials");
+      const error = new TypeError("GoatBot login requires AppState, FB_USERNAME/password, or an empty input to load root account.txt");
       error.retryable = false;
       callback(error);
       return Promise.resolve(null);
