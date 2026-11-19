@@ -125,7 +125,12 @@ function createMetaMessengerTransport({
   function listen(callback) {
     if (closed) throw new Error("Messenger transport is disconnected");
     if (typeof callback !== "function") throw new TypeError("listener callback is required");
-    const listener = event => callback(null, event);
+    const listener = event => {
+      try { callback(null, event); }
+      catch (error) {
+        try { events.emit("listenerCallbackError", error); } catch {}
+      }
+    };
     events.on("event", listener);
     return () => events.off("event", listener);
   }
