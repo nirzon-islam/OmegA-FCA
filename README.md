@@ -1,32 +1,54 @@
-# OmegA-FCA
+# OmegA Bot — OmegA-FCA
 
-Independent, security-focused FCA compatibility library for Node.js 20+.
+**An independent FCA-compatible transport foundation by NirZon.**
 
+OmegA-FCA is the Facebook integration foundation maintained under the **OmegA Bot** brand by **NirZon**. It provides security-focused session utilities, a transport/provider contract, GoatBot callback-login adaptation, and an official Meta Messenger Page transport.
+
+> **Current status:** version `0.1.1` — transport foundation. This is not yet a drop-in personal-account FCA replacement and does not currently implement native personal-account Facebook login.
+
+**Project owner / author:** NirZon  
+**Brand:** OmegA Bot  
 **Package:** `@omega/fca`  
-**Status:** `0.1.1` — transport foundation (not a working Facebook login client yet).
+**Node.js:** 20+
 
-Current feature and release status: [docs/IMPLEMENTATION-STATUS.md](docs/IMPLEMENTATION-STATUS.md).
+Current implementation and release status: [docs/IMPLEMENTATION-STATUS.md](docs/IMPLEMENTATION-STATUS.md). Deployment instructions for the supported Page transport: [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md).
 
-## What this package provides
+## About OmegA Bot
+
+OmegA Bot is the project brand for this library. The project is developed and maintained by **NirZon**. The codebase is being built as an independent, security-conscious foundation with clear transport boundaries and honest compatibility reporting.
+
+## What is included
 
 - CommonJS API for Node.js 20+
 - AppState/cookie normalization and validation
-- Credentials providers can receive an owner-entered `twoFactorCode`; checkpoint resolution remains manual and owner-controlled. Checkpoint/expired-session errors are classified, tagged, and stop automatic login retries so owners can resolve the issue and retry with a fresh session.
+- Optional manually entered `twoFactorCode` plumbing for a supplied authentication provider
+- Checkpoint and expired-session classification; automatic retries stop so the account owner can resolve the issue through Facebook
 - Secret redaction for diagnostics
-- AES-256-GCM session encryption and encrypted file persistence helpers (with symlink-resistant reads and atomic writes)
+- AES-256-GCM session encryption and encrypted file persistence helpers
 - Connection supervision with bounded reconnect/backoff
 - Event dispatching with in-flight duplicate coalescing, retry-safe acknowledgement, and per-thread ordering
 - Cookie jar and bounded HTTPS request helper
 - GoatBot callback-style login adapter
-- Official Meta Messenger Page transport (Page token, user profiles, conversation/message reads, typing/read actions, signed webhook ingestion)
+- Official Meta Messenger Page transport: Page messaging, profile lookup, conversation/message reads, typing/read actions, and signed webhook ingestion
 - Optional Ed25519 license verification for deployments that explicitly need it
-- Public TypeScript declarations (`index.d.ts`) for the currently implemented API
+- Public TypeScript declarations (`index.d.ts`)
 
-## Important implementation status
+## Important compatibility notice
 
-The package is **not a drop-in replacement for a personal-account FCA**. The official Meta Messenger Page transport is implemented separately and supports Page-token Send API calls, Page conversation/message reads, sender actions, and HMAC-verified webhook events. Personal-account browser-session authentication, private HTTP/GraphQL actions, MQTT wire protocol, and legacy GoatBot personal-inbox compatibility are not implemented. The generic `createClient({ authenticate })` still requires a transport provider. See [the official Meta transport guide](docs/META-MESSENGER-TRANSPORT.md).
+OmegA-FCA is **not currently a drop-in replacement for a personal-account FCA**.
 
-Do not use this package as a drop-in replacement for an existing FCA until the Facebook transport and integration tests are complete.
+The official Meta Messenger Page transport is implemented separately and supports Page-token Send API calls, Page conversation/message reads, sender actions, and HMAC-verified webhook events.
+
+The following personal-account capabilities are not implemented yet:
+
+- Native personal-account browser-session/AppState authentication
+- Private Facebook HTTP/GraphQL actions
+- Facebook web-client MQTT/WebSocket protocol and event decoding
+- Full legacy FCA and GoatBot personal-inbox/group API compatibility
+
+The generic `createClient({ authenticate })` requires an independently supplied transport provider. Do not switch an existing OmegA Bot or GoatBot deployment to this package as a drop-in FCA replacement until the missing transport and authorized integration tests are complete.
+
+For the supported Page-based integration, read [the official Meta transport guide](docs/META-MESSENGER-TRANSPORT.md).
 
 ## Install
 
@@ -43,10 +65,8 @@ const { createClient } = require("@omega/fca");
 
 const client = createClient({
   // Supply a real, independently implemented transport provider.
-  // It must return a driver with listen(callback), plus the API methods
-  // your application intends to call.
-  authenticate: async ({ mode, credentials, options, context }) => {
-    throw new Error("Facebook transport is not implemented");
+  authenticate: async () => {
+    throw new Error("Personal-account Facebook transport is not implemented");
   }
 });
 
@@ -54,24 +74,23 @@ client.login({ mode: "appstate", appState: [] })
   .catch(error => console.error("Login unavailable:", error.message));
 ```
 
-## Official Meta Messenger transport
+## Official Meta Messenger Page transport
 
-For supported Facebook Page messaging, see [docs/META-MESSENGER-TRANSPORT.md](docs/META-MESSENGER-TRANSPORT.md). This uses Meta's supported Page access token and webhook model; it does not provide personal-account FCA behavior.
+For supported Facebook Page messaging, see [docs/META-MESSENGER-TRANSPORT.md](docs/META-MESSENGER-TRANSPORT.md) and [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md).
+
+This integration uses Meta's supported Page access token and webhook model. It does not provide personal-account FCA behavior, browser-session emulation, or MQTT.
 
 ## GoatBot compatibility
 
-`createGoatBotLogin(client)` adapts the promise-based client login to GoatBot's callback-style login signature. The adapter does not supply the missing Facebook transport.
-
-## Runtime capabilities
-
-After a successful provider login, `api.getCapabilities()` returns a frozen snapshot of the methods actually supplied by that transport driver, whether event listening is available, and whether optional session-guard support exists. The current package reports E2EE as unavailable. This is a capability report, not proof that a provider's Facebook actions or protocol behavior are correct.
+`createGoatBotLogin(client)` adapts promise-based client login to GoatBot's callback-style login signature. The adapter does not supply the missing personal-account Facebook transport or guarantee full legacy FCA compatibility.
 
 ## Session security
 
 - Never commit cookies, AppState, passwords, 2FA secrets, session encryption keys, or tokens.
-- Keep encryption keys in the host's secret manager/environment.
+- Keep encryption keys and Page credentials in the hosting provider's secret manager.
 - Never log raw session material.
-- Checkpoint challenges must be completed by the account owner through legitimate platform flows. Providers may accept a manually entered `twoFactorCode`; this library does not generate, intercept, or bypass challenges.
+- Checkpoint challenges must be completed by the account owner through legitimate platform flows.
+- Providers may accept a manually entered `twoFactorCode`; this library does not generate, intercept, or bypass challenges.
 - The package does not bypass checkpoints, 2FA, rate limits, or platform security controls.
 - Unofficial platform interfaces can change without notice and can result in account restrictions.
 
@@ -79,14 +98,21 @@ After a successful provider login, `api.getCapabilities()` returns a frozen snap
 
 Public package use does not require an OmegA owner-issued license. Advanced deployments may opt into the existing Ed25519 license verification by setting `requireLicense: true` and supplying a valid `license` configuration to `createClient`.
 
-## Development
+## Development and tests
 
 ```bash
+npm ci
 npm test
 npm run test:syntax
+npm pack --dry-run
 ```
 
 Use synthetic fixtures for tests. Do not place live account credentials in issues, test fixtures, CI logs, or pull requests. Session files are written with restrictive permissions; keep their parent directory private and protect the encryption key separately.
+
+## Project ownership
+
+**OmegA Bot**  
+Developed and maintained by **NirZon**.
 
 ## License
 
