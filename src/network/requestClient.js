@@ -30,6 +30,32 @@ function combineAbortSignals(signals) {
   };
 }
 
+function abortReason(signal) {
+  return signal.reason || Object.assign(new Error("Request aborted"), { name: "AbortError" });
+}
+
+async function waitForRetry(delayMs, sleep, signal) {
+  if (signal?.aborted) throw abortReason(signal);
+  if (!signal) return sleep(delayMs);
+  await new Promise((resolve, reject) => {
+    let settled = false;
+    const cleanup = () => signal.removeEventListener("abort", onAbort);
+    const finish = (fn, value) => {
+      if (settled) return;
+      settled = true;
+      cleanup();
+      fn(value);
+    };
+    const onAbort = () => finish(reject, abortReason(signal));
+    signal.addEventListener("abort", onAbort, { once: true });
+    Promise.resolve().then(() => sleep(delayMs)).then(
+      () => signal.aborted ? finish(reject, abortReason(signal)) : finish(resolve),
+      error => finish(reject, error)
+    );
+    if (signal.aborted) onAbort();
+  });
+}
+
 function createRequestClient({ fetchImpl = globalThis.fetch, timeoutMs = 20_000, maxAttempts = 3, baseDelayMs = 500, sleep = ms => new Promise(resolve => setTimeout(resolve, ms)), random = Math.random } = {}) {
   if (typeof fetchImpl !== "function") throw new TypeError("Fetch implementation is required");
   if (!Number.isInteger(maxAttempts) || maxAttempts < 1 || maxAttempts > 5) throw new TypeError("maxAttempts must be between 1 and 5");
@@ -53,10 +79,10 @@ function createRequestClient({ fetchImpl = globalThis.fetch, timeoutMs = 20_000,
       try {
         response = await fetchImpl(url, { ...fetchOptions, signal: combined.signal });
       } catch (error) {
-        if (!canRetry || options.signal?.aborted || attempt + 1 >= maxAttempts || error.name === "AbortError" || error.name === "TimeoutError") throw error;
+        if (!canRetry || options.signal?.aborted || attempt + 1 >= maxAttempts || error?.name === "AbortError" || error?.name === "TimeoutError") throw error;
         const delay = Math.min(30_000, baseDelayMs * (2 ** attempt)) * (0.8 + random() * 0.4);
         attempt++;
-        await sleep(Math.round(delay));
+        await waitForRetry(Math.round(delay), sleep, options.signal);
         continue;
       } finally {
         combined.cleanup();
@@ -68,9 +94,9 @@ function createRequestClient({ fetchImpl = globalThis.fetch, timeoutMs = 20_000,
         ? Math.min(30_000, baseDelayMs * (2 ** attempt)) * (0.8 + random() * 0.4)
         : serverDelay;
       attempt++;
-      await sleep(Math.round(delay));
+      await waitForRetry(Math.round(delay), sleep, options.signal);
     }
   };
 }
 
-module.exports = { createRequestClient, retryAfterMs, isRetryableStatus };
+module.exports = { createRequestClient, retryAfterMs, isRetryableStatus, waitForRetry };
