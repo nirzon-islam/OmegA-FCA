@@ -23,6 +23,27 @@ test("credentials login forwards a manually entered two-factor code to the provi
   await client.logout();
 });
 
+test("checkpoint and expired-session errors stop automatic authentication retries", async () => {
+  for (const [message, expectedState, expectedCode] of [
+    ["checkpoint required", "checkpoint", "FCA_CHECKPOINT_REQUIRED"],
+    ["Session expired; not logged in", "logged_out", "FCA_SESSION_EXPIRED"]
+  ]) {
+    let attempts = 0;
+    const client = createClient({
+      authenticate: async () => { attempts++; throw new Error(message); },
+      reconnect: { minDelayMs: 0, maxDelayMs: 0, jitter: 0, maxAttempts: 5 }
+    });
+    await assert.rejects(client.login({ mode: "appstate", appState }), error => {
+      assert.equal(error.sessionState, expectedState);
+      assert.equal(error.code, expectedCode);
+      assert.equal(error.retryable, false);
+      return true;
+    });
+    assert.equal(attempts, 1);
+    await client.logout();
+  }
+});
+
 test("client facade exposes only methods implemented by its transport driver", async () => {
   const calls = [];
   const client = createClient({
