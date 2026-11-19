@@ -118,24 +118,21 @@ test("GoatBot adapter maps FB_USERNAME instead of email", async () => {
   });
 });
 
-test("GoatBot adapter loads root account.txt when no credentials are passed", async () => {
+test("GoatBot adapter rejects credentials stored in account.txt", async () => {
   const fs = require("node:fs");
   const os = require("node:os");
   const path = require("node:path");
   const root = fs.mkdtempSync(path.join(os.tmpdir(), "omega-goatbot-account-"));
   try {
-    fs.writeFileSync(path.join(root, "account.txt"), "fb_username=owner_handle\nfb_password=private-password\nfb_2fa_code=123456");
+    fs.writeFileSync(path.join(root, "account.txt"), "fb_email=owner@example.test\\nfb_password=private-password");
     let received;
     const login = createGoatBotLogin({
-      async login(credentials) { received = credentials; return { getCurrentUserID: () => "123" }; }
+      async login(credentials) { received = credentials; return {}; }
     }, { cwd: root, env: {} });
-    await login({}, () => {});
-    assert.deepEqual(received, {
-      mode: "credentials",
-      username: "owner_handle",
-      password: "private-password",
-      twoFactorCode: "123456"
-    });
+    let failure;
+    assert.equal(await login({}, error => { failure = error; }), null);
+    assert.match(failure.message, /account.txt is AppState\\/cookie-only/);
+    assert.equal(received, undefined);
   } finally {
     fs.rmSync(root, { recursive: true, force: true });
   }
