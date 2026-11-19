@@ -159,7 +159,7 @@ test("request client preserves caller cancellation and does not retry an aborted
     request("https://www.facebook.com/", { signal: controller.signal }),
     error => error === reason
   );
-  assert.equal(calls, 1);
+  assert.equal(calls, 0);
 });
 
 
