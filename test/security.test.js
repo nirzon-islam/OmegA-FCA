@@ -36,7 +36,7 @@ test("redacts credentials recursively", () => {
 
 
 test("rejects cookie values that can inject additional Cookie header fields", () => {
-  for (const value of ["x; admin=true", "x\\r\\nAuthorization: Bearer token", "value with spaces", "a,b", '"quoted"', "back\\\\slash"]) {
+  for (const value of ["x; admin=true", "x\r\nAuthorization: Bearer token", "value with spaces", "a,b", '"quoted"', "back\\slash"]) {
     assert.throws(() => normalizeCookies([{ key: "xs", value, domain: "facebook.com" }]), /cookie value/);
   }
   assert.equal(parseCookieHeader("c_user=123456; xs=abc==")[1].value, "abc==");

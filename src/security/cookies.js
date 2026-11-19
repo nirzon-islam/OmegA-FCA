@@ -22,7 +22,7 @@ function normalizeCookies(input) {
     if (!item || typeof item !== "object" || Array.isArray(item)) throw new TypeError("Invalid cookie entry");
     const key = typeof item.key === "string" ? item.key : item.name;
     if (typeof key !== "string" || !/^[A-Za-z0-9_-]{1,80}$/.test(key)) throw new TypeError("Invalid cookie name");
-    if (typeof item.value !== "string" || !item.value || item.value.length > MAX_COOKIE_VALUE_LENGTH || !/^[\\x21\\x23-\\x2B\\x2D-\\x3A\\x3C-\\x5B\\x5D-\\x7E]+$/.test(item.value)) throw new TypeError("Invalid cookie value");
+    if (typeof item.value !== "string" || !item.value || item.value.length > MAX_COOKIE_VALUE_LENGTH || !/^[\x21\x23-\x2B\x2D-\x3A\x3C-\x5B\x5D-\x7E]+$/.test(item.value)) throw new TypeError("Invalid cookie value");
     const domain = normalizeDomain(item.domain || "facebook.com");
     const path = item.path === undefined ? "/" : item.path;
     if (typeof path !== "string" || !path.startsWith("/") || path.length > 1024) throw new TypeError("Invalid cookie path");
