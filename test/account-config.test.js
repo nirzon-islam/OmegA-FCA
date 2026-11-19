@@ -72,3 +72,17 @@ test("rejects account and config symlinks that escape project root", () => withR
     assert.throws(() => loadAccountConfig({ cwd: root, env: {} }), /resolve inside the project root/);
   } finally { fs.rmSync(outside, { force: true }); }
 });
+
+test("rejects credential-style account.txt keys with whitespace around equals", () => {
+  for (const line of [
+    "fb_email = owner@example.test",
+    "email=owner@example.test",
+    "fb_username = owner",
+    "username=owner",
+    "fb_password = secret",
+    "password=secret",
+    "2FASecret = synthetic"
+  ]) {
+    assert.throws(() => parseAccountText(line), /account.txt is AppState\\/cookie-only/);
+  }
+});
