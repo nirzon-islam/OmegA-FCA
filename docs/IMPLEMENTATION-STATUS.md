@@ -13,6 +13,7 @@
 - Connection supervisor with bounded reconnect/backoff, listener recovery and abortable connect attempts.
 - Event dispatcher with duplicate coalescing, success-only acknowledgement and per-thread ordering.
 - Injectable transport contract and GoatBot callback-login adapter.
+- **New protocol-neutral native WebSocket runtime:** bounded connect/close waits, abort-aware connection setup, protocol-adapter hooks for authentication/subscription/frame decoding/action encoding, bounded frame handling, listener lifecycle, diagnostics metadata, and deterministic fake-socket tests. This is transport infrastructure only; it does not include Facebook's private handshake, endpoint, subscription topics, or action schemas.
 - **New:** `createLegacyFcaProvider()` bridges an existing callback-style personal-account FCA implementation into OmegA-FCA's transport contract. It maps AppState or credentials login, manual 2FA inputs, current-user lookup, MQTT listener lifecycle and supported FCA methods.
 - Manual 2FA input plumbing; checkpoint and expired-session classification. The owner must resolve Facebook challenges through the platform. The repository configuration loader does not treat `account.txt` as a credential source.
 - Provider-neutral authentication-attempt coordinator with bounded challenge rounds, single-use continuation, optional provider cleanup on cancellation, and secret-safe public snapshots. This is lifecycle plumbing only; no Facebook credential provider is included.
@@ -24,7 +25,7 @@
 This package is **not yet a standalone, drop-in personal-account FCA replacement**.
 
 - OmegA-FCA does not yet implement the full personal-account authentication flow (username/password + 2FA), complete Facebook private HTTP/GraphQL action catalog or endpoint-specific payload schemas. The new AppState session bootstrap and generic authenticated web-client layer are session/request foundations only; they do not constitute the FCA action API. Username/password login is not yet implemented natively; the username field is currently an input contract for the future auth provider.
-- OmegA-FCA does not yet implement Facebook web-client MQTT/WebSocket protocol or event decoding. The legacy adapter remains a temporary compatibility/test utility and is not the target runtime; the goal is a native OmegA-FCA transport.
+- OmegA-FCA does not yet implement Facebook web-client MQTT/WebSocket protocol details. The new native WebSocket runtime supplies lifecycle and adapter hooks, but it cannot authenticate, subscribe, decode Facebook frames, or encode Facebook actions until a verified protocol adapter is available. The legacy adapter remains a temporary compatibility/test utility and is not the target runtime.
 - Full parity with every legacy FCA method, event shape, and GoatBot call site has not been proven.
 - No authorized live personal-account end-to-end test has been run from this repository. The new AppState smoke-test command is prepared but has not yet been run against a real account.
 - The GoatBot branch has not yet been switched to this package or integration-tested.
