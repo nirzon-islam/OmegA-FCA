@@ -3,10 +3,11 @@
 const DEFAULT_MAX_FRAME_BYTES = 1024 * 1024;
 
 function findJsonObjectEnd(text, start) {
-  let depth = 0;
+  if (text[start] !== "{") return -1;
+  const stack = ["}"];
   let inString = false;
   let escaped = false;
-  for (let i = start; i < text.length; i++) {
+  for (let i = start + 1; i < text.length; i++) {
     const char = text[i];
     if (inString) {
       if (escaped) escaped = false;
@@ -15,11 +16,11 @@ function findJsonObjectEnd(text, start) {
       continue;
     }
     if (char === '"') inString = true;
-    else if (char === "{" || char === "[") depth++;
+    else if (char === "{") stack.push("}");
+    else if (char === "[") stack.push("]");
     else if (char === "}" || char === "]") {
-      depth--;
-      if (depth === 0) return i + 1;
-      if (depth < 0) return -1;
+      if (stack.pop() !== char) return -1;
+      if (stack.length === 0) return i + 1;
     }
   }
   return -1;
