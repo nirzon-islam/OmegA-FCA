@@ -155,9 +155,14 @@ class ConnectionSupervisor extends EventEmitter {
     this.#detachListener();
     const driver = this.driver;
     this.driver = null;
-    if (driver) await this.disconnectDriver(driver);
+    let disconnectError = null;
+    if (driver) {
+      try { await this.disconnectDriver(driver); }
+      catch (error) { disconnectError = error; }
+    }
     this.#setState("stopped");
     this.emit("stopped", this.snapshot());
+    if (disconnectError) throw disconnectError;
   }
 
   #setState(next) {
