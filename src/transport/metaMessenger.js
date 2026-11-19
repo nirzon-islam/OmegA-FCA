@@ -78,6 +78,7 @@ function createMetaMessengerTransport({
   if (typeof pageAccessToken !== "string" || !pageAccessToken.trim()) {
     throw new TypeError("A Page access token is required");
   }
+  pageAccessToken = pageAccessToken.trim();
   if (typeof pageId !== "string" || !/^\d{5,30}$/.test(pageId)) {
     throw new TypeError("A numeric Page ID is required");
   }
