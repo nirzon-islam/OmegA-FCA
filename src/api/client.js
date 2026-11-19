@@ -30,6 +30,7 @@ function createClient({ authenticate, options = {}, reconnect = {}, license = {}
   let licenseTimer = null;
   let licenseCheckPromise = null;
   let loginPromise = null;
+  let logoutPromise = null;
 
   async function checkLicense() {
     if (!requireLicense) return null;
@@ -189,6 +190,9 @@ function createClient({ authenticate, options = {}, reconnect = {}, license = {}
   }
 
   function login(credentials = {}, loginOptions = options) {
+    if (logoutPromise) {
+      return Promise.reject(new Error("Logout is already in progress"));
+    }
     if (loginPromise) {
       return Promise.reject(new Error("A login attempt is already in progress"));
     }
@@ -202,14 +206,26 @@ function createClient({ authenticate, options = {}, reconnect = {}, license = {}
 
   return Object.freeze({
     login,
-    async logout() {
+    logout() {
+      if (logoutPromise) return logoutPromise;
       stopLicenseMonitor();
-      if (detachMqtt) detachMqtt();
-      if (supervisor) await supervisor.stop();
-      supervisor = null;
-      api = null;
-      userId = null;
-      verifiedLicense = null;
+      const pendingLogin = loginPromise;
+      logoutPromise = (async () => {
+        // If logout races authentication, wait for that attempt to settle and
+        // then dispose any session it managed to establish.
+        if (pendingLogin) {
+          try { await pendingLogin; } catch {}
+        }
+        if (detachMqtt) detachMqtt();
+        if (supervisor) await supervisor.stop();
+        supervisor = null;
+        api = null;
+        userId = null;
+        verifiedLicense = null;
+      })().finally(() => {
+        logoutPromise = null;
+      });
+      return logoutPromise;
     },
     getConnectionState: () => supervisor ? supervisor.snapshot() : Object.freeze({ state: "idle", connected: false, generation: 0 }),
     getLicense: () => verifiedLicense
