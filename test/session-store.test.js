@@ -48,3 +48,23 @@ test("session state classifier separates checkpoints, logout and transient error
   assert.equal(classifySessionState("online"), "online");
   assert.equal(describeError({ type: "Auth", message: "expired" }), "Auth expired");
 });
+
+
+test("session encryption rejects oversized plaintext and malformed base64url envelopes", () => {
+  const { encryptSession, decryptSession } = require("../src/security/sessionCrypto");
+  const key = "c".repeat(64);
+  assert.throws(
+    () => encryptSession({ payload: "x".repeat(1024 * 1024) }, key),
+    /1 MiB limit/
+  );
+
+  const envelope = encryptSession({ userId: "123456" }, key);
+  assert.throws(
+    () => decryptSession({ ...envelope, iv: "not+base64url" }, key),
+    /Invalid encrypted session envelope/
+  );
+  assert.throws(
+    () => decryptSession({ ...envelope, tag: "A" }, key),
+    /Invalid encrypted session envelope/
+  );
+});
