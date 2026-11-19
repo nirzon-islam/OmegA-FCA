@@ -118,15 +118,23 @@ function createMetaMessengerTransport({
     return () => events.off("event", listener);
   }
 
-  function publishWebhook(payload, rawBody, signature) {
+  function publishWebhook(rawBody, signature) {
     if (closed) throw new Error("Messenger transport is disconnected");
     if (!appSecret) {
       throw new Error("appSecret is required to verify Messenger webhook signatures");
     }
-    if (!Buffer.isBuffer(rawBody) || !verifyWebhookSignature(rawBody, signature, appSecret)) {
-        const error = new Error("Messenger webhook signature verification failed");
-        error.code = "META_WEBHOOK_SIGNATURE_INVALID";
-        throw error;
+    if (!Buffer.isBuffer(rawBody) || rawBody.length > 1024 * 1024 ||
+        !verifyWebhookSignature(rawBody, signature, appSecret)) {
+      const error = new Error("Messenger webhook signature verification failed");
+      error.code = "META_WEBHOOK_SIGNATURE_INVALID";
+      throw error;
+    }
+    let payload;
+    try { payload = JSON.parse(rawBody.toString("utf8")); }
+    catch {
+      const error = new Error("Messenger webhook body is not valid JSON");
+      error.code = "META_WEBHOOK_PAYLOAD_INVALID";
+      throw error;
     }
     const normalized = normalizeWebhookPayload(payload);
     for (const event of normalized) events.emit("event", event);
