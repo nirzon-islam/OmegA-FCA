@@ -157,13 +157,17 @@ export class ConnectionSupervisor {
 }
 
 export class EventDispatcher {
-  constructor(options?: Record<string, unknown>);
-  [key: string]: unknown;
+  constructor(options?: { maxSeen?: number; ttlMs?: number; now?: () => number });
+  dispatch<T>(event: unknown, handler: (event: any) => T | Promise<T>): Promise<{ duplicate: boolean; result?: T } | { duplicate: true }>;
+  clear(): void;
 }
 
 export class CookieJar {
-  constructor(cookies?: Cookie[]);
-  [key: string]: unknown;
+  constructor(cookies?: Cookie[], options?: { now?: () => number });
+  setCookies(cookies: Cookie[]): this;
+  getCookieHeader(inputUrl: string | URL): string;
+  clear(): void;
+  readonly size: number;
 }
 
 export function createClient(options: ClientOptions): {
@@ -195,7 +199,15 @@ export function createRequestClient(options?: Record<string, unknown>): (input: 
 export function retryAfterMs(value: string | null, now?: number): number | null;
 export function isRetryableStatus(status: number): boolean;
 export function verifyLicenseToken(token: string, publicKey: string, options?: Record<string, unknown>): VerifiedLicense;
-export function createLicenseProvider(options?: Record<string, unknown>): (...args: unknown[]) => unknown;
+export interface LicenseProviderOptions {
+  backendUrl: string;
+  licenseId: string;
+  installationId: string;
+  licenseKey: string;
+  publicKey: string;
+  fetchImpl?: (...args: any[]) => Promise<any>;
+}
+export function createLicenseProvider(options: LicenseProviderOptions): () => Promise<string>;
 export function validateTransportDriver(driver: TransportDriver): TransportDriver;
 export function createTransportFactory(provider: (context: ConnectionContext) => Promise<TransportDriver> | TransportDriver): (context: ConnectionContext) => Promise<TransportDriver>;
 
@@ -231,9 +243,27 @@ export function createMetaMessengerTransport(options: MetaMessengerTransportOpti
 export function normalizeWebhookPayload(payload: unknown): MetaWebhookEvent[];
 export function verifyWebhookSignature(rawBody: Uint8Array, signature: string, appSecret: string): boolean;
 export function verifyWebhookChallenge(query: Record<string, unknown>, verifyToken: string): string | null;
-export function parseVersion(value: string): number[];
+export interface ParsedVersion {
+  major: number;
+  minor: number;
+  patch: number;
+  prerelease: string;
+}
+export function parseVersion(value: string): ParsedVersion;
 export function compareVersions(left: string, right: string): number;
-export function verifyUpdateManifest(manifest: unknown, options?: Record<string, unknown>): unknown;
+export interface VerifiedUpdateManifest {
+  product: string;
+  version: string;
+  channel: "stable" | "beta";
+  minNode: string;
+  issuedAt: number;
+  expiresAt: number;
+  releaseNotes: string;
+  artifact: Readonly<{ url: string; sha256: string }>;
+  updateAvailable: boolean;
+  isDowngrade: boolean;
+}
+export function verifyUpdateManifest(manifest: unknown, options?: Record<string, unknown>): VerifiedUpdateManifest;
 export function verifyArtifactDigest(data: string | Uint8Array, digest: string): boolean;
 
 export const version: string;
