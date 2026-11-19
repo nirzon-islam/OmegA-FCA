@@ -51,7 +51,7 @@ function verifyUpdateManifest(envelope, options = {}) {
   catch { throw new Error("Invalid update manifest payload"); }
 
   const now = options.now === undefined ? Date.now() : options.now;
-  if (manifest.product !== (options.product || "@omegax/fca")) throw new Error("Update manifest product mismatch");
+  if (manifest.product !== (options.product || "@omega/fca")) throw new Error("Update manifest product mismatch");
   if (!["stable", "beta"].includes(manifest.channel)) throw new Error("Invalid update channel");
   if (options.channel && manifest.channel !== options.channel) throw new Error("Update channel mismatch");
   parseVersion(manifest.version);
@@ -94,6 +94,7 @@ function verifyUpdateManifest(envelope, options = {}) {
 }
 
 function verifyArtifactDigest(bytes, expectedSha256) {
+  if (!/^[a-f0-9]{64}$/i.test(String(expectedSha256 || ""))) return false;
   const actual = crypto.createHash("sha256").update(bytes).digest("hex");
   return crypto.timingSafeEqual(Buffer.from(actual, "hex"), Buffer.from(String(expectedSha256).toLowerCase(), "hex"));
 }
