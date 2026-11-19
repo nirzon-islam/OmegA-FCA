@@ -68,3 +68,14 @@ test("listener transport failure reconnects and restores exactly one listener", 
   assert.equal(received.length, 1);
   await supervisor.stop();
 });
+
+test("does not retry permanent authentication failures", async () => {
+  let attempts = 0;
+  const supervisor = new ConnectionSupervisor({
+    connect: async () => { attempts++; const error = new Error("invalid credentials"); error.retryable = false; throw error; },
+    sleep: async () => {}
+  });
+  assert.equal(await supervisor.start(), null);
+  assert.equal(attempts, 1);
+  assert.equal(supervisor.snapshot().state, "failed");
+});
