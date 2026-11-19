@@ -226,6 +226,15 @@ export const DEFAULT_MAX_FRAME_BYTES: number;
 export function decodeRealtimeFrame(frame: Buffer | Uint8Array, options?: { maxFrameBytes?: number }): DecodedRealtimeFrame;
 /** Returns event names/count only, omitting event argument values. */
 export function summarizeRealtimeFrame(frame: Buffer | Uint8Array, options?: { maxFrameBytes?: number }): RealtimeFrameSummary;
+export interface RealtimeBinaryPayloadSummary {
+  readonly envelopeKind: "payload" | "events"; readonly requestIdPresent: boolean;
+  readonly payloadEncoding: "non-string" | "non-base64-string" | "base64-binary-unclassified" | "protobuf-wire-compatible" | "base64-json";
+  readonly payloadBytes: number | null;
+  readonly wireFields: readonly Readonly<{ number: number; wireType: number; byteLength: number | null }>[];
+}
+export const DEFAULT_MAX_BINARY_PAYLOAD_BYTES: number;
+/** Inspects only bounded outer-envelope/Base64 structure and protobuf-wire-compatible field boundaries; never returns payload values. */
+export function inspectRealtimeBinaryPayload(frame: Buffer | Uint8Array, options?: { maxFrameBytes?: number; maxPayloadBytes?: number }): RealtimeBinaryPayloadSummary;
 export const version: string;
 
 export interface AccountConfigOptions { cwd?: string; accountFile?: string; configFile?: string; appStateFile?: string | null; env?: NodeJS.ProcessEnv; }
