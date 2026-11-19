@@ -21,6 +21,21 @@ OmegA-FCA is the Facebook integration library maintained under the **OmegA Bot**
 - Separate official Meta Messenger Page transport (not a personal-account replacement).
 - TypeScript declarations, signed update-manifest verification, optional Ed25519 licensing.
 
+## Root account.txt configuration loader
+
+The package exports `loadAccountConfig()` to read credentials from the project-root `account.txt`, or AppState from the root `appstate.json`. Environment variables override values in the file. Copy `account.txt.example` to `account.txt` and fill in your own values:
+
+```ini
+fb_username=YOUR_FACEBOOK_USERNAME
+fb_password=YOUR_FACEBOOK_PASSWORD
+# Or use fb_email instead of fb_username.
+# fb_email=you@example.com
+# fb_2fa_code=123456
+# For AppState mode, omit credentials and use root appstate.json.
+```
+
+`account.txt` is ignored by Git; it stays in your local project root and is not automatically pushed to GitHub. The loader only parses and validates configuration. It does **not** perform native Facebook password login or provide MQTT/realtime messaging; those standalone engine components remain incomplete.
+
 ## Personal AppState session foundation
 
 The first native session layer can validate an owner-supplied AppState and issue bounded HTTPS requests only to Facebook/Messenger hosts. It preserves scoped response cookies and stops with an explicit checkpoint or expired-session error; it does not bypass either state.
