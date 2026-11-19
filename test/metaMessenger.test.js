@@ -272,3 +272,27 @@ test("Meta Page reads surface Graph API permission errors", async () => {
   );
   await transport.disconnect();
 });
+
+
+test("Meta Page profile reads validate PSIDs and requested fields", async () => {
+  let requestUrl;
+  let requestOptions;
+  const transport = createMetaMessengerTransport({
+    ...config,
+    fetchImpl: async (url, options) => {
+      requestUrl = new URL(String(url));
+      requestOptions = options;
+      return new Response(JSON.stringify({
+        id: "987654321098765", first_name: "Test", last_name: "User", profile_pic: "https://example.test/profile.jpg"
+      }), { status: 200, headers: { "content-type": "application/json" } });
+    }
+  });
+  const profile = await transport.getUserInfo("987654321098765");
+  assert.equal(profile.first_name, "Test");
+  assert.equal(requestUrl.pathname, "/v99.0/987654321098765");
+  assert.equal(requestUrl.searchParams.get("fields"), "first_name,last_name,profile_pic");
+  assert.equal(requestOptions.headers.authorization, "Bearer " + config.pageAccessToken);
+  assert.throws(() => transport.getUserInfo("bad/id"), /recipient ID/);
+  assert.throws(() => transport.getUserInfo("987654321098765", ["email"]), /supported Messenger profile fields/);
+  await transport.disconnect();
+});

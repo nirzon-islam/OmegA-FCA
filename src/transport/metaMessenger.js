@@ -173,6 +173,16 @@ function createMetaMessengerTransport({
     return { limit, ...(after ? { after } : {}) };
   }
 
+  function getUserInfo(userId, fields = ["first_name", "last_name", "profile_pic"]) {
+    validateRecipientId(userId);
+    const allowedFields = new Set(["first_name", "last_name", "profile_pic", "locale", "timezone", "gender"]);
+    if (!Array.isArray(fields) || fields.length < 1 || fields.length > allowedFields.size ||
+        fields.some(field => !allowedFields.has(field)) || new Set(fields).size !== fields.length) {
+      throw new TypeError("Profile fields must be a non-empty list of supported Messenger profile fields");
+    }
+    return graphGet(encodeURIComponent(userId), { fields: fields.join(",") });
+  }
+
   function getThreadList(limit = 25, after) {
     return graphGet(pageId + "/conversations", {
       fields: "id,updated_time,participants,unread_count",
@@ -260,6 +270,7 @@ function createMetaMessengerTransport({
   return Object.freeze({
     getCurrentUserID: () => pageId,
     sendMessage,
+    getUserInfo,
     getThreadList,
     getThreadInfo,
     getThreadHistory,
@@ -273,7 +284,7 @@ function createMetaMessengerTransport({
       authentication: "page-access-token",
       inbound: "verified-webhook",
       outbound: "messenger-send-api",
-      supportedActions: Object.freeze(["sendMessage", "getThreadList", "getThreadInfo", "getThreadHistory", "getMessage", "sendTypingIndicator", "markAsRead"]),
+      supportedActions: Object.freeze(["sendMessage", "getUserInfo", "getThreadList", "getThreadInfo", "getThreadHistory", "getMessage", "sendTypingIndicator", "markAsRead"]),
       userSessionEmulation: false,
       mqtt: false
     })

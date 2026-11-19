@@ -222,6 +222,7 @@ export interface MetaMessengerTransportOptions {
 export interface MetaMessengerTransport {
   getCurrentUserID(): string;
   sendMessage(recipientId: string, message: Record<string, unknown>): Promise<Record<string, unknown>>;
+  getUserInfo(userId: string, fields?: Array<"first_name" | "last_name" | "profile_pic" | "locale" | "timezone" | "gender">): Promise<Record<string, unknown>>;
   getThreadList(limit?: number, after?: string): Promise<Record<string, unknown>>;
   getThreadInfo(threadId: string): Promise<Record<string, unknown>>;
   getThreadHistory(threadId: string, limit?: number, after?: string): Promise<Record<string, unknown>>;
