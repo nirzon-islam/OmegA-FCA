@@ -117,7 +117,7 @@ function createMetaMessengerTransport({
   }
 
   function validateRecipientId(recipientId) {
-    if (typeof recipientId !== "string" || !/^\\d{5,30}$/.test(recipientId)) {
+    if (typeof recipientId !== "string" || !/^\d{5,30}$/.test(recipientId)) {
       throw new TypeError("A valid page-scoped recipient ID is required");
     }
   }
