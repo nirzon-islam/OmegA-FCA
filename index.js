@@ -14,7 +14,7 @@ const { createGoatBotLogin } = require("./src/compat/goatbotLogin");
 const { verifyLicenseToken } = require("./src/license/verify");
 const { createLicenseProvider } = require("./src/license/provider");
 const { validateTransportDriver, createTransportFactory } = require("./src/transport/contract");
-const { createMetaMessengerTransport, normalizeWebhookPayload, verifyWebhookSignature } = require("./src/transport/metaMessenger");
+const { createMetaMessengerTransport, normalizeWebhookPayload, verifyWebhookSignature, verifyWebhookChallenge } = require("./src/transport/metaMessenger");
 const { parseVersion, compareVersions, verifyUpdateManifest, verifyArtifactDigest } = require("./src/update/manifest");
 
 module.exports = {
@@ -45,6 +45,7 @@ module.exports = {
   createMetaMessengerTransport,
   normalizeWebhookPayload,
   verifyWebhookSignature,
+  verifyWebhookChallenge,
   parseVersion,
   compareVersions,
   verifyUpdateManifest,
