@@ -54,6 +54,26 @@ test("personal session validates owner-supplied AppState and scopes cookies to F
   assert.throws(() => session.getAppState(), /closed/);
 });
 
+
+test("personal session emits sanitized request diagnostics without cookie values", async () => {
+  const { createDiagnosticRecorder } = require("../src/security/diagnostics");
+  const diagnostics = createDiagnosticRecorder();
+  const session = await createPersonalSession({
+    appState,
+    onDiagnostic: event => diagnostics.record(event),
+    fetchImpl: async () => response()
+  });
+  await session.request("https://www.facebook.com/messages/?access_token=must-not-appear&view=inbox");
+  const report = diagnostics.toJSON();
+  assert.equal(report.includes("session-token"), false);
+  assert.equal(report.includes("123456789012345"), false);
+  assert.equal(report.includes("must-not-appear"), false);
+  assert.equal(report.includes("inbox"), false);
+  assert.match(report, /"method": "GET"/);
+  assert.match(report, /"status": 200/);
+  session.close();
+});
+
 test("personal session reports checkpoint without attempting a bypass", async () => {
   await assert.rejects(
     createPersonalSession({
