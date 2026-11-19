@@ -5,18 +5,18 @@
 A provider passed as `authenticate` returns one of:
 
 - `{ status: "authenticated", session }` after it has independently completed authentication.
-- `{ status: "challenge_required", challenge, resume(answer) }` when the same provider-owned login attempt is waiting for an owner response.
+- `{ status: "challenge_required", challenge, resume(answer), cancel?() }` when the same provider-owned login attempt is waiting for an owner response. The optional `cancel()` hook releases provider-owned pending state when the attempt is closed or exceeds its challenge-round limit.
 
 The coordinator exposes:
 
 - `begin(credentials, options)` to start exactly one attempt.
 - `snapshot()` to read a sanitized state and challenge description.
 - `submitChallenge(answer)` to continue the provider-owned attempt once.
-- `close()` to close an authenticated session and discard retained references.
+- `close()` to cancel a pending provider challenge, close an authenticated session, and discard retained references.
 
 States: `idle`, `authenticating`, `challenge_required`, `verifying_challenge`, `authenticated`, `failed`, and `closed`.
 
-Challenge answers are passed only to the provider's continuation callback. The coordinator does not log or persist them. The default maximum is three challenge rounds (configurable from one to five). Exceeding the limit fails the attempt. Challenge details exposed through `snapshot()` are reduced to type, message, and method names.
+Challenge answers are passed only to the provider's continuation callback. The coordinator does not log or persist them. The default maximum is three challenge rounds (configurable from one to five). Exceeding the limit fails the attempt. Challenge details exposed through `snapshot()` use a generic message and identifier-only type/method names so provider text cannot echo credentials or cookies. Error snapshots also use a fixed message and accept only bounded identifier-like error codes.
 
 ## Minimal provider contract
 
@@ -32,7 +32,7 @@ const attempt = createAuthenticationAttempt({
       return {
         status: "challenge_required",
         challenge: pending.challenge,
-        resume: answer => pending.continue(answer)
+        resume: answer => pending.continue(answer),\n        cancel: () => pending.cancel?.()
       };
     }
 
