@@ -17,6 +17,7 @@ export interface PersonalSession {
   readonly userId: string;
   readonly state: "active";
   readonly validatedAt: number;
+  getTokens(): FacebookRequestTokens;
   getCookieHeader(url?: string | URL): string;
   request(input: string | URL, options?: RequestInit): Promise<Response>;
   getAppState(): Cookie[];
@@ -25,6 +26,11 @@ export interface PersonalSession {
 export function createPersonalSession(options: PersonalSessionOptions): Promise<PersonalSession>;
 export function detectSessionChallenge(response: Response, html: string): "active" | "checkpoint" | "logged_out";
 export function extractIdentity(html: string): string | null;
+export interface FacebookRequestTokens {
+  fbDtsg: string | null; lsd: string | null; jazoest: string | null;
+  hsi: string | null; spinR: string | null; spinB: string | null; spinT: string | null;
+}
+export function extractFacebookTokens(html: string): FacebookRequestTokens;
 export interface ConnectionContext { attempt: number; generation: number; signal: AbortSignal; }
 export interface TransportDriver {
   listen(callback: (error: Error | null, event?: unknown) => void): (() => void) | void;
