@@ -2,6 +2,7 @@
 
 const { normalizeCookies, validateSessionCookies, parseCookieHeader, parseNetscapeCookies } = require("./src/security/cookies");
 const { redactSecrets } = require("./src/security/redact");
+const { classifySessionState, describeError } = require("./src/security/sessionState");
 const { encryptSession, decryptSession } = require("./src/security/sessionCrypto");
 const { saveSession, loadSession, deleteSession } = require("./src/security/sessionStore");
 const { ConnectionSupervisor } = require("./src/runtime/connection");
@@ -19,6 +20,8 @@ module.exports = {
   parseCookieHeader,
   parseNetscapeCookies,
   redactSecrets,
+  classifySessionState,
+  describeError,
   encryptSession,
   decryptSession,
   saveSession,
