@@ -180,7 +180,7 @@ test("client disposes a provider result that violates the transport contract", a
   });
   await assert.rejects(
     client.login({ mode: "appstate", appState }),
-    /Transport driver method must be a function/
+    /Connection stopped before authentication completed/
   );
   assert.equal(disconnects, 1);
   await client.logout();
