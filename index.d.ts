@@ -208,3 +208,9 @@ export interface VerifiedUpdateManifest {
 export function verifyUpdateManifest(manifest: unknown, options?: Record<string, unknown>): VerifiedUpdateManifest;
 export function verifyArtifactDigest(data: string | Uint8Array, digest: string): boolean;
 export const version: string;
+
+export interface AccountConfigOptions { cwd?: string; accountFile?: string; appStateFile?: string | null; env?: NodeJS.ProcessEnv; }
+export type LoadedAccountConfig = ({ mode: "credentials"; username: string; email?: never; password: string; twoFactorCode: string | null } | { mode: "credentials"; email: string; username?: never; password: string; twoFactorCode: string | null } | { mode: "appstate"; appState: Cookie[] });
+export function parseAccountText(text: string): Record<string, string>;
+/** Reads root account.txt (or environment overrides), falling back to root appstate.json. This only loads configuration; it does not implement Facebook password authentication or realtime transport. */
+export function loadAccountConfig(options?: AccountConfigOptions): LoadedAccountConfig;
