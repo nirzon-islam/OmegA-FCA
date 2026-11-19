@@ -27,6 +27,7 @@ Private, owner-licensed FCA-compatible client library for OmegA projects.
 - Agent Backend license refresh provider using HTTPS; refresh credentials are sent only in the request body and never logged by this package.
 - Transport-neutral API facade and connection supervisor with bounded exponential reconnect delay, permanent-error handling, and one active listener.
 - Bounded duplicate-event suppression and per-thread event ordering.
+- Domain/path/expiry/secure-aware cookie jar and bounded HTTPS retry client that respects Retry-After and never retries authentication failures by default.
 - GoatBot callback-style login adapter for AppState and email/password input.
 - GitHub Actions CI using Node.js 20 and Node's built-in test runner.
 
