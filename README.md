@@ -34,7 +34,7 @@ fb_password=YOUR_FACEBOOK_PASSWORD
 # For AppState mode, omit credentials and use root appstate.json.
 ```
 
-`account.txt` is ignored by Git; it stays in your local project root and is not automatically pushed to GitHub. The loader only parses and validates configuration. It does **not** perform native Facebook password login or provide MQTT/realtime messaging; those standalone engine components remain incomplete.
+`account.txt` is ignored by Git; it stays in your local project root and is not automatically pushed to GitHub. The loader only parses and validates configuration. It does **not** perform native Facebook password login or provide MQTT/realtime messaging; those standalone engine components remain incomplete. When `createGoatBotLogin(client)` is called with an empty credentials object, the adapter now reads this root `account.txt` automatically (or falls back to root `appstate.json`) and passes the selected mode to the configured client provider. This is configuration wiring only; it does not make the current client a native Facebook login engine.
 
 ## Personal AppState session foundation
 
