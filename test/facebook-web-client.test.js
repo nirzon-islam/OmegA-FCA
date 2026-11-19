@@ -51,12 +51,12 @@ test("supports GET query params and normalizes Facebook error responses", async 
   assert.equal(request.options.method, "GET");
 });
 
-test("rejects non-Facebook hosts, unsafe methods and invalid form keys", () => {
+test("rejects non-Facebook hosts, unsafe methods and invalid form keys", async () => {
   assert.throws(() => assertFacebookUrl("https://example.com/"), /Facebook\/Messenger/);
   assert.throws(() => assertFacebookUrl("http://www.facebook.com/"), /Facebook\/Messenger/);
   assert.throws(() => toFormBody({ "bad field": "x" }, {}, "1"), /field name is invalid/);
   const client = createFacebookWebClient({
     session: { userId: "1", getTokens: () => ({}), getCookieHeader: () => "", request: async () => fakeResponse() }
   });
-  assert.rejects(client.request("https://www.facebook.com/", { method: "DELETE" }), /GET, HEAD, and POST/);
+  await assert.rejects(client.request("https://www.facebook.com/", { method: "DELETE" }), /GET, HEAD, and POST/);
 });
