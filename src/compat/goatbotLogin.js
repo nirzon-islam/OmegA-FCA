@@ -13,10 +13,13 @@ function createGoatBotLogin(client) {
     let loginInput;
     if (Array.isArray(input.appState)) {
       loginInput = { mode: "appstate", appState: input.appState };
-    } else if (typeof input.email === "string" && typeof (input.password || input.pass) === "string") {
+    } else if ((typeof input.username === "string" || typeof input.email === "string") &&
+        typeof (input.password || input.pass) === "string") {
       loginInput = {
         mode: "credentials",
-        email: input.email,
+        ...(typeof input.username === "string" && input.username.trim()
+          ? { username: input.username.trim() }
+          : { email: input.email }),
         password: input.password || input.pass,
         twoFactorSecret: input.twoFactorSecret || input["2FASecret"] || null,
         twoFactorCode: input.twoFactorCode || input.twoFactorCodeOrCode || input.twoFactorSecretOrCode || input["2FACode"] || null,
@@ -24,7 +27,7 @@ function createGoatBotLogin(client) {
         proxy: input.proxy || null
       };
     } else {
-      const error = new TypeError("GoatBot login requires an AppState array or email/password credentials");
+      const error = new TypeError("GoatBot login requires an AppState array or FB_USERNAME/password credentials");
       error.retryable = false;
       callback(error);
       return Promise.resolve(null);
