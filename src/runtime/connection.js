@@ -159,12 +159,20 @@ class ConnectionSupervisor extends EventEmitter {
     this.eventCallback = null;
     this.#detachListener();
     const driver = this.driver;
+    const pendingStart = this.startPromise;
     this.driver = null;
     this.stopPromise = (async () => {
       let disconnectError = null;
       if (driver) {
         try { await this.disconnectDriver(driver); }
         catch (error) { disconnectError = error; }
+      }
+      // A connect attempt may still be resolving. #startLoop owns disposal of
+      // any driver that arrives after stopRequested; wait for that cleanup
+      // before reporting the supervisor as fully stopped.
+      if (pendingStart) {
+        try { await pendingStart; }
+        catch (error) { if (!disconnectError) disconnectError = error; }
       }
       this.#setState("stopped");
       this.emit("stopped", this.snapshot());
