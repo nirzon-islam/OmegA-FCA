@@ -20,6 +20,7 @@ jobs:
       - run: node --check src/compat/goatbotLogin.js
       - run: node --check src/runtime/connection.js
       - run: node --check src/events/dispatcher.js
+      - run: node --check src/network/cookieJar.js
       - run: node --check src/security/cookies.js
       - run: node --check src/security/redact.js
       - run: node --check src/security/sessionCrypto.js
