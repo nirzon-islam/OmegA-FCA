@@ -31,6 +31,16 @@ export interface FacebookRequestTokens {
   hsi: string | null; spinR: string | null; spinB: string | null; spinT: string | null;
 }
 export function extractFacebookTokens(html: string): FacebookRequestTokens;
+export interface FacebookResponseError extends Error {
+  code: string; status: number | null;
+  sessionState: "checkpoint" | "logged_out" | "error";
+  retryable: boolean;
+}
+export function normalizeFacebookResponse(body: string, options?: { status?: number; contentType?: string }): unknown;
+export function stripFacebookJsonPrefix(body: string): string;
+export function createFacebookError(message: string, options?: {
+  code?: string; status?: number; sessionState?: "checkpoint" | "logged_out" | "error"; retryable?: boolean;
+}): FacebookResponseError;
 export interface ConnectionContext { attempt: number; generation: number; signal: AbortSignal; }
 export interface TransportDriver {
   listen(callback: (error: Error | null, event?: unknown) => void): (() => void) | void;
