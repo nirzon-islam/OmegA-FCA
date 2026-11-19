@@ -4,6 +4,7 @@ const { validateSessionCookies, parseCookieHeader } = require("../security/cooki
 const { ConnectionSupervisor } = require("../runtime/connection");
 const { verifyLicenseToken } = require("../license/verify");
 const { validateTransportDriver } = require("../transport/contract");
+const { classifySessionState } = require("../security/sessionState");
 
 const METHOD_FEATURES = Object.freeze({
   sendMessage: "messaging", unsendMessage: "messaging", markAsRead: "messaging", sendTypingIndicator: "messaging",
@@ -112,6 +113,15 @@ function createClient({ authenticate, options = {}, reconnect = {}, license = {}
           result = await authenticate({ mode, credentials: normalized, options: loginOptions || {}, context, license: verifiedLicense });
           return validateTransportDriver(result);
         } catch (error) {
+          const sessionState = classifySessionState(error);
+          if (sessionState === "checkpoint" || sessionState === "logged_out") {
+            error.sessionState = sessionState;
+            error.code = error.code || (sessionState === "checkpoint"
+              ? "FCA_CHECKPOINT_REQUIRED" : "FCA_SESSION_EXPIRED");
+            // Do not repeatedly retry a challenged or expired session.
+            // The owner resolves it externally and retries with a fresh session.
+            error.retryable = false;
+          }
           lastConnectError = error;
           // A provider may allocate resources before returning an invalid
           // driver. Dispose it before surfacing the permanent contract error.
