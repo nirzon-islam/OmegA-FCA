@@ -140,14 +140,21 @@ function createClient({ authenticate, options = {}, reconnect = {}, license = {}
       if (detachMqtt) throw new Error("MQTT listener is already active");
       mqttErrorHandler = error => callback(error, null);
       supervisor.on("listenerError", mqttErrorHandler);
-      const detach = supervisor.listen(event => callback(null, event));
-      detachMqtt = () => {
+      try {
+        const detach = supervisor.listen(event => callback(null, event));
+        detachMqtt = () => {
+          supervisor.off("listenerError", mqttErrorHandler);
+          mqttErrorHandler = null;
+          detach();
+          detachMqtt = null;
+        };
+        return detachMqtt;
+      } catch (error) {
+        // Roll back the error subscription if listener attachment fails.
         supervisor.off("listenerError", mqttErrorHandler);
         mqttErrorHandler = null;
-        detach();
-        detachMqtt = null;
-      };
-      return detachMqtt;
+        throw error;
+      }
     };
     facade.stopListening = callback => {
       if (detachMqtt) detachMqtt();
