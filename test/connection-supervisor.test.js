@@ -200,3 +200,38 @@ test("supervisor reaches stopped state even when driver disposal fails", async (
     generation: 2
   });
 });
+
+
+test("start waits for an in-flight stop to finish disposing the previous driver", async () => {
+  let connectCount = 0;
+  let releaseDisconnect;
+  const disconnectGate = new Promise(resolve => { releaseDisconnect = resolve; });
+  const supervisor = new ConnectionSupervisor({
+    connect: async () => {
+      connectCount++;
+      return { listen() {} };
+    },
+    disconnect: async () => disconnectGate,
+    options: { maxAttempts: 1 }
+  });
+
+  await supervisor.start();
+  const stopping = supervisor.stop();
+  const restarting = supervisor.start();
+
+  await new Promise(resolve => setImmediate(resolve));
+  assert.equal(connectCount, 1);
+
+  releaseDisconnect();
+  await stopping;
+  const driver = await restarting;
+
+  assert.ok(driver);
+  assert.equal(connectCount, 2);
+  assert.deepEqual(supervisor.snapshot(), {
+    state: "connected",
+    connected: true,
+    generation: 3
+  });
+  await supervisor.stop();
+});
