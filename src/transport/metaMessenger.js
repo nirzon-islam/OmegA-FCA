@@ -15,6 +15,17 @@ function verifyWebhookSignature(rawBody, signature, appSecret) {
   return expected.length === supplied.length && timingSafeEqual(expected, supplied);
 }
 
+function verifyWebhookChallenge(query, verifyToken) {
+  if (!query || typeof query !== "object" || query["hub.mode"] !== "subscribe" ||
+      typeof query["hub.verify_token"] !== "string" ||
+      typeof query["hub.challenge"] !== "string" ||
+      typeof verifyToken !== "string" || !verifyToken) return null;
+  const supplied = Buffer.from(query["hub.verify_token"]);
+  const expected = Buffer.from(verifyToken);
+  if (supplied.length !== expected.length || !timingSafeEqual(supplied, expected)) return null;
+  return query["hub.challenge"];
+}
+
 function normalizeWebhookPayload(payload) {
   if (!payload || payload.object !== "page" || !Array.isArray(payload.entry)) {
     throw new TypeError("Expected a Messenger Page webhook payload");
@@ -163,4 +174,4 @@ function createMetaMessengerTransport({
   });
 }
 
-module.exports = { createMetaMessengerTransport, normalizeWebhookPayload, verifyWebhookSignature };
+module.exports = { createMetaMessengerTransport, normalizeWebhookPayload, verifyWebhookSignature, verifyWebhookChallenge };
