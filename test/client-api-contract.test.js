@@ -22,6 +22,12 @@ test("client facade exposes only methods implemented by its transport driver", a
 
   const api = await client.login({ mode: "appstate", appState });
   assert.equal(api.getCurrentUserID(), "123456");
+  assert.deepEqual(api.getCapabilities(), {
+    methods: ["sendMessage", "getCurrentUserID"],
+    events: true,
+    sessionGuard: false,
+    e2ee: false
+  });
   assert.equal(typeof api.sendMessage, "function");
   assert.equal(api.getThreadInfo, undefined);
   assert.equal(api.createNewGroup, undefined);
