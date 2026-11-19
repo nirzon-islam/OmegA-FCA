@@ -29,9 +29,11 @@ Private, owner-licensed FCA-compatible client library for OmegA projects.
 - Bounded duplicate-event suppression and per-thread event ordering.
 - Domain/path/expiry/secure-aware cookie jar and bounded HTTPS retry client that respects Retry-After and never retries authentication failures by default.
 - GoatBot callback-style login adapter for AppState and email/password input.
+- Explicit transport-driver contract with fail-fast validation; no unverified protocol implementation is silently substituted.
+- Runtime enforcement of owner-approved feature entitlements and protection against overlapping login attempts.
 - GitHub Actions CI using Node.js 20 and Node's built-in test runner.
 
-**Not implemented yet:** Facebook authentication/transport protocol, MQTT wire protocol/event decoding, full message/thread API coverage, and the final GoatBot runtime integration. The transport facade currently requires an injected authenticate implementation; it is not yet a working Facebook login client.
+**Not implemented yet:** Facebook authentication/transport protocol, MQTT wire protocol/event decoding, full message/thread API coverage, and the final GoatBot runtime integration. The transport facade currently requires an injected, independently implemented authenticate transport provider; the Facebook authentication and MQTT wire protocol are not yet implemented, so this package is not yet a working Facebook login client.
 
 ## License setup
 
