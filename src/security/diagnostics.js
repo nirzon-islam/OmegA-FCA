@@ -1,6 +1,6 @@
 "use strict";
 
-const SECRET_KEY = /(?:pass(?:word)?|cookie|token|secret|authorization|appstate|session|credential|fb_dtsg|lsd|jazoest|xs|c_user|access.?key|api.?key)/i;
+const SECRET_KEY = /(?:pass(?:word)?|cookie|token|secret|authorization|appstate|session|credential|fb_dtsg|lsd|jazoest|xs|c_user|access.?key|api.?key|2fa|otp|verification.?code|challenge.?answer|auth.?code)/i;
 const SAFE_HEADER_NAMES = new Set(["accept", "content-type", "accept-language", "x-requested-with", "origin", "referer"]);
 
 function byteLength(value) {
@@ -14,7 +14,8 @@ function byteLength(value) {
 function safeUrl(input) {
   try {
     const url = input instanceof URL ? input : new URL(String(input));
-    return Object.freeze({ origin: url.origin, path: url.pathname, queryParameterNames: [...new Set([...url.searchParams.keys()].filter(key => !SECRET_KEY.test(key)))].slice(0, 40) });
+    const path = url.pathname.split("/").map(part => part.length > 64 ? "[redacted]" : part).join("/");
+    return Object.freeze({ origin: url.origin, path, queryParameterNames: [...new Set([...url.searchParams.keys()].filter(key => !SECRET_KEY.test(key)))].slice(0, 40) });
   } catch {
     return Object.freeze({ origin: null, path: null, queryParameterNames: [] });
   }
