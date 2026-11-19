@@ -35,6 +35,12 @@ test("rejects malformed, unsupported, empty and oversized frames", () => {
   });
 });
 
+test("does not accept mismatched JSON container delimiters", () => {
+  const malformed = Buffer.from('prefix {"events":[{"name":"bad"}]}] {"events":[{"name":"good"}]}');
+  const decoded = decodeRealtimeFrame(malformed);
+  assert.deepEqual(decoded.events.map(event => event.name), ["good"]);
+});
+
 test("rejects invalid options and input types", () => {
   assert.throws(() => decodeRealtimeFrame("text"), /Buffer or Uint8Array/);
   assert.throws(() => decodeRealtimeFrame(Buffer.from("{}"), { maxFrameBytes: 0 }), /maxFrameBytes/);
