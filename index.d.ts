@@ -127,6 +127,12 @@ export interface ClientApi {
   setOptions?: (options: Record<string, unknown>) => any;
 }
 
+export interface AuthenticationError extends Error {
+  code?: string;
+  sessionState?: "checkpoint" | "logged_out" | "error" | "unknown";
+  retryable?: boolean;
+}
+
 export interface ConnectionSnapshot {
   state: "idle" | "connecting" | "reconnecting" | "connected" | "disconnected" | "failed" | "stopped";
   connected: boolean;
