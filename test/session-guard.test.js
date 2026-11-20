@@ -50,9 +50,11 @@ test("SessionGuard recovers a corrupt primary from its encrypted backup", async 
   }
 });
 
-test("SessionGuard requires explicit paths, key validation and a safe interval", () => {
+test("SessionGuard requires explicit paths, key validation and a safe interval", async () => {
   assert.throws(() => createSessionGuard({ getSession: () => ({}) }), /filePath is required/);
-  assert.throws(() => createSessionGuard({ filePath: "/tmp/a", key: "x", getSession: () => ({}) }).saveNow(), /32 bytes|64 hexadecimal/);
+  const invalidKeyGuard = createSessionGuard({ filePath: "/tmp/a", key: "x", getSession: () => ({}) });
+  await assert.rejects(invalidKeyGuard.saveNow(), /32 bytes|64 hexadecimal/);
+  invalidKeyGuard.close();
   const guard = createSessionGuard({ filePath: "/tmp/omega-test-session.enc", key: "c".repeat(64), getSession: () => ({}) });
   try { assert.throws(() => guard.start(999), /at least 1000/); }
   finally { guard.close(); }
