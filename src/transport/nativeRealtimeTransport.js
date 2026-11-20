@@ -5,12 +5,32 @@ const { decodeRealtimeFrame, DEFAULT_MAX_FRAME_BYTES } = require("./realtimeFram
 
 const DEFAULT_CONNECT_TIMEOUT_MS = 15000;
 const DEFAULT_CLOSE_TIMEOUT_MS = 3000;
+const DEFAULT_PROTOCOL_SETUP_TIMEOUT_MS = 15000;
 
 function transportError(message, code, retryable = false) {
   const error = new Error(message);
   error.code = code;
   error.retryable = retryable;
   return error;
+}
+
+function withTimeout(promise, timeoutMs, signal) {
+  let timer;
+  let abortHandler;
+  const timeout = new Promise((_, reject) => {
+    timer = setTimeout(() => reject(transportError(
+      "Realtime protocol setup timed out", "FCA_WS_PROTOCOL_SETUP_TIMEOUT", true
+    )), timeoutMs);
+  });
+  const aborted = signal ? new Promise((_, reject) => {
+    abortHandler = () => reject(signal.reason || transportError("Connection aborted", "FCA_WS_ABORTED"));
+    if (signal.aborted) abortHandler();
+    else signal.addEventListener("abort", abortHandler, { once: true });
+  }) : new Promise(() => {});
+  return Promise.race([Promise.resolve(promise), timeout, aborted]).finally(() => {
+    clearTimeout(timer);
+    if (signal && abortHandler) signal.removeEventListener("abort", abortHandler);
+  });
 }
 
 function attach(socket, event, handler) {
@@ -51,6 +71,7 @@ function createNativeRealtimeTransport(options = {}) {
     headers,
     connectTimeoutMs = DEFAULT_CONNECT_TIMEOUT_MS,
     closeTimeoutMs = DEFAULT_CLOSE_TIMEOUT_MS,
+    protocolSetupTimeoutMs = DEFAULT_PROTOCOL_SETUP_TIMEOUT_MS,
     maxFrameBytes = DEFAULT_MAX_FRAME_BYTES,
     onDiagnostic
   } = options;
@@ -66,7 +87,7 @@ function createNativeRealtimeTransport(options = {}) {
       typeof protocol.encodeAction !== "function") {
     throw new TypeError("protocol must implement authenticate, subscribe, decodeFrame and encodeAction");
   }
-  for (const [name, value] of [["connectTimeoutMs", connectTimeoutMs], ["closeTimeoutMs", closeTimeoutMs]]) {
+  for (const [name, value] of [["connectTimeoutMs", connectTimeoutMs], ["closeTimeoutMs", closeTimeoutMs], ["protocolSetupTimeoutMs", protocolSetupTimeoutMs]]) {
     if (!Number.isInteger(value) || value < 1 || value > 120000) throw new TypeError(name + " must be between 1 and 120000");
   }
   if (!Number.isInteger(maxFrameBytes) || maxFrameBytes < 1 || maxFrameBytes > 16 * 1024 * 1024) {
@@ -191,9 +212,12 @@ function createNativeRealtimeTransport(options = {}) {
       if (currentGeneration !== generation) throw transportError("Connection superseded", "FCA_WS_SUPERSEDED");
       const contextWithSignal = { ...context, url };
       try {
-        await protocol.authenticate(candidate, contextWithSignal);
-        await protocol.subscribe(candidate, contextWithSignal);
-      } catch {
+        await withTimeout((async () => {
+          await protocol.authenticate(candidate, contextWithSignal);
+          await protocol.subscribe(candidate, contextWithSignal);
+        })(), protocolSetupTimeoutMs, signal);
+      } catch (error) {
+        if (error?.code === "FCA_WS_PROTOCOL_SETUP_TIMEOUT" || error?.code === "FCA_WS_ABORTED") throw error;
         throw transportError("Protocol authentication or subscription failed", "FCA_WS_PROTOCOL_SETUP_FAILED", false);
       }
       if (currentGeneration !== generation) throw transportError("Connection superseded", "FCA_WS_SUPERSEDED");
@@ -321,4 +345,4 @@ function createNativeRealtimeTransport(options = {}) {
   });
 }
 
-module.exports = { DEFAULT_CONNECT_TIMEOUT_MS, DEFAULT_CLOSE_TIMEOUT_MS, createNativeRealtimeTransport };
+module.exports = { DEFAULT_CONNECT_TIMEOUT_MS, DEFAULT_CLOSE_TIMEOUT_MS, DEFAULT_PROTOCOL_SETUP_TIMEOUT_MS, createNativeRealtimeTransport };
