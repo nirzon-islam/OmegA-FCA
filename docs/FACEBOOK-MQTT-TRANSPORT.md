@@ -59,3 +59,24 @@ Do not log cookies or raw private message payloads. Store the AppState/cookie on
 - Verify the handshake, queue bootstrap, receive and send behavior against an authorized live account, then test reconnect/long-running stability.
 
 The endpoint, MQTT 3.1 metadata and topic/queue shapes are unofficial observations from public FCA source code and may change without notice. The implementation does not bypass Facebook checkpoints, 2FA or rate limits. The official Meta Page API remains a separate provider.
+
+
+## Integrated AppState driver
+
+`createFacebookMqttDriver()` composes the owner-supplied AppState validator, account-scoped cookie jar, MQTT protocol adapter and native WebSocket runtime. It requires an injected `socketFactory({ url, protocols, headers, signal })`, so applications can use a supported WebSocket implementation without this package silently downloading or selecting one. The returned driver exposes the current account ID, `listen`, `sendRequest`, `sendMessage` and `disconnect`.
+
+Example:
+
+```js
+const { createFacebookMqttDriver } = require("@omega/fca");
+const WebSocket = require("ws");
+
+const driver = await createFacebookMqttDriver({
+  appState: JSON.parse(process.env.FB_APPSTATE_JSON),
+  socketFactory: ({ url, protocols, headers }) =>
+    new WebSocket(url, protocols, { headers }),
+  mqtt: { keepAlive: 60 }
+});
+```
+
+This example describes API wiring only. A fake-broker integration test verifies the local handshake sequence; it does not establish that Facebook currently accepts the observed MQTT metadata or that message sends are delivered. Keep AppState in a private secret store, never in source control or deployment logs.
