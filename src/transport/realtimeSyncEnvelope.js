@@ -12,7 +12,7 @@ function findJsonObject(text) {
     const c = text[i];
     if (quoted) {
       if (escaped) escaped = false;
-      else if (c === "\\\\") escaped = true;
+      else if (c === "\\") escaped = true;
       else if (c === '"') quoted = false;
       continue;
     }
