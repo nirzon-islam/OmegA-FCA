@@ -140,3 +140,37 @@ test("unsendMessage rejects invalid IDs and reports Facebook action errors", asy
   assert.throws(() => api.unsendMessage(""), /messageID is invalid/);
   await assert.rejects(api.unsendMessage("mid.123"), error => error.code === "FCA_FACEBOOK_REQUEST_REJECTED");
 });
+
+test("thread title, color and emoji actions use the authenticated customization endpoints", async () => {
+  const calls = [];
+  const api = createFacebookThreadApi({
+    session,
+    webClient: { post: async (url, body) => {
+      calls.push({ url, body });
+      return { payload: { success: true } };
+    } }
+  });
+  await api.setTitle("Test Group", "123456789012345");
+  await api.changeThreadColor("196241301102133", "123456789012345");
+  await api.changeThreadEmoji("🎉", "123456789012345");
+  assert.equal(calls[0].url, "https://www.facebook.com/messaging/set_thread_name/");
+  assert.equal(calls[0].body.thread_name, "Test Group");
+  assert.equal(calls[0].body.thread_fbid, "123456789012345");
+  assert.equal(calls[1].url, "https://www.facebook.com/messaging/save_thread_color/?source=thread_settings&dpr=1");
+  assert.equal(calls[1].body.color_choice, "");
+  assert.equal(calls[2].url, "https://www.facebook.com/messaging/save_thread_emoji/?source=thread_settings&dpr=1");
+  assert.equal(calls[2].body.emoji_choice, "🎉");
+});
+
+test("thread customization methods validate input and normalize Facebook errors", async () => {
+  const api = createFacebookThreadApi({
+    session,
+    webClient: { post: async () => ({ payload: { error: 1545012 } }) }
+  });
+  assert.throws(() => api.setTitle("x", "bad"), /numeric Facebook ID/);
+  assert.throws(() => api.changeThreadColor("x".repeat(65), "123456789012345"), /theme ID/);
+  assert.throws(() => api.changeThreadEmoji("x".repeat(17), "123456789012345"), /up to 16/);
+  await assert.rejects(api.setTitle("Test", "123456789012345"), error => error.code === "FCA_FACEBOOK_REQUEST_REJECTED");
+  await assert.rejects(api.changeThreadColor("#ff0000", "123456789012345"), error => error.code === "FCA_FACEBOOK_REQUEST_REJECTED");
+  await assert.rejects(api.changeThreadEmoji("🎉", "123456789012345"), error => error.code === "FCA_FACEBOOK_REQUEST_REJECTED");
+});
