@@ -369,15 +369,21 @@ function createFacebookThreadApi({ session, webClient } = {}) {
     if (typeof typing !== "boolean") throw new TypeError("typing must be a boolean or legacy 0/1 value");
     const thread = id(threadID, "threadID");
     const body = { typ: typing ? 1 : 0, to: "", source: "mercury-chat", thread };
-    if (isGroup === false) body.to = thread;
-    const operation = web.post(TYPING_URL, body).then(result => {
+    const operation = (async () => {
+      if (typeof isGroup === "boolean") {
+        if (!isGroup) body.to = thread;
+      } else {
+        const profiles = await getUserInfo(thread);
+        if (Object.keys(profiles || {}).length > 0) body.to = thread;
+      }
+      const result = await web.post(TYPING_URL, body);
       if (!result.payload || result.payload.error) {
         throw createFacebookError("sendTypingIndicator: Facebook rejected the typing update", {
           code: "FCA_FACEBOOK_REQUEST_REJECTED", retryable: false
         });
       }
       return result.payload;
-    });
+    })();
     return callbackResult(operation, callback);
   }
 
