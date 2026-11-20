@@ -299,3 +299,13 @@ export function parseAccountText(text: string): Cookie[];
 export function generateTotp(secret: string, options?: { digits?: number; period?: number; algorithm?: "sha1" | "sha256" | "sha512"; timestamp?: number }): string;
 /** Reads cookie-only account.txt first, then appstate.json. Credential configuration is not loaded in the AppState-only phase. */
 export function loadAccountConfig(options?: AccountConfigOptions): LoadedAccountConfig;
+
+export interface RealtimeSyncEnvelope {
+  readonly appId: string;
+  readonly requestId: number;
+  readonly type: number;
+  readonly payload: Readonly<Record<string, unknown>>;
+}
+/** Inspects the observed JSON sync envelope without interpreting the undocumented binary prefix. */
+export function inspectRealtimeSyncEnvelope(frame: Buffer | Uint8Array, options?: { maxFrameBytes?: number }): RealtimeSyncEnvelope;
+export const DEFAULT_MAX_SYNC_FRAME_BYTES: number;
