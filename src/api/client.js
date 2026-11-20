@@ -7,14 +7,14 @@ const { validateTransportDriver } = require("../transport/contract");
 const { classifySessionState } = require("../security/sessionState");
 
 const METHOD_FEATURES = Object.freeze({
-  sendMessage: "messaging", unsendMessage: "messaging", markAsRead: "messaging", sendTypingIndicator: "messaging",
+  sendMessage: "messaging", sendRequest: "messaging", unsendMessage: "messaging", markAsRead: "messaging", sendTypingIndicator: "messaging",
   getUserInfo: "threads", getThreadInfo: "threads", getThreadList: "threads", getThreadHistory: "threads", getMessage: "threads", getFriendsList: "threads", getUserID: "threads",
   addUserToGroup: "groups", removeUserFromGroup: "groups", createNewGroup: "groups", changeNickname: "groups",
   setMessageReaction: "reactions"
 });
 
 const DRIVER_METHODS = [
-  "sendMessage", "getUserInfo", "getThreadInfo", "getThreadList", "getCurrentUserID",
+  "sendRequest", "sendMessage", "getUserInfo", "getThreadInfo", "getThreadList", "getCurrentUserID",
   "markAsRead", "setMessageReaction", "sendTypingIndicator", "unsendMessage",
   "changeNickname", "addUserToGroup", "removeUserFromGroup", "createNewGroup",
   "getThreadHistory", "getMessage", "getFriendsList", "getUserID"
