@@ -87,7 +87,7 @@ test("provider failures discard pending challenge state", async () => {
   const attempt = createAuthenticationAttempt({
     authenticate: async () => { throw Object.assign(new Error("provider echoed password hunter2"), { code: "AUTH_REJECTED" }); }
   });
-  await assert.rejects(attempt.begin({}), /rejected/);
+  await assert.rejects(attempt.begin({}), /Authentication failed; inspect the provider error securely/);
   assert.equal(attempt.snapshot().state, "failed");
   assert.equal(attempt.snapshot().error.code, null);
   assert.equal(attempt.snapshot().error.message, "Authentication failed; inspect the provider error securely");
@@ -159,7 +159,7 @@ test("failed challenge continuation cancels pending provider state", async () =>
     })
   });
   await attempt.begin({});
-  await assert.rejects(attempt.submitChallenge("123456"), /verification rejected/);
+  await assert.rejects(attempt.submitChallenge("123456"), /Authentication failed; inspect the provider error securely/);
   assert.equal(cancelled, 1);
   assert.equal(attempt.snapshot().state, "failed");
   await attempt.close();
