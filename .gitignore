@@ -22,3 +22,7 @@ appstate.txt
 
 # Local test/development secrets
 test-config.json
+
+# Local browser profile and Facebook capture artifacts — never commit these.
+.omega-capture/
+.playwright/
