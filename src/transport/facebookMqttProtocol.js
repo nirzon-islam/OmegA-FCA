@@ -117,6 +117,18 @@ function createFacebookMqttProtocol(options = {}) {
           queue.sync_token = syncToken;
         }
         socket.send(mqtt.encodePublish({ topic: queueTopic, payload: JSON.stringify(queue), qos: 1, packetId: nextPacketId() }));
+        const keepAliveMs = Math.max(0, Number(options.keepAlive ?? 60)) * 500;
+        if (keepAliveMs > 0) {
+          const pingTimer = setInterval(() => {
+            if (socket.readyState === undefined || socket.readyState === 1) {
+              try { socket.send(mqtt.encodePingReq()); } catch {}
+            }
+          }, keepAliveMs);
+          if (typeof pingTimer.unref === "function") pingTimer.unref();
+          const stopPing = () => clearInterval(pingTimer);
+          if (typeof socket.once === "function") socket.once("close", stopPing);
+          else if (typeof socket.addEventListener === "function") socket.addEventListener("close", stopPing, { once: true });
+        }
       },
       decodeFrame(frame, context = {}) {
         const packet = decodePacket(frame);
