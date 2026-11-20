@@ -365,3 +365,6 @@ export interface MessengerSyncParseResult { events: ReadonlyArray<Record<string,
 /** Parses known Messenger sync delta envelopes conservatively. */
 export function parseMessengerSyncPayload(input: unknown): MessengerSyncParseResult;
 export function normalizeMessengerDelta(delta: unknown): Record<string, unknown> | null;
+
+export interface MqttRequestTracker { allocateId(): number; track(requestId: string | number, timeoutMs?: number): Promise<unknown>; resolve(response: unknown): boolean; rejectAll(reason?: unknown): void; readonly pendingCount: number; }
+export function createMqttRequestTracker(options?: { timeoutMs?: number; maxPending?: number; initialRequestId?: number }): MqttRequestTracker;
