@@ -236,7 +236,8 @@ async function createPersonalSession({
       const location = response.headers?.get?.("location") || "";
       const target = location ? new URL(location, requestUrl) : null;
       if (target && /checkpoint|challenge/i.test(target.href)) break;
-      if (target && /login\.php|\\/login(?:[/?]|$)/i.test(target.href)) break;
+      const targetPath = target?.pathname?.toLowerCase() || "";
+      if (target && (targetPath.includes("login.php") || targetPath === "/login" || targetPath.startsWith("/login/"))) break;
       if (!target || target.protocol !== "https:" ||
           !/(^|\.)facebook\.com$|(^|\.)messenger\.com$/.test(target.hostname)) {
         throw sessionError("Facebook redirected the session validation to an unsupported destination", "FCA_UNEXPECTED_REDIRECT", "error");
