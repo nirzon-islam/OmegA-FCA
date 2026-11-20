@@ -90,7 +90,7 @@ test("client facade exposes only methods implemented by its transport driver", a
 
   const result = await api.sendMessage("hello", "thread-1");
   assert.deepEqual(result, { messageID: "synthetic-1" });
-  assert.deepEqual(calls, [[{ threadID: "thread-1", message: "hello" }]]);
+  assert.deepEqual(calls, [[{ threadID: "thread-1", message: "hello" }, undefined]]);
   await client.logout();
 });
 
