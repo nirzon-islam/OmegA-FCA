@@ -58,8 +58,5 @@
       "default": "./index.js"
     }
   },
-  "author": "NirZon",
-  "devDependencies": {
-    "playwright": "^1.56.1"
-  }
+  "author": "NirZon"
 }
