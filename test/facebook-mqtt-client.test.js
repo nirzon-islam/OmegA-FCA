@@ -56,7 +56,15 @@ test("first-party client logs in with AppState and exposes callback-compatible M
   assert.equal(api.getCurrentUserID(), "123456789012345");
   assert.equal(typeof api.listenMqtt, "function");
   assert.equal(typeof api.sendMessage, "function");
-  assert.equal(api.getThreadInfo, undefined);
+  assert.equal(typeof api.getThreadList, "function");
+  assert.equal(typeof api.getThreadInfo, "function");
+  assert.equal(typeof api.getThreadHistory, "function");
+  assert.equal(typeof api.getUserInfo, "function");
+  assert.equal(typeof api.addUserToGroup, "function");
+  assert.equal(typeof api.removeUserFromGroup, "function");
+  assert.equal(typeof api.changeNickname, "function");
+  assert.equal(typeof api.setMessageReaction, "function");
+  assert.equal(typeof api.markAsRead, "function");
   await client.logout();
 });
 
