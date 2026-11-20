@@ -171,7 +171,10 @@ function createNativeRealtimeTransport(options = {}) {
         if (currentGeneration !== generation || state !== "connected") return;
         const raw = message?.data !== undefined ? message.data : message;
         const bytes = asBytes(raw);
-        if (bytes && bytes.byteLength > maxFrameBytes) {
+        const incomingBytes = typeof raw === "string" ? Buffer.byteLength(raw, "utf8")
+          : bytes ? bytes.byteLength
+          : Number.isFinite(raw?.size) ? raw.size : null;
+        if (incomingBytes !== null && incomingBytes > maxFrameBytes) {
           notifyFailure(transportError("Incoming frame exceeds configured size limit", "FCA_WS_FRAME_TOO_LARGE"));
           return;
         }
@@ -238,7 +241,10 @@ function createNativeRealtimeTransport(options = {}) {
       if (!(typeof frame === "string" || Buffer.isBuffer(frame) || frame instanceof Uint8Array || frame instanceof ArrayBuffer)) {
         throw transportError("Protocol encoder returned an unsupported frame", "FCA_WS_ACTION_FRAME_INVALID");
       }
-      if (frame.byteLength > maxFrameBytes) throw transportError("Outgoing frame exceeds configured size limit", "FCA_WS_FRAME_TOO_LARGE");
+      const outgoingBytes = typeof frame === "string" ? Buffer.byteLength(frame, "utf8")
+        : frame instanceof ArrayBuffer ? frame.byteLength
+        : frame.byteLength;
+      if (outgoingBytes > maxFrameBytes) throw transportError("Outgoing frame exceeds configured size limit", "FCA_WS_FRAME_TOO_LARGE");
       await new Promise((resolve, reject) => {
         try {
           if (socket.send.length >= 2) socket.send(frame, error => error ? reject(error) : resolve());
