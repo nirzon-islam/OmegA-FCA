@@ -28,6 +28,7 @@ const { inspectRealtimeBinaryPayload, DEFAULT_MAX_BINARY_PAYLOAD_BYTES } = requi
 const { inspectRealtimeSyncEnvelope, DEFAULT_MAX_SYNC_FRAME_BYTES } = require("./src/transport/realtimeSyncEnvelope");
 const { createNativeRealtimeTransport, DEFAULT_CONNECT_TIMEOUT_MS, DEFAULT_CLOSE_TIMEOUT_MS } = require("./src/transport/nativeRealtimeTransport");
 const mqtt311Codec = require("./src/transport/mqtt311Codec");
+const { createMqtt311StreamDecoder } = require("./src/transport/mqtt311StreamDecoder");
 const { parseVersion, compareVersions, verifyUpdateManifest, verifyArtifactDigest } = require("./src/update/manifest");
 
 module.exports = {
@@ -45,7 +46,7 @@ module.exports = {
   decodeRealtimeFrame, summarizeRealtimeFrame, DEFAULT_MAX_FRAME_BYTES,
   inspectRealtimeBinaryPayload, DEFAULT_MAX_BINARY_PAYLOAD_BYTES,
   inspectRealtimeSyncEnvelope, DEFAULT_MAX_SYNC_FRAME_BYTES,
-  createNativeRealtimeTransport, DEFAULT_CONNECT_TIMEOUT_MS, DEFAULT_CLOSE_TIMEOUT_MS, mqtt311Codec,
+  createNativeRealtimeTransport, DEFAULT_CONNECT_TIMEOUT_MS, DEFAULT_CLOSE_TIMEOUT_MS, mqtt311Codec, createMqtt311StreamDecoder,
   parseVersion, compareVersions, verifyUpdateManifest, verifyArtifactDigest,
   version: require("./package.json").version
 };
