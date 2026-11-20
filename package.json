@@ -15,11 +15,6 @@
     "capture:browser": "node tools/browser-capture.js"
   },
   "license": "MIT",
-  "repository": {
-    "type": "git",
-    "url": "git+https://github.com/nirzon-islam/OmegA-FCA.git"
-  },
-  "homepage": "https://github.com/nirzon-islam/OmegA-FCA#readme",
   "keywords": [
     "facebook",
     "messenger",
@@ -64,6 +59,7 @@
     "ws": "^8.18.3"
   },
   "publishConfig": {
-    "registry": "https://npm.pkg.github.com"
+    "registry": "https://registry.npmjs.org/",
+    "access": "public"
   }
 }
