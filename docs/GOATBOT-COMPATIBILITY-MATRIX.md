@@ -2,7 +2,7 @@
 
 **Target:** `nirzon-islam/OmegA-Goatbot`  
 **GoatBot branch reviewed:** `fca-migration-cleanup`  
-**OmegA-FCA branch:** `public-package`  
+**OmegA-FCA branch:** `prerelease/0.1.6-rc.3`  
 **Status:** Native AppState/MQTT integration wired on the working branch; live acceptance and full FCA parity are still unverified.
 
 This matrix separates what the current OmegA-FCA facade exposes from what still requires a real transport and end-to-end verification. A method appearing in the facade means only that the injected driver supplied it; it does not mean Facebook behavior is implemented by this package.
@@ -15,10 +15,16 @@ This matrix separates what the current OmegA-FCA facade exposes from what still 
 | `getCurrentUserID()` | Conditional | Exposed after login; returns the driver identity converted to a string, or null. |
 | `listenMqtt(callback)` | Native adapter wired | Adapts the native driver's `listen` to error-first `(error, event)` and emits a `ready` event after successful MQTT setup. Live event compatibility remains unverified. |
 | `stopListening(callback?)` | Implemented at facade boundary | Detaches the active listener and invokes an optional callback. |
-| `sessionGuard(path, options)` | Pass-through only | Exposed only if the injected driver implements it; no built-in account-file watcher. |
-| `stopSessionGuard()` | Pass-through only | Exposed only if supplied by the driver. |
+| `sessionGuard(path, options)` | Native encrypted sidecar, opt-in | Preserves GoatBot’s legacy `account.txt` argument as an activation alias; the actual encrypted snapshot and backup live at `FCA_SESSION_FILE`, never in `account.txt`. The legacy `interval` option is honored. |
+| `stopSessionGuard()` | Native encrypted guard lifecycle | Stops periodic saves, performs a final encrypted save, and closes the guard. |
 | `setOptions(options)` | Pass-through only | Exposed only if supplied by the driver. |
 | `e2ee.isConnected()` | Not implemented | No E2EE implementation in this branch. |
+
+## Encrypted SessionGuard deployment compatibility
+
+The FCA factory accepts optional `FCA_SESSION_FILE`, `FCA_SESSION_KEY`, and `FCA_SESSION_INTERVAL_MS` environment variables. This lets the existing GoatBot `omegaFca.js` client construction remain unchanged. Its current `sessionGuard(account.txt, { interval, debounce })` call activates the configured encrypted sidecar and honors `interval`; it never reads, truncates, replaces, or writes encrypted data to `account.txt`. The encrypted primary and `.bak` backup are rejected if either resolves to the Bot's root `account.txt`.
+
+If these optional variables are not configured, SessionGuard remains disabled and the Bot's existing plaintext AppState flow is unchanged. Do not change Bot-required credentials or tracked configuration to enable this optional feature.
 
 ## Conditional driver API
 
