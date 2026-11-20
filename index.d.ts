@@ -217,12 +217,12 @@ export interface VerifiedUpdateManifest {
 }
 export function verifyUpdateManifest(manifest: unknown, options?: Record<string, unknown>): VerifiedUpdateManifest;
 export function verifyArtifactDigest(data: string | Uint8Array, digest: string): boolean;
-/** Broker-agnostic MQTT 3.1.1 packet codec primitives (OASIS specification). */
+/** Broker-agnostic MQTT 3.1/3.1.1 packet codec primitives. */
 export const mqtt311Codec: {
   readonly MAX_REMAINING_LENGTH: number;
   encodeRemainingLength(value: number): Buffer;
   decodeRemainingLength(buffer: Buffer, offset?: number): Readonly<{ value: number; bytes: number; offset: number }> | null;
-  encodeConnect(options: { clientId: string; keepAlive?: number; cleanSession?: boolean; username?: string; password?: Buffer | Uint8Array | string }): Buffer;
+  encodeConnect(options: { clientId: string; keepAlive?: number; cleanSession?: boolean; username?: string; password?: Buffer | Uint8Array | string; protocolId?: "MQIsdp" | "MQTT"; protocolVersion?: 3 | 4 }): Buffer;
   encodePublish(options: { topic: string; payload?: Buffer | Uint8Array | string; qos?: 0 | 1 | 2; retain?: boolean; dup?: boolean; packetId?: number }): Buffer;
   encodeSubscribe(packetId: number, subscriptions: Array<{ topic: string; qos?: 0 | 1 | 2 }>): Buffer;
   encodePacketId(type: "puback" | "pubrec" | "pubrel" | "pubcomp", packetId: number): Buffer;
@@ -341,3 +341,21 @@ export interface FacebookGatewayProtocolConfig {
   protocol: NativeRealtimeProtocolAdapter;
 }
 export function createFacebookGatewayProtocol(options: FacebookGatewayProtocolOptions): FacebookGatewayProtocolConfig;
+
+
+/** Unofficial Facebook Messenger MQTT 3.1 adapter based on public FCA protocol observations. */
+export const DEFAULT_MQTT_URL: string;
+export const DEFAULT_MQTT_APP_ID: string;
+export const DEFAULT_MQTT_TOPICS: readonly string[];
+export interface FacebookMqttProtocolOptions {
+  userId: string | number; clientId?: string; sessionId?: number; deviceId?: string;
+  appId?: string; url?: string; region?: string; userAgent?: string; cookie?: string;
+  online?: boolean; keepAlive?: number; topics?: readonly string[];
+  syncToken?: string; lastSeqId?: string | number | null;
+}
+export interface FacebookMqttProtocolConfig {
+  url: string; headers: Readonly<Record<string, string>>;
+  session: Readonly<{ userId: string; clientId: string; sessionId: number; deviceId: string; appId: string }>;
+  protocol: NativeRealtimeProtocolAdapter;
+}
+export function createFacebookMqttProtocol(options: FacebookMqttProtocolOptions): FacebookMqttProtocolConfig;
