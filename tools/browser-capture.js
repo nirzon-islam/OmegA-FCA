@@ -17,19 +17,19 @@ function safeUrl(input) {
 }
 function safeText(value) {
   return String(value).slice(0, MAX_TEXT)
-    .replace(/(c_user|xs|datr|fr|sb|wd|presence|fb_dtsg|lsd|jazoest|access_token|auth_token|password|passwd|cookie)(\\s*[=:]\\s*)[^\\s&;,"]+/ig, "$1$2[REDACTED]")
-    .replace(/\\b[A-F0-9]{32,}\\b/gi, "[LONG_HEX_REDACTED]")
-    .replace(/\\b\\d{8,}\\b/g, "[LONG_NUMBER_REDACTED]");
+    .replace(/(c_user|xs|datr|fr|sb|wd|presence|fb_dtsg|lsd|jazoest|access_token|auth_token|password|passwd|cookie)(\s*[=:]\s*)[^\s&;,"]+/ig, "$1$2[REDACTED]")
+    .replace(/\b[A-F0-9]{32,}\b/gi, "[LONG_HEX_REDACTED]")
+    .replace(/\b\d{8,}\b/g, "[LONG_NUMBER_REDACTED]");
 }
 function writeJson(file, value) {
-  fs.writeFileSync(file, JSON.stringify(value, null, 2) + "\\n", { mode: 0o600 });
+  fs.writeFileSync(file, JSON.stringify(value, null, 2) + "\n", { mode: 0o600 });
 }
 
 async function main() {
   let chromium;
   try { ({ chromium } = require("playwright")); }
   catch {
-    process.stderr.write("Playwright is missing. Run: npm install && npx playwright install chromium\\n");
+    process.stderr.write("Playwright is missing. Run: npm install && npx playwright install chromium\n");
     process.exitCode = 1;
     return;
   }
@@ -93,29 +93,34 @@ async function main() {
       fs.appendFileSync(file, JSON.stringify({
         index: item.index, at: item.at, direction, kind: item.kind,
         payload: isText ? payload : bytes.toString("base64")
-      }) + "\\n", { mode: 0o600 });
+      }) + "\n", { mode: 0o600 });
     }
   }
 
-  process.on("SIGINT", async () => {
+  let stopping = false;
+  async function stop() {
+    if (stopping) return;
+    stopping = true;
     report.finishedAt = new Date().toISOString();
     writeJson(path.join(OUT_DIR, "capture-report.json"), report);
     await browser.close();
     process.exit(0);
-  });
+  }
+  process.once("SIGINT", stop);
+  process.once("SIGTERM", stop);
 
-  process.stdout.write("Browser opened. Log in to Facebook/Messenger manually.\\n");
-  process.stdout.write("Open Messenger and reproduce the actions needed for the capture.\\n");
+  process.stdout.write("Browser opened. Log in to Facebook/Messenger manually.\n");
+  process.stdout.write("Open Messenger and reproduce the actions needed for the capture.\n");
   process.stdout.write(SAVE_PRIVATE
-    ? "WARNING: private raw frame payloads are being saved locally; they may contain secrets or message data.\\n"
-    : "Only sanitized frame metadata/previews are recorded. For binary protocol analysis, rerun with --save-private-frames and keep that folder private.\\n");
-  process.stdout.write("Press Ctrl+C when finished. Report: .omega-capture/capture-report.json\\n");
+    ? "WARNING: private raw frame payloads are being saved locally; they may contain secrets or message data.\n"
+    : "Only sanitized frame metadata/previews are recorded. For binary protocol analysis, rerun with --save-private-frames and keep that folder private.\n");
+  process.stdout.write("Press Ctrl+C when finished. Report: .omega-capture/capture-report.json\n");
 
   await page.goto("https://www.facebook.com/", { waitUntil: "domcontentloaded" });
   await new Promise(() => {});
 }
 
 main().catch(error => {
-  process.stderr.write("Capture browser failed: " + safeText(error.message) + "\\n");
+  process.stderr.write("Capture browser failed: " + safeText(error.message) + "\n");
   process.exitCode = 1;
 });
