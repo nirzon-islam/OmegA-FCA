@@ -28,7 +28,7 @@ function encodeGatewaySubscription(payload, index) {
     throw new TypeError("Invalid realtime subscription");
   }
   const body = Buffer.from(payload, "utf8");
-  if (body.length > 255) throw new RangeError("Realtime subscription exceeds one-byte length");
+  if (body.length > 65535) throw new RangeError("Realtime subscription exceeds two-byte length");
   return Buffer.concat([Buffer.from([14, index, 0, body.length]), body, Buffer.from([0, 0])]);
 }
 
