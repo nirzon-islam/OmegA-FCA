@@ -7,6 +7,8 @@ const path = require("node:path");
 const OUT_DIR = path.resolve(process.cwd(), ".omega-capture");
 const PRIVATE_DIR = path.join(OUT_DIR, "private");
 const SAVE_PRIVATE = process.argv.includes("--save-private-frames");
+const cdpArg = process.argv.findIndex(arg => arg === "--cdp");
+const CDP_URL = cdpArg >= 0 ? process.argv[cdpArg + 1] : process.env.OMEGA_CDP_URL;
 const MAX_TEXT = 2048;
 
 function safeUrl(input) {
@@ -43,9 +45,11 @@ async function main() {
     note: "No passwords, cookies, query strings, request bodies, or response bodies are included in this report.",
     requests: [], sockets: [], consoleErrors: []
   };
-  const browser = await chromium.launch({ headless: false });
-  const context = await browser.newContext();
-  const page = await context.newPage();
+  const browser = CDP_URL
+    ? await chromium.connectOverCDP(CDP_URL)
+    : await chromium.launch({ headless: false });
+  const context = browser.contexts()[0] || await browser.newContext();
+  const page = context.pages()[0] || await context.newPage();
   let frameIndex = 0;
 
   page.on("request", request => {
@@ -116,7 +120,7 @@ async function main() {
     : "Only sanitized frame metadata/previews are recorded. For binary protocol analysis, rerun with --save-private-frames and keep that folder private.\n");
   process.stdout.write("Press Ctrl+C when finished. Report: .omega-capture/capture-report.json\n");
 
-  await page.goto("https://www.facebook.com/", { waitUntil: "domcontentloaded" });
+  if (!CDP_URL) await page.goto("https://www.facebook.com/", { waitUntil: "domcontentloaded" });
   await new Promise(() => {});
 }
 
