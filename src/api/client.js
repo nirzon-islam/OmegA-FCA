@@ -172,6 +172,29 @@ function createClient({ authenticate, options = {}, reconnect = {}, license = {}
         };
       }
     }
+    if (typeof driver.sendMessage === "function") {
+      facade.sendMessage = (message, threadID, callback, replyToMessageID) => {
+        let input;
+        let done;
+        if (typeof threadID === "string" || typeof threadID === "number") {
+          input = { threadID, message };
+          done = typeof callback === "function" ? callback : null;
+          if (replyToMessageID != null) input.replyToMessageID = replyToMessageID;
+        } else {
+          input = message;
+          done = typeof threadID === "function" ? threadID : null;
+        }
+        const operation = Promise.resolve().then(() => driver.sendMessage(input));
+        if (done) {
+          operation.then(value => done(null, value), error => done(error));
+          return undefined;
+        }
+        return operation;
+      };
+    }
+    if (typeof driver.getUserID !== "function") {
+      facade.getUserID = () => userId;
+    }
     facade.getCurrentUserID = () => userId;
     facade.listen = callback => {
       if (requireLicense && !verifiedLicense.features.includes("events")) throw new Error("License does not include the events feature");
