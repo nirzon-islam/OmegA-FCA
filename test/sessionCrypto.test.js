@@ -19,3 +19,10 @@ test("rejects tampering and incorrect encryption keys", () => {
   assert.throws(() => decryptSession(tampered, key));
   assert.throws(() => decryptSession(encrypted, "b".repeat(64)));
 });
+
+test("accepts a 32-byte Uint8Array encryption key as declared by the public API", () => {
+  const bytes = new Uint8Array(32).fill(7);
+  const encrypted = encryptSession({ accountId: "123456" }, bytes);
+  assert.deepEqual(decryptSession(encrypted, bytes), { accountId: "123456" });
+  assert.throws(() => encryptSession({ accountId: "123456" }, new Uint8Array(31)), /32 bytes/);
+});
