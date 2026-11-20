@@ -144,3 +144,20 @@ test("does not expose decoder exceptions as event data", async () => {
   assert.equal(rejected[0].byteLength, 2);
   await transport.disconnect();
 });
+
+test("times out a stalled protocol handshake and closes the socket", async () => {
+  const { transport, socket } = setup({
+    options: { protocolSetupTimeoutMs: 10 },
+    protocol: {
+      authenticate() {
+        return new Promise(() => {});
+      }
+    }
+  });
+
+  await assert.rejects(transport.connect(), {
+    code: "FCA_WS_PROTOCOL_SETUP_TIMEOUT"
+  });
+  assert.equal(socket.closeCalls, 1);
+  assert.equal(transport.snapshot().state, "disconnected");
+});
