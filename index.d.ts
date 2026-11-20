@@ -318,3 +318,26 @@ export interface RealtimeSyncEnvelope {
 /** Inspects the observed JSON sync envelope without interpreting the undocumented binary prefix. */
 export function inspectRealtimeSyncEnvelope(frame: Buffer | Uint8Array, options?: { maxFrameBytes?: number }): RealtimeSyncEnvelope;
 export const DEFAULT_MAX_SYNC_FRAME_BYTES: number;
+
+
+/** Facebook web realtime notification/presence gateway; not Messenger message sync. */
+export const DEFAULT_GATEWAY_URL: string;
+export const DEFAULT_APP_ID: string;
+export const FACEBOOK_GATEWAY_SUBSCRIPTIONS: readonly string[];
+export function encodeGatewaySubscription(payload: string, index: number): Buffer;
+export function decodeGatewayFrame(frame: string | Buffer | Uint8Array | ArrayBuffer, options?: { maxFrameBytes?: number }): { events: unknown[] };
+export interface FacebookGatewayProtocolOptions {
+  userId: string | number;
+  deviceId?: string;
+  appId?: string;
+  url?: string;
+  userAgent?: string;
+  cookie?: string;
+  subscriptions?: readonly string[];
+}
+export interface FacebookGatewayProtocolConfig {
+  url: string;
+  headers: Readonly<Record<string, string>>;
+  protocol: NativeRealtimeProtocolAdapter;
+}
+export function createFacebookGatewayProtocol(options: FacebookGatewayProtocolOptions): FacebookGatewayProtocolConfig;
