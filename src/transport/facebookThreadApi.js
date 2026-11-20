@@ -11,6 +11,9 @@ const NICKNAME_URL = "https://www.facebook.com/messaging/save_thread_nickname/?s
 const REACTION_URL = "https://www.facebook.com/webgraphql/mutation/";
 const READ_URL = "https://www.facebook.com/ajax/mercury/change_read_status.php";
 const UNSEND_URL = "https://www.facebook.com/messaging/unsend_message/";
+const TITLE_URL = "https://www.facebook.com/messaging/set_thread_name/";
+const COLOR_URL = "https://www.facebook.com/messaging/save_thread_color/?source=thread_settings&dpr=1";
+const EMOJI_URL = "https://www.facebook.com/messaging/save_thread_emoji/?source=thread_settings&dpr=1";
 
 // Public FCA document IDs. Facebook changes private web query IDs without notice.
 const DOC_IDS = Object.freeze({
@@ -284,6 +287,61 @@ function createFacebookThreadApi({ session, webClient } = {}) {
     return callbackResult(operation, callback);
   }
 
+  function setTitle(newTitle, threadID, callback) {
+    if (typeof newTitle !== "string" || newTitle.length > 100) throw new TypeError("newTitle must be a string up to 100 characters");
+    const thread = id(threadID, "threadID");
+    const timestamp = Date.now();
+    const offlineId = String(timestamp * 1000);
+    const body = {
+      client: "mercury", action_type: "ma-type:log-message",
+      author: "fbid:" + currentUserID, author_email: "", coordinates: "",
+      timestamp, timestamp_absolute: "Today", timestamp_relative: "0",
+      timestamp_time_passed: "0", is_unread: false, is_cleared: false,
+      is_forward: false, is_filtered_content: false, is_spoof_warning: false,
+      source: "source:chat:web", "source_tags[0]": "source:chat", status: "0",
+      offline_threading_id: offlineId, message_id: offlineId,
+      threading_id: String(timestamp), manual_retry_cnt: "0",
+      thread_fbid: thread, thread_name: newTitle, thread_id: thread,
+      log_message_type: "log:thread-name"
+    };
+    const operation = web.post(TITLE_URL, body).then(result => {
+      const error = result.payload?.error;
+      if (error) {
+        const message = error === 1545012 ? "Cannot change chat title: not a member of the chat"
+          : error === 1545003 ? "Cannot set title of a one-to-one chat"
+          : "Facebook rejected the thread title update";
+        throw createFacebookError("setTitle: " + message, { code: "FCA_FACEBOOK_REQUEST_REJECTED", retryable: false });
+      }
+      return { threadID: thread };
+    });
+    return callbackResult(operation, callback);
+  }
+
+  function changeThreadColor(color, threadID, callback) {
+    if (typeof color !== "string" || color.length > 64) throw new TypeError("color must be a theme ID, hex color, or empty string");
+    const thread = id(threadID, "threadID");
+    const normalized = color === "196241301102133" || color.toLowerCase() === "#0084ff" ? "" : color;
+    const operation = web.post(COLOR_URL, { color_choice: normalized, thread_or_other_fbid: thread }).then(result => {
+      if (!result.payload || result.payload.error) {
+        throw createFacebookError("changeThreadColor: Facebook rejected the color update", { code: "FCA_FACEBOOK_REQUEST_REJECTED", retryable: false });
+      }
+      return result.payload;
+    });
+    return callbackResult(operation, callback);
+  }
+
+  function changeThreadEmoji(emoji, threadID, callback) {
+    if (typeof emoji !== "string" || emoji.length > 16) throw new TypeError("emoji must be a string up to 16 characters");
+    const thread = id(threadID, "threadID");
+    const operation = web.post(EMOJI_URL, { emoji_choice: emoji, thread_or_other_fbid: thread }).then(result => {
+      if (!result.payload || result.payload.error) {
+        throw createFacebookError("changeThreadEmoji: Facebook rejected the emoji update", { code: "FCA_FACEBOOK_REQUEST_REJECTED", retryable: false });
+      }
+      return result.payload;
+    });
+    return callbackResult(operation, callback);
+  }
+
   function unsendMessage(messageID, callback) {
     if (typeof messageID !== "string" || !messageID || messageID.length > 256) {
       throw new TypeError("messageID is invalid");
@@ -310,7 +368,7 @@ function createFacebookThreadApi({ session, webClient } = {}) {
   }
 
   return Object.freeze({ httpPost, getThreadList, getThreadInfo, getThreadHistory, getUserInfo,
-    addUserToGroup, removeUserFromGroup, changeNickname, setMessageReaction, markAsRead, unsendMessage });
+    addUserToGroup, removeUserFromGroup, changeNickname, changeThreadColor, changeThreadEmoji, setTitle, setMessageReaction, markAsRead, unsendMessage });
 }
 
 module.exports = { createFacebookThreadApi, DOC_IDS };
