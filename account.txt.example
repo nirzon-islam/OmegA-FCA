@@ -1,16 +1,12 @@
 # Copy this file to account.txt in the project root.
 # Keep account.txt private; it is ignored by Git.
-# Use either username/email + password OR appstate_file.
-
-# Login with username:
-fb_username=YOUR_FACEBOOK_USERNAME
-fb_password=YOUR_FACEBOOK_PASSWORD
-# Optional: enter a code you obtained through Facebook's normal 2FA flow.
-# fb_2fa_code=123456
-
-# Or use email instead:
-# fb_email=you@example.com
-# fb_password=YOUR_FACEBOOK_PASSWORD
-
-# Or use AppState instead (root appstate.json by default):
-# appstate_file=appstate.json
+# This file is AppState/cookie-only. Never put passwords or 2FA secrets here.
+#
+# Paste your own exported Facebook cookie header below, for example:
+# c_user=YOUR_USER_ID; xs=YOUR_SESSION_COOKIE
+#
+# You may also use a Netscape cookie export or a JSON cookie array.
+# Alternatively, place a JSON cookie array in the root appstate.json file.
+#
+# Remove the leading '#' from the example line only after replacing both
+# placeholder values with cookies from your own authorized Facebook session.
