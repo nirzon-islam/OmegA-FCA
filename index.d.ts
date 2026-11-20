@@ -25,6 +25,7 @@ export interface PersonalSession {
   readonly state: "active";
   readonly validatedAt: number;
   getTokens(): FacebookRequestTokens;
+  refreshTokens(): Promise<Readonly<{ refreshedAt: number; tokenNames: readonly string[] }>>;
   getCookieHeader(url?: string | URL): string;
   request(input: string | URL, options?: RequestInit): Promise<Response>;
   getAppState(): Cookie[];
@@ -72,7 +73,7 @@ export function createFacebookError(message: string, options?: {
 export interface ConnectionContext { attempt: number; generation: number; signal: AbortSignal; }
 export interface TransportDriver {
   listen(callback: (error: Error | null, event?: unknown) => void): (() => void) | void;
-  disconnect?(): void | Promise<void>; getCurrentUserID?(): string | number | null | Promise<string | number | null>; getAppState?(): Cookie[] | Promise<Cookie[]>;
+  disconnect?(): void | Promise<void>; getCurrentUserID?(): string | number | null | Promise<string | number | null>; getAppState?(): Cookie[] | Promise<Cookie[]>; refreshFb_dtsg?(): Promise<Readonly<{ refreshedAt: number; tokenNames: readonly string[] }>>;
   sendMessage?(...args: unknown[]): unknown; httpPost?(url: string, form: Record<string, unknown>, callback?: (error: Error | null, result?: string) => void): Promise<string> | void; getUserInfo?(...args: unknown[]): unknown;
   getThreadInfo?(...args: unknown[]): unknown; getThreadList?(...args: unknown[]): unknown;
   markAsRead?(...args: unknown[]): unknown; markAsDelivered?(threadID: string | number, messageID: string | number, callback?: (error?: Error | null) => void): Promise<unknown> | void; setMessageReaction?(...args: unknown[]): unknown;
@@ -379,7 +380,7 @@ export function createMessengerSyncCursorStore(options: { filePath: string; key:
 
 export interface FacebookMqttDriverOptions extends Omit<PersonalSessionOptions, "appState"> { appState?: Cookie[]; sessionGuard?: NativeDriverSessionGuardOptions; socketFactory(options: { url: string; protocols?: string | string[]; headers?: Record<string, string>; signal: AbortSignal }): unknown | Promise<unknown>; connectTimeoutMs?: number; closeTimeoutMs?: number; protocolSetupTimeoutMs?: number; maxFrameBytes?: number; syncCursorStore?: MessengerSyncCursorStore; onSyncCursor?: (cursor: MessengerSyncCursor) => void; requestTimeoutMs?: number; maxPendingRequests?: number; mqtt?: Record<string, unknown>; }
 export interface NativeDriverSessionGuardOptions extends Omit<SessionGuardOptions, "getSession"> { intervalMs?: number; }
-export function createFacebookMqttDriver(options: FacebookMqttDriverOptions): Promise<TransportDriver & { getCurrentUserID(): string; getAppState(): Cookie[]; getSessionState(): "active"; sendRequest(payload: Record<string, unknown>, options?: { timeoutMs?: number }): Promise<unknown>; sendMessage(input: { threadID: string | number; message: string | { body?: string; sticker?: string | number }; replyToMessageID?: string | number }, options?: { timeoutMs?: number }): Promise<unknown>; sessionGuard(requestedPath?: string, options?: { interval?: number; debounce?: number }): Readonly<{ filePath: string; backupPath: string; saveNow(): Promise<string> }>; stopSessionGuard(): Promise<boolean>; disconnect(): Promise<void>; }>;
+export function createFacebookMqttDriver(options: FacebookMqttDriverOptions): Promise<TransportDriver & { getCurrentUserID(): string; getAppState(): Cookie[]; refreshFb_dtsg(): Promise<Readonly<{ refreshedAt: number; tokenNames: readonly string[] }>>; getSessionState(): "active"; sendRequest(payload: Record<string, unknown>, options?: { timeoutMs?: number }): Promise<unknown>; sendMessage(input: { threadID: string | number; message: string | { body?: string; sticker?: string | number }; replyToMessageID?: string | number }, options?: { timeoutMs?: number }): Promise<unknown>; sessionGuard(requestedPath?: string, options?: { interval?: number; debounce?: number }): Readonly<{ filePath: string; backupPath: string; saveNow(): Promise<string> }>; stopSessionGuard(): Promise<boolean>; disconnect(): Promise<void>; }>;
 export interface MessengerSyncCursor { syncToken: string | null; lastSeqId: string | number | null; }
 
 /** Creates the native AppState/SessionGuard personal Messenger client; caller supplies WebSocket implementation. */
