@@ -2,6 +2,7 @@
 
 const { randomUUID, randomInt } = require("node:crypto");
 const mqtt = require("./mqtt311Codec");
+const { parseMessengerSyncPayload } = require("./facebookMqttEvents");
 
 const DEFAULT_MQTT_URL = "wss://edge-chat.facebook.com/chat";
 const DEFAULT_MQTT_APP_ID = "219994525426954";
@@ -134,10 +135,19 @@ function createFacebookMqttProtocol(options = {}) {
         const packet = decodePacket(frame);
         if (packet.type === "publish") {
           if (packet.qos === 1 && context.socket) context.socket.send(mqtt.encodePacketId("puback", packet.packetId));
-          return { events: [{
-            type: "mqtt_publish", topic: packet.topic, qos: packet.qos,
-            payload: parseJsonPayload(packet.payload)
-          }] };
+          const payload = parseJsonPayload(packet.payload);
+          if (packet.topic === "/t_ms") {
+            const parsed = parseMessengerSyncPayload(payload);
+            const events = parsed.events.length ? parsed.events : [{
+              type: "mqtt_publish", topic: packet.topic, qos: packet.qos, payload
+            }];
+            if (parsed.cursor) events.push({ type: "sync_cursor", cursor: parsed.cursor });
+            return { events };
+          }
+          if (packet.topic === "/ls_resp") {
+            return { events: [{ type: "mqtt_response", topic: packet.topic, qos: packet.qos, payload }] };
+          }
+          return { events: [{ type: "mqtt_publish", topic: packet.topic, qos: packet.qos, payload }] };
         }
         return { events: [{ type: "mqtt_control", packet }] };
       },
