@@ -51,7 +51,7 @@ These capabilities are implemented in code but Facebook-specific private endpoin
 
 ## Partial command-call inventory (2026-11-21)
 
-A source scan of GoatBot command modules found calls to `getAppState` and low-level `httpPost` in addition to the earlier login/listener methods. Both are now exposed by OmegA-FCA: `getAppState` returns the current owner session cookies and must remain owner-only; `httpPost` uses the authenticated bounded web client and only permits Facebook/Messenger HTTPS hosts.
+A source scan of GoatBot command modules found calls to `getAppState` and low-level `httpPost` in addition to the earlier login/listener methods. These are now exposed by OmegA-FCA: `getAppState` returns the current owner session cookies and must remain owner-only; `httpPost` uses the authenticated bounded web client and only permits Facebook/Messenger HTTPS hosts. The native driver also exposes `refreshFb_dtsg` for authenticated token refresh and `markAsDelivered` for the delivery receipt behavior used by GoatBot's event handler.
 
 The scan also found calls to `unsendMessage`, `changeGroupImage`, `changeAvatar`, `setTitle`, `changeThreadEmoji`, `changeThreadColor`, `shareContact`, and `setOptions`. FCA now implements `unsendMessage`, `setTitle`, `changeThreadEmoji`, `changeThreadColor`, and the legacy-compatible `sendTypingIndicator` with synthetic request tests. `changeGroupImage`, `changeAvatar`, `shareContact`, and the runtime semantics of `setOptions` remain unimplemented or unverified. This remains a partial scan, not a full repository-wide inventory.
 
