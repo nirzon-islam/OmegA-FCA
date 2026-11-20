@@ -17,6 +17,7 @@ const TITLE_URL = "https://www.facebook.com/messaging/set_thread_name/";
 const COLOR_URL = "https://www.facebook.com/messaging/save_thread_color/?source=thread_settings&dpr=1";
 const EMOJI_URL = "https://www.facebook.com/messaging/save_thread_emoji/?source=thread_settings&dpr=1";
 const TYPING_URL = "https://www.facebook.com/ajax/messaging/typ.php";
+const DELIVERY_URL = "https://www.facebook.com/ajax/mercury/delivery_receipts.php";
 
 // Public FCA document IDs. Facebook changes private web query IDs without notice.
 const DOC_IDS = Object.freeze({
@@ -405,6 +406,24 @@ function createFacebookThreadApi({ session, webClient, clientId = "omega-fca" } 
     return callbackResult(operation, callback);
   }
 
+  function markAsDelivered(threadID, messageID, callback) {
+    const thread = id(threadID, "threadID");
+    const message = id(messageID, "messageID");
+    const body = {
+      "message_ids[0]": message,
+      ["thread_ids[" + thread + "][0]"]: message
+    };
+    const operation = web.post(DELIVERY_URL, body).then(result => {
+      if (!result.payload || result.payload.error) {
+        throw createFacebookError("markAsDelivered: Facebook rejected the delivery receipt", {
+          code: "FCA_FACEBOOK_REQUEST_REJECTED", retryable: false
+        });
+      }
+      return result.payload;
+    });
+    return callbackResult(operation, callback);
+  }
+
   function markAsRead(threadID, read = true, callback) {
     if (typeof read === "function") { callback = read; read = true; }
     if (typeof read !== "boolean") throw new TypeError("read must be a boolean");
@@ -416,7 +435,7 @@ function createFacebookThreadApi({ session, webClient, clientId = "omega-fca" } 
   }
 
   return Object.freeze({ httpPost, getThreadList, getThreadInfo, getThreadHistory, getUserInfo,
-    addUserToGroup, removeUserFromGroup, changeNickname, changeThreadColor, changeThreadEmoji, setTitle, setMessageReaction, markAsRead, unsendMessage, sendTypingIndicator });
+    addUserToGroup, removeUserFromGroup, changeNickname, changeThreadColor, changeThreadEmoji, setTitle, setMessageReaction, markAsRead, markAsDelivered, unsendMessage, sendTypingIndicator });
 }
 
 module.exports = { createFacebookThreadApi, DOC_IDS };
