@@ -14,6 +14,7 @@ const UNSEND_URL = "https://www.facebook.com/messaging/unsend_message/";
 const TITLE_URL = "https://www.facebook.com/messaging/set_thread_name/";
 const COLOR_URL = "https://www.facebook.com/messaging/save_thread_color/?source=thread_settings&dpr=1";
 const EMOJI_URL = "https://www.facebook.com/messaging/save_thread_emoji/?source=thread_settings&dpr=1";
+const TYPING_URL = "https://www.facebook.com/ajax/messaging/typ.php";
 
 // Public FCA document IDs. Facebook changes private web query IDs without notice.
 const DOC_IDS = Object.freeze({
@@ -342,6 +343,22 @@ function createFacebookThreadApi({ session, webClient } = {}) {
     return callbackResult(operation, callback);
   }
 
+  function sendTypingIndicator(threadID, typing = true, callback) {
+    if (typeof typing === "function") { callback = typing; typing = true; }
+    if (typeof typing !== "boolean") throw new TypeError("typing must be a boolean");
+    const thread = id(threadID, "threadID");
+    const body = { typ: typing ? 1 : 0, to: "", source: "mercury-chat", thread };
+    const operation = web.post(TYPING_URL, body).then(result => {
+      if (!result.payload || result.payload.error) {
+        throw createFacebookError("sendTypingIndicator: Facebook rejected the typing update", {
+          code: "FCA_FACEBOOK_REQUEST_REJECTED", retryable: false
+        });
+      }
+      return result.payload;
+    });
+    return callbackResult(operation, callback);
+  }
+
   function unsendMessage(messageID, callback) {
     if (typeof messageID !== "string" || !messageID || messageID.length > 256) {
       throw new TypeError("messageID is invalid");
@@ -368,7 +385,7 @@ function createFacebookThreadApi({ session, webClient } = {}) {
   }
 
   return Object.freeze({ httpPost, getThreadList, getThreadInfo, getThreadHistory, getUserInfo,
-    addUserToGroup, removeUserFromGroup, changeNickname, changeThreadColor, changeThreadEmoji, setTitle, setMessageReaction, markAsRead, unsendMessage });
+    addUserToGroup, removeUserFromGroup, changeNickname, changeThreadColor, changeThreadEmoji, setTitle, setMessageReaction, markAsRead, unsendMessage, sendTypingIndicator });
 }
 
 module.exports = { createFacebookThreadApi, DOC_IDS };
