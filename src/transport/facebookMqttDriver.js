@@ -117,13 +117,20 @@ async function createFacebookMqttDriver({
       ...threadApi,
       getCurrentUserID: () => session.userId,
       getSessionState: () => session.state,
-      sessionGuard: requestedPath => {
+      sessionGuard: (requestedPath, legacyOptions = {}) => {
         if (!guard) throw new Error("Encrypted SessionGuard is not configured; set FCA_SESSION_FILE and FCA_SESSION_KEY or pass sessionGuard.filePath/key");
         const paths = guard.getPaths();
         if (requestedPath && path.resolve(requestedPath) !== paths.filePath) {
           if (path.basename(path.resolve(requestedPath)).toLowerCase() !== "account.txt") {
             throw new Error("SessionGuard uses its separately configured encrypted snapshot path");
           }
+        }
+        // Preserve GoatBot's historical interval option while keeping the
+        // encrypted snapshot in its own file. Debounce is not needed because
+        // the guard snapshots the current cookie jar on each scheduled save.
+        if (legacyOptions && legacyOptions.interval !== undefined) {
+          guard.stop();
+          guard.start(legacyOptions.interval);
         }
         return Object.freeze({ ...paths, saveNow: guard.saveNow });
       },
