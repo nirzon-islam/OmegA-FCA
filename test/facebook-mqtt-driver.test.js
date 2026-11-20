@@ -128,6 +128,8 @@ test("deployment environment enables GoatBot-compatible encrypted SessionGuard",
       fetchImpl: async () => htmlResponse(), mqtt: { keepAlive: 0 }
     });
     const api = await client.login({ mode: "appstate", appState });
+    assert.equal(typeof api.httpPost, "function");
+    assert.equal(typeof api.getAppState, "function");
     assert.equal(api.sessionGuard(accountPath, { interval: 180_000, debounce: 30_000 }).filePath, encryptedPath);
     assert.equal(fs.existsSync(encryptedPath), true);
     assert.equal(fs.readFileSync(accountPath, "utf8"), originalAccount);
