@@ -24,7 +24,7 @@ function findJsonObjectEnd(text, start) {
         // A stray closing container immediately after this object means the
         // candidate belongs to a malformed JSON fragment, not a frame.
         let next = i + 1;
-        while (next < text.length && /\\s/.test(text[next])) next++;
+        while (next < text.length && /\s/.test(text[next])) next++;
         if (text[next] === "}" || text[next] === "]") return -1;
         return i + 1;
       }
