@@ -186,10 +186,13 @@ test("sendTypingIndicator sends start and stop requests to the Messenger typing 
   });
   await api.sendTypingIndicator("123456789012345", true);
   await api.sendTypingIndicator("123456789012345", false);
+  await api.sendTypingIndicator(1, "123456789012345", undefined, false);
   assert.equal(calls[0].url, "https://www.facebook.com/ajax/messaging/typ.php");
   assert.equal(calls[0].body.typ, 1);
   assert.equal(calls[0].body.thread, "123456789012345");
   assert.equal(calls[1].body.typ, 0);
+  assert.equal(calls[2].body.typ, 1);
+  assert.equal(calls[2].body.to, "123456789012345");
 });
 
 test("sendTypingIndicator validates thread and state", async () => {
