@@ -19,7 +19,7 @@ const SUBSCRIPTIONS = Object.freeze([
 
 function validateId(value, name) {
   const id = String(value ?? "");
-  if (!/^\\d{1,30}$/.test(id)) throw new TypeError(name + " must be a numeric Facebook ID");
+  if (!/^\d{1,30}$/.test(id)) throw new TypeError(name + " must be a numeric Facebook ID");
   return id;
 }
 
@@ -75,7 +75,7 @@ function createFacebookGatewayProtocol(options = {}) {
   const deviceId = String(options.deviceId ?? userId);
   if (!/^[A-Za-z0-9_-]{1,128}$/.test(deviceId)) throw new TypeError("deviceId is invalid");
   const appId = String(options.appId ?? DEFAULT_APP_ID);
-  if (!/^\\d{1,30}$/.test(appId)) throw new TypeError("appId is invalid");
+  if (!/^\d{1,30}$/.test(appId)) throw new TypeError("appId is invalid");
   const subscriptions = options.subscriptions ?? SUBSCRIPTIONS;
   if (!Array.isArray(subscriptions) || subscriptions.length < 1 || subscriptions.length > 32) {
     throw new TypeError("subscriptions must contain between 1 and 32 entries");
@@ -101,7 +101,7 @@ function createFacebookGatewayProtocol(options = {}) {
     ...(options.userAgent ? { "User-Agent": String(options.userAgent) } : {}),
     ...(options.cookie ? { Cookie: String(options.cookie) } : {})
   };
-  if (options.cookie && /[\\r\\n]/.test(headers.Cookie)) throw new TypeError("cookie header contains invalid characters");
+  if (options.cookie && /[\r\n]/.test(headers.Cookie)) throw new TypeError("cookie header contains invalid characters");
 
   return Object.freeze({
     url: url.toString(),
