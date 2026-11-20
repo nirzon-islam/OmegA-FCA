@@ -154,3 +154,8 @@ npm run capture:browser
 Android/Termux: run `bash tools/termux-capture-setup.sh`, pair/connect ADB Wireless debugging, forward Chrome's DevTools socket, then run `npm run capture:browser -- --cdp http://127.0.0.1:9222`. Lemur/other browser compatibility is not assumed; verify the CDP endpoint first.
 
 The browser runs locally; it is not remotely visible to ChatGPT. The default report omits cookies, query strings, request/response bodies, and binary frame contents. An explicit `--save-private-frames` option stores raw WebSocket frames locally for owner-only inspection; those files may contain secrets or private messages and must not be shared unredacted.
+
+
+### Session bootstrap redirect handling
+
+The personal-session bootstrap follows up to five same-site HTTPS redirects on Facebook/Messenger hosts, preserving rotated cookies between hops. Login and checkpoint redirects remain authentication failures, and redirects to unrelated hosts are rejected.
