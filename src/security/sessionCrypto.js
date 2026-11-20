@@ -5,9 +5,11 @@ const crypto = require("node:crypto");
 const FORMAT = "omega-fca-session:v1";
 
 function resolveKey(key) {
-  if (Buffer.isBuffer(key) && key.length === 32) return key;
+  if ((Buffer.isBuffer(key) || key instanceof Uint8Array) && key.byteLength === 32) {
+    return Buffer.from(key);
+  }
   if (typeof key !== "string" || !/^[a-f0-9]{64}$/i.test(key)) {
-    throw new TypeError("Session encryption key must be exactly 64 hexadecimal characters");
+    throw new TypeError("Session encryption key must be 32 bytes or exactly 64 hexadecimal characters");
   }
   return Buffer.from(key, "hex");
 }
