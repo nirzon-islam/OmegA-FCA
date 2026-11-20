@@ -29,7 +29,7 @@ test("cursor store rejects invalid cursor values", () => {
   const directory = fs.mkdtempSync(path.join(os.tmpdir(), "omega-cursor-"));
   try {
     const store = createMessengerSyncCursorStore({ filePath: path.join(directory, "cursor.enc"), key: "b".repeat(64), userId: "123456789" });
-    assert.throws(() => store.save({ syncToken: "", lastSeqId: null }), /cursor must contain/);
+    assert.throws(() => store.save({ syncToken: "", lastSeqId: null }), /syncToken is invalid/);
     assert.throws(() => store.save({ syncToken: null, lastSeqId: -1 }), /lastSeqId/);
   } finally { fs.rmSync(directory, { recursive: true, force: true }); }
 });
