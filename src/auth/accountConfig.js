@@ -70,26 +70,10 @@ function loadAccountConfig({
     if (error.code !== "ENOENT") throw error;
   }
 
+  // This release path is intentionally AppState-only. Credential login is
+  // deferred; never silently fall back to FB_EMAIL/FB_PASSWORD from env/config.
   const configPath = resolveProjectFile(root, configFile, "configFile");
-  const config = readJsonConfig(configPath);
-  const account = config.facebookAccount && typeof config.facebookAccount === "object"
-    ? config.facebookAccount : {};
-  const email = String(env.FB_EMAIL || account.fb_email || account.email || "").trim();
-  const password = String(env.FB_PASSWORD || account.password || "");
-  const twoFactorSecret = String(env.FB_2FA_SECRET || account["2FASecret"] || "");
-  if (email || password) {
-    if (!email || !password) {
-      throw new Error("config.json facebookAccount requires fb_email and password");
-    }
-    return Object.freeze({
-      mode: "credentials",
-      email,
-      password,
-      twoFactorSecret: twoFactorSecret || null,
-      userAgent: account.userAgent || null,
-      proxy: account.proxy || null
-    });
-  }
+  readJsonConfig(configPath);
 
   const statePath = resolveProjectFile(root, appStateFile || "appstate.json", "AppState file");
   try {
@@ -101,7 +85,7 @@ function loadAccountConfig({
     return Object.freeze({ mode: "appstate", appState: normalizeCookies(appState), source: "appstate.json" });
   } catch (error) {
     if (error.code === "ENOENT") {
-      const missing = new Error("No Facebook session or credentials found: add cookies to account.txt or configure facebookAccount in config.json");
+      const missing = new Error("No Facebook AppState found: add cookies to account.txt or appstate.json");
       missing.code = "FCA_ACCOUNT_CONFIG_MISSING";
       throw missing;
     }
