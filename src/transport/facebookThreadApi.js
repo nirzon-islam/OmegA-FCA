@@ -408,7 +408,7 @@ function createFacebookThreadApi({ session, webClient, clientId = "omega-fca" } 
 
   function markAsDelivered(threadID, messageID, callback) {
     const thread = id(threadID, "threadID");
-    if (typeof messageID !== "string" || !messageID.trim() || messageID.length > 256 || /[\\u0000-\\u001f]/.test(messageID)) throw new TypeError("messageID is invalid");
+    if (typeof messageID !== "string" || !messageID.trim() || messageID.length > 256 || messageID.split("").some(character => character.charCodeAt(0) < 32)) throw new TypeError("messageID is invalid");
     const message = messageID.trim();
     const body = {
       "message_ids[0]": message,
