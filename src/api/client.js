@@ -176,6 +176,7 @@ function createClient({ authenticate, options = {}, reconnect = {}, license = {}
       facade.sendMessage = (message, threadID, callback, replyToMessageID) => {
         let input;
         let done;
+        let requestOptions;
         if (typeof threadID === "string" || typeof threadID === "number") {
           input = { threadID, message };
           done = typeof callback === "function" ? callback : null;
@@ -183,8 +184,9 @@ function createClient({ authenticate, options = {}, reconnect = {}, license = {}
         } else {
           input = message;
           done = typeof threadID === "function" ? threadID : null;
+          requestOptions = threadID && typeof threadID === "object" ? threadID : undefined;
         }
-        const operation = Promise.resolve().then(() => driver.sendMessage(input));
+        const operation = Promise.resolve().then(() => driver.sendMessage(input, requestOptions));
         if (done) {
           operation.then(value => done(null, value), error => done(error));
           return undefined;
