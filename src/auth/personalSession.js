@@ -168,7 +168,7 @@ async function createPersonalSession({
     });
 
     const response = bootstrapResponse;
-    emitDiagnostic({ phase: "response", request: { url: FACEBOOK_ORIGIN + "/", method: "GET", headers: { accept: "text/html", "accept-language": "en-US" } }, response: { status: response.status, contentType: response.headers?.get?.("content-type") || "", bodyBytes: Number(response.headers?.get?.("content-length") || 0) }, durationMs: Date.now() - bootstrapStartedAt });
+    emitDiagnostic({ phase: "response", request: { url: FACEBOOK_ORIGIN + "/", method: "GET",  }, response: { status: response.status, contentType: response.headers?.get?.("content-type") || "", bodyBytes: Number(response.headers?.get?.("content-length") || 0) }, durationMs: Date.now() - bootstrapStartedAt });
     if (response.status >= 500) {
       throw sessionError("Facebook is temporarily unavailable while validating the session", "FCA_UPSTREAM_UNAVAILABLE", "error");
     }
@@ -237,7 +237,6 @@ async function createPersonalSession({
           else options.signal.addEventListener("abort", onAbort, { once: true });
         }
         const requestStartedAt = Date.now();
-        const requestBody = options.body;
         try {
           const response = await fetchImpl(target, {
             ...options,
@@ -246,13 +245,13 @@ async function createPersonalSession({
             redirect: "manual",
             signal: requestController.signal
           });
-          emitDiagnostic({ phase: "response", request: { url: target, method, headers, body: requestBody }, response: { status: response.status, contentType: response.headers?.get?.("content-type") || "", bodyBytes: Number(response.headers?.get?.("content-length") || 0) }, durationMs: Date.now() - requestStartedAt });
+          emitDiagnostic({ phase: "response", request: { url: target.origin + target.pathname, method }, response: { status: response.status, contentType: response.headers?.get?.("content-type") || "", bodyBytes: Number(response.headers?.get?.("content-length") || 0) }, durationMs: Date.now() - requestStartedAt });
           const { accepted, deletions } = collectResponseCookies(response, target);
           if (accepted.length) jar.setCookies(accepted);
           if (deletions.length) jar.deleteCookies(deletions);
           return response;
         } catch (error) {
-          emitDiagnostic({ phase: "error", request: { url: target, method, headers, body: requestBody }, errorCode: typeof error?.code === "string" ? error.code : undefined });
+          emitDiagnostic({ phase: "error", request: { url: target.origin + target.pathname, method }, errorCode: typeof error?.code === "string" ? error.code : undefined });
           throw error;
         } finally {
           clearTimeout(timeout);
