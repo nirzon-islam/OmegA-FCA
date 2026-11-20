@@ -134,12 +134,16 @@ MIT License. See [LICENSE](LICENSE).
 
 ## Browser-based protocol capture
 
-OmegA-FCA includes an owner-operated Playwright capture utility. It launches a visible Chromium browser so the account owner can sign in manually, then records sanitized HTTP/WebSocket metadata for current protocol research. Setup and privacy guidance: [Browser Capture](docs/BROWSER-CAPTURE.md).
+OmegA-FCA includes an owner-operated Playwright capture utility. On desktop it launches Chromium; on Android/Termux it can attach to an already-running Android Chrome browser through CDP when that browser exposes a debugging endpoint. Setup and privacy guidance: [Browser Capture](docs/BROWSER-CAPTURE.md).
+
+Desktop:
 
 ```sh
 npm install --no-save playwright
 npx playwright install chromium
 npm run capture:browser
 ```
+
+Android/Termux: run `bash tools/termux-capture-setup.sh`, pair/connect ADB Wireless debugging, forward Chrome's DevTools socket, then run `npm run capture:browser -- --cdp http://127.0.0.1:9222`. Lemur/other browser compatibility is not assumed; verify the CDP endpoint first.
 
 The browser runs locally; it is not remotely visible to ChatGPT. The default report omits cookies, query strings, request/response bodies, and binary frame contents. An explicit `--save-private-frames` option stores raw WebSocket frames locally for owner-only inspection; those files may contain secrets or private messages and must not be shared unredacted.
