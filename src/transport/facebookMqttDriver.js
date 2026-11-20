@@ -23,6 +23,7 @@ async function createFacebookMqttDriver({
   let closed = false;
   let transport;
   let guard = null;
+  const runtimeOptions = { logLevel: "warn" };
   try {
     if (sessionGuardOptions != null) {
       if (!sessionGuardOptions || typeof sessionGuardOptions !== "object" ||
@@ -134,6 +135,24 @@ async function createFacebookMqttDriver({
       getCurrentUserID: () => session.userId,
       getAppState: () => session.getAppState(),
       refreshFb_dtsg: () => session.refreshTokens(),
+      setOptions: options => {
+        if (!options || typeof options !== "object" || Array.isArray(options)) {
+          throw new TypeError("setOptions requires an options object");
+        }
+        const unsupported = Object.keys(options).filter(key => key !== "logLevel");
+        if (unsupported.length) {
+          const error = new TypeError("Unsupported native FCA options: " + unsupported.join(", "));
+          error.code = "FCA_OPTION_UNSUPPORTED";
+          throw error;
+        }
+        if (options.logLevel !== undefined) {
+          if (!["silent", "error", "warn", "info", "debug"].includes(options.logLevel)) {
+            throw new TypeError("logLevel must be silent, error, warn, info, or debug");
+          }
+          runtimeOptions.logLevel = options.logLevel;
+        }
+        return Object.freeze({ ...runtimeOptions });
+      },
       getSessionState: () => session.state,
       sessionGuard: (requestedPath, legacyOptions = {}) => {
         if (!guard) throw new Error("Encrypted SessionGuard is not configured; set FCA_SESSION_FILE and FCA_SESSION_KEY or pass sessionGuard.filePath/key");
