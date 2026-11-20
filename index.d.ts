@@ -11,7 +11,7 @@ export interface Cookie {
   secure?: boolean; httpOnly?: boolean; sameSite?: string; expires?: number | null;
 }
 export interface Credentials {
-  mode: LoginMode; appState?: Cookie[]; cookie?: string; fb_email?: string; email?: string; password?: string;
+  mode: LoginMode; appState?: Cookie[]; cookie?: string; username?: string; email?: string; password?: string;
   twoFactorSecret?: string | null; twoFactorCode?: string | null; userAgent?: string | null; proxy?: unknown;
 }
 export interface PersonalSessionOptions {
@@ -293,8 +293,8 @@ export function inspectRealtimeBinaryPayload(frame: Buffer | Uint8Array, options
 export const version: string;
 
 export interface AccountConfigOptions { cwd?: string; accountFile?: string; configFile?: string; appStateFile?: string | null; env?: NodeJS.ProcessEnv; }
-export type LoadedAccountConfig = ({ mode: "credentials"; username?: string; email?: string; password: string; twoFactorSecret: string | null; userAgent: string | null; proxy: unknown } | { mode: "appstate"; appState: Cookie[]; source?: string });
+export type LoadedAccountConfig = { mode: "appstate"; appState: Cookie[]; source: "account.txt" | "appstate.json" };
 export function parseAccountText(text: string): Cookie[];
 export function generateTotp(secret: string, options?: { digits?: number; period?: number; algorithm?: "sha1" | "sha256" | "sha512"; timestamp?: number }): string;
-/** Reads cookie-only account.txt first, then facebookAccount credentials from config.json, with appstate.json as a compatibility fallback. */
+/** Reads cookie-only account.txt first, then appstate.json. Credential configuration is not loaded in the AppState-only phase. */
 export function loadAccountConfig(options?: AccountConfigOptions): LoadedAccountConfig;
