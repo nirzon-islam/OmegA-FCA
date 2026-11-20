@@ -132,6 +132,7 @@ async function createFacebookMqttDriver({
       ...driver,
       ...threadApi,
       getCurrentUserID: () => session.userId,
+      getAppState: () => session.getAppState(),
       getSessionState: () => session.state,
       sessionGuard: (requestedPath, legacyOptions = {}) => {
         if (!guard) throw new Error("Encrypted SessionGuard is not configured; set FCA_SESSION_FILE and FCA_SESSION_KEY or pass sessionGuard.filePath/key");
