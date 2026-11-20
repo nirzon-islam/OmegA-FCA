@@ -8,11 +8,12 @@ const { createMessengerSendMessageRequest } = require("./messengerActions");
 
 const DEFAULT_MQTT_URL = "wss://edge-chat.facebook.com/chat";
 const DEFAULT_MQTT_APP_ID = "219994525426954";
+const DEFAULT_USER_AGENT = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/120.0.0.0 Safari/537.36";
 const DEFAULT_MQTT_TOPICS = Object.freeze([
   "/ls_req", "/ls_resp", "/legacy_web", "/webrtc", "/rtc_multi", "/onevc",
   "/br_sr", "/sr_res", "/t_ms", "/thread_typing", "/orca_typing_notifications",
   "/notify_disconnect", "/orca_presence", "/inbox", "/mercury", "/messaging_events",
-  "/orca_message_notifications", "/pp", "/webrtc_response"
+  "/orca_message_notifications", "/pp", "/webrtc_response", "/legacy_web_mtouch"
 ]);
 
 function safeId(value, name) {
@@ -61,7 +62,8 @@ function createFacebookMqttProtocol(options = {}) {
   const username = {
     u: userId, s: sessionId, chat_on: options.online !== false, fg: false, d: deviceId,
     ct: "websocket", aid: appId, aids: null, mqtt_sid: "", cp: 3, ecp: 10,
-    st: [], pm: [], dc: "", no_auto_fg: true, gas: null, pack: [], p: null, php_override: ""
+    st: [], pm: [], dc: "", no_auto_fg: true, gas: null, pack: [], p: null, php_override: "",
+    a: String(options.userAgent || DEFAULT_USER_AGENT)
   };
   const headers = {
     Origin: "https://www.facebook.com",
@@ -124,6 +126,10 @@ function createFacebookMqttProtocol(options = {}) {
           queue.sync_token = syncToken;
         }
         socket.send(mqtt.encodePublish({ topic: queueTopic, payload: JSON.stringify(queue), qos: 1, packetId: nextPacketId() }));
+        // Match the established web FCA bootstrap: declare foreground/online
+        // state and client availability immediately after queue initialization.
+        socket.send(mqtt.encodePublish({ topic: "/foreground_state", payload: JSON.stringify({ foreground: options.online !== false }), qos: 1, packetId: nextPacketId() }));
+        socket.send(mqtt.encodePublish({ topic: "/set_client_settings", payload: JSON.stringify({ make_user_available_when_in_foreground: true }), qos: 1, packetId: nextPacketId() }));
         const keepAliveMs = Math.max(0, Number(options.keepAlive ?? 60)) * 500;
         if (keepAliveMs > 0) {
           const pingTimer = setInterval(() => {
