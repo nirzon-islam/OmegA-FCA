@@ -358,8 +358,13 @@ function createFacebookThreadApi({ session, webClient } = {}) {
       isGroup = fourth;
     } else {
       threadID = first;
-      typing = second === undefined ? true : second;
-      callback = third;
+      if (typeof second === "function") {
+        typing = true;
+        callback = second;
+      } else {
+        typing = second === undefined ? true : second;
+        callback = third;
+      }
     }
     if (typeof typing !== "boolean") throw new TypeError("typing must be a boolean or legacy 0/1 value");
     const thread = id(threadID, "threadID");
