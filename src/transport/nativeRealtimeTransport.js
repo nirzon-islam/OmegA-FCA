@@ -1,7 +1,7 @@
 "use strict";
 
 const { EventEmitter } = require("node:events");
-const { decodeRealtimeFrame, DEFAULT_MAX_FRAME_BYTES } = require("./realtimeFrameDecoder");
+const { DEFAULT_MAX_FRAME_BYTES } = require("./realtimeFrameDecoder");
 
 const DEFAULT_CONNECT_TIMEOUT_MS = 15000;
 const DEFAULT_CLOSE_TIMEOUT_MS = 3000;
@@ -126,6 +126,12 @@ function createNativeRealtimeTransport(options = {}) {
       listener = null;
       try { callback(terminalError); } catch {}
     }
+    // A terminal socket failure must release the underlying connection and
+    // every registered handler; otherwise a failed transport can leak.
+    cleanupListeners();
+    const failedSocket = socket;
+    socket = null;
+    try { failedSocket?.close?.(); } catch {}
   }
 
   async function connect(context = {}) {
