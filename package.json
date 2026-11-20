@@ -36,6 +36,7 @@
     "README.md",
     "LICENSE",
     "docs/META-MESSENGER-TRANSPORT.md",
+    "docs/FACEBOOK-MQTT-TRANSPORT.md",
     "docs/DEPLOYMENT.md",
     "docs/PROTOCOL-EVIDENCE.md",
     "docs/AUTHENTICATION-ATTEMPT.md",
