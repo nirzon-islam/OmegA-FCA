@@ -11,9 +11,9 @@ This module is based on publicly available FCA implementation observations, not 
 - Initial queue bootstrap via `/messenger_sync_create_queue`, or `/messenger_sync_get_diffs` when a caller supplies a sync token and sequence ID.
 - QoS 1 PUBACK for inbound PUBLISH frames, outbound topic publish frames, and MQTT PINGREQ keepalive.
 - Bounded `/ls_req` request publishing with numeric `request_id` allocation and `/ls_resp` correlation, timeout, pending-request cap and disconnect cleanup.
-- Source-observed text/sticker/reply send task envelope builder (`createMessengerSendMessageRequest`); it builds the request only and does not claim broker acceptance or delivery.
+- Source-observed text/sticker/reply send task envelope builder (`createMessengerSendMessageRequest`) exposed through the native driver's `sendMessage()` method and bounded `/ls_req`–`/ls_resp` correlation. This is experimental and does not claim broker acceptance or delivery.
 - Defensive `/t_ms` delta parsing for known message, reply, reaction, unsend, typing, read, presence and thread-event classes; unknown classes remain marked as `unknown_delta`.
-- Conservative extraction of sync token / sequence cursor fields as `sync_cursor` events (the application must persist them).
+- Conservative extraction of sync token / sequence cursor fields as `sync_cursor` events; when an account-bound `syncCursorStore` is explicitly supplied, cursors are AES-256-GCM encrypted at rest and reloaded on reconnect.
 - Bounded WebSocket connection and protocol setup timeouts through the shared native realtime runtime.
 
 ## Example
