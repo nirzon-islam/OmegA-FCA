@@ -343,11 +343,28 @@ function createFacebookThreadApi({ session, webClient } = {}) {
     return callbackResult(operation, callback);
   }
 
-  function sendTypingIndicator(threadID, typing = true, callback) {
-    if (typeof typing === "function") { callback = typing; typing = true; }
-    if (typeof typing !== "boolean") throw new TypeError("typing must be a boolean");
+  function sendTypingIndicator(first, second = true, third, fourth) {
+    let threadID;
+    let typing;
+    let callback;
+    let isGroup;
+    // Support both the native ergonomic signature (threadID, boolean, cb)
+    // and legacy FCA's (typ, threadID, cb, isGroup) call convention.
+    if ((first === 0 || first === 1 || typeof first === "boolean") &&
+        (typeof second === "string" || typeof second === "number")) {
+      typing = Boolean(first);
+      threadID = second;
+      callback = third;
+      isGroup = fourth;
+    } else {
+      threadID = first;
+      typing = second === undefined ? true : second;
+      callback = third;
+    }
+    if (typeof typing !== "boolean") throw new TypeError("typing must be a boolean or legacy 0/1 value");
     const thread = id(threadID, "threadID");
     const body = { typ: typing ? 1 : 0, to: "", source: "mercury-chat", thread };
+    if (isGroup === false) body.to = thread;
     const operation = web.post(TYPING_URL, body).then(result => {
       if (!result.payload || result.payload.error) {
         throw createFacebookError("sendTypingIndicator: Facebook rejected the typing update", {
