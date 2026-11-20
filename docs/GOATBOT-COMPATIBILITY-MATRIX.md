@@ -32,19 +32,25 @@ The client exposes each method below only when the injected driver provides that
 
 | Method | License feature gate (when licensing enabled) | Current status |
 |---|---|---|
-| `sendMessage`, `unsendMessage`, `markAsRead`, `sendTypingIndicator` | `messaging` | Driver pass-through only |
-| `getUserInfo`, `getThreadInfo`, `getThreadList`, `getThreadHistory`, `getMessage`, `getFriendsList`, `getUserID` | `threads` | Driver pass-through only |
-| `addUserToGroup`, `removeUserFromGroup`, `createNewGroup`, `changeNickname` | `groups` | Driver pass-through only |
-| `setMessageReaction` | `reactions` | Driver pass-through only |
+| `sendMessage` | `messaging` | Experimental native MQTT task builder; broker acceptance and recipient delivery are unverified. |
+| `markAsRead` | `messaging` | Native AppState-backed web action with synthetic request/response tests; live endpoint acceptance is unverified. |
+| `unsendMessage`, `sendTypingIndicator` | `messaging` | Not yet verified in the first-party native driver; exposed only when a supplied driver implements them. |
+| `getUserInfo`, `getThreadInfo`, `getThreadList`, `getThreadHistory` | `threads` | Native AppState-backed web actions with synthetic tests; live Facebook endpoint behavior is unverified. |
+| `getMessage`, `getFriendsList` | `threads` | Not yet implemented by the first-party native driver; optional pass-through only. |
+| `getUserID` | `threads` | Alias to the authenticated account identity. |
+| `addUserToGroup`, `removeUserFromGroup`, `changeNickname` | `groups` | Native AppState-backed web actions with synthetic tests; live acceptance is unverified. |
+| `createNewGroup` | `groups` | Not exposed until its request contract is evidenced. |
+| `setMessageReaction` | `reactions` | Native AppState-backed web action with synthetic tests; live acceptance is unverified. |
 
 ## Required work before migration
 
 - Complete live validation of the owner-supplied AppState session; username/password and 2FA login remain deferred, and checkpoint resolution remains manual.
-- Implement HTTP action serialization, response/error normalization, and safe retry policy. Do not automatically retry non-idempotent sends.
+- Complete the source-level inventory of every FCA method/event used across GoatBot commands, events, dashboard, database and custom scripts; this matrix is not yet a complete call-site inventory.
+- Add the missing legacy methods and event shapes only when their request contracts and behavior are evidenced; do not return dummy success responses.
 - Validate native MQTT frame decoding, event normalization, readiness, reconnect and deterministic shutdown against an authorized account; synthetic fake-broker coverage is not live acceptance.
-- Inventory every FCA call site across GoatBot commands, events, dashboard, database and custom scripts; this document is not a complete call-site inventory.
-- Add contract tests for every required method and callback shape, then opt-in integration tests using an authorized test account.
-- Verify CI on the target branch and run GoatBot's own tests before considering a dependency switch.
+- Run the owner-operated `npm run test:messenger-mqtt` check for live readiness and inbound events; use its explicit opt-in send mode only against a thread the owner controls and verify recipient delivery.
+- Run GoatBot's existing secure-session tests and a full startup/contract test against the intended released package before changing the dependency.
+- Verify CI on the latest prerelease head; keep username/password login deferred and preserve all existing Bot credentials/configuration.
 
 ## Release decision
 
