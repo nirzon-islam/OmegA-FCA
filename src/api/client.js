@@ -216,6 +216,23 @@ function createClient({ authenticate, options = {}, reconnect = {}, license = {}
           detach();
           detachMqtt = null;
         };
+        // FCA-compatible readiness signal: the native driver has already
+        // completed AppState validation, MQTT CONNACK and topic subscription
+        // before the client is exposed. This lets GoatBot gate startup/recovery
+        // on an explicit ready event instead of guessing from socket creation.
+        queueMicrotask(() => {
+          if (detachMqtt) {
+            try {
+              callback(null, Object.freeze({
+                type: "ready",
+                source: "omega-fca",
+                connectionState: supervisor.snapshot()
+              }));
+            } catch (error) {
+              try { supervisor.emit("listenerCallbackError", error); } catch {}
+            }
+          }
+        });
         return detachMqtt;
       } catch (error) {
         // Roll back the error subscription if listener attachment fails.
