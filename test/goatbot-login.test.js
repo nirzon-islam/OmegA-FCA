@@ -149,7 +149,8 @@ test("GoatBot adapter loads root appstate.json when account.txt is absent", asyn
     let received;
     const login = createGoatBotLogin({ async login(credentials) { received = credentials; return {}; } }, { cwd: root, env: {} });
     await login({}, () => {});
-    assert.deepEqual(received, { mode: "appstate", appState });
+    assert.equal(received.mode, "appstate");
+    assert.deepEqual(received.appState, appState.map(cookie => ({ path: "/", hostOnly: true, secure: false, httpOnly: false, ...cookie })));
   } finally {
     fs.rmSync(root, { recursive: true, force: true });
   }
