@@ -75,7 +75,7 @@ export interface TransportDriver {
   disconnect?(): void | Promise<void>; getCurrentUserID?(): string | number | null | Promise<string | number | null>; getAppState?(): Cookie[] | Promise<Cookie[]>;
   sendMessage?(...args: unknown[]): unknown; httpPost?(url: string, form: Record<string, unknown>, callback?: (error: Error | null, result?: string) => void): Promise<string> | void; getUserInfo?(...args: unknown[]): unknown;
   getThreadInfo?(...args: unknown[]): unknown; getThreadList?(...args: unknown[]): unknown;
-  markAsRead?(...args: unknown[]): unknown; setMessageReaction?(...args: unknown[]): unknown;
+  markAsRead?(...args: unknown[]): unknown; markAsDelivered?(threadID: string | number, messageID: string | number, callback?: (error?: Error | null) => void): Promise<unknown> | void; setMessageReaction?(...args: unknown[]): unknown;
   sendTypingIndicator?(...args: unknown[]): unknown; unsendMessage?(...args: unknown[]): unknown;
   changeNickname?(...args: unknown[]): unknown; changeThreadColor?(color: string, threadID: string | number, callback?: (error?: Error | null) => void): Promise<unknown> | void; changeThreadEmoji?(emoji: string, threadID: string | number, callback?: (error?: Error | null) => void): Promise<unknown> | void; setTitle?(title: string, threadID: string | number, callback?: (error?: Error | null, result?: unknown) => void): Promise<unknown> | void; addUserToGroup?(...args: unknown[]): unknown;
   removeUserFromGroup?(...args: unknown[]): unknown; createNewGroup?(...args: unknown[]): unknown;
@@ -422,6 +422,7 @@ export interface FacebookThreadApi {
   changeNickname(nickname: string, threadID: string | number, participantID: string | number, callback?: (error?: Error | null) => void): Promise<unknown> | void;
   setMessageReaction(reaction: string, messageID: string, callback?: (error?: Error | null) => void): Promise<unknown> | void;
   markAsRead(threadID: string | number, read?: boolean | ((error?: Error | null) => void), callback?: (error?: Error | null) => void): Promise<unknown> | void;
+  markAsDelivered(threadID: string | number, messageID: string | number, callback?: (error?: Error | null) => void): Promise<unknown> | void;
   unsendMessage(messageID: string, callback?: (error: Error | null, result?: unknown) => void): Promise<unknown> | void;
   changeThreadColor(color: string, threadID: string | number, callback?: (error?: Error | null) => void): Promise<unknown> | void;
   changeThreadEmoji(emoji: string, threadID: string | number, callback?: (error?: Error | null) => void): Promise<unknown> | void;
