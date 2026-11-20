@@ -35,21 +35,23 @@ The client exposes each method below only when the injected driver provides that
 |---|---|---|
 | `sendMessage` | `messaging` | Experimental native MQTT task builder; broker acceptance and recipient delivery are unverified. |
 | `markAsRead` | `messaging` | Native AppState-backed web action with synthetic request/response tests; live endpoint acceptance is unverified. |
-| `unsendMessage`, `sendTypingIndicator` | `messaging` | Not yet verified in the first-party native driver; exposed only when a supplied driver implements them. |
+| `unsendMessage` | `messaging` | Native authenticated unsend endpoint with synthetic success/error tests; live acceptance is unverified. |
+| `sendTypingIndicator` | `messaging` | Not yet implemented by the first-party native driver. |
 | `getUserInfo`, `getThreadInfo`, `getThreadList`, `getThreadHistory` | `threads` | Native AppState-backed web actions with synthetic tests; live Facebook endpoint behavior is unverified. |
 | `httpPost` | compatibility | Authenticated low-level POST returning response text; restricted to Facebook/Messenger HTTPS hosts and bounded request/response sizes. Supports custom GoatBot GraphQL commands such as friend-request management. |
 | `getMessage`, `getFriendsList` | `threads` | Not yet implemented by the first-party native driver; optional pass-through only. |
 | `getUserID` | `threads` | Alias to the authenticated account identity. |
-| `addUserToGroup`, `removeUserFromGroup`, `changeNickname` | `groups` | Native AppState-backed web actions with synthetic tests; live acceptance is unverified. |
+| `addUserToGroup`, `removeUserFromGroup`, `changeNickname`, `setTitle` | `groups` | Native AppState-backed web actions with synthetic tests; live acceptance is unverified. |
 | `createNewGroup` | `groups` | Not exposed until its request contract is evidenced. |
 | `setMessageReaction` | `reactions` | Native AppState-backed web action with synthetic tests; live acceptance is unverified. |
+| `changeThreadColor`, `changeThreadEmoji` | `threads` | Native AppState-backed customization endpoints with synthetic tests; live acceptance is unverified. |
 
 ## Additional legacy methods found in the partial GoatBot command audit
 
 The source scan of the current `fca-migration-cleanup` branch found additional method calls beyond the core login contract:
 
-- Implemented in the native facade: `getAppState`, `httpPost`, `sendMessage`, `getCurrentUserID`, `getThreadList`, `getThreadInfo`, `getThreadHistory`, `getUserInfo`, `addUserToGroup`, `removeUserFromGroup`, `changeNickname`, and `setMessageReaction`.
-- Still missing or not verified: `unsendMessage`, `changeGroupImage`, `changeAvatar`, `setTitle`, `changeThreadEmoji`, `changeThreadColor`, `shareContact`, and the runtime semantics of `setOptions`.
+- Implemented in the native facade: `getAppState`, `httpPost`, `sendMessage`, `unsendMessage`, `getCurrentUserID`, `getThreadList`, `getThreadInfo`, `getThreadHistory`, `getUserInfo`, `addUserToGroup`, `removeUserFromGroup`, `changeNickname`, `setTitle`, `changeThreadColor`, `changeThreadEmoji`, and `setMessageReaction`.
+- Still missing or not verified: `changeGroupImage`, `changeAvatar`, `shareContact`, `sendTypingIndicator`, and the runtime semantics of `setOptions`.
 - This was a partial scan of command files, not the complete 271-file repository inventory; event handlers, dashboard, database, custom scripts, and dynamically accessed methods still need review.
 
 ## Required work before migration
