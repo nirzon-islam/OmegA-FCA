@@ -60,6 +60,57 @@ function extractFacebookTokens(html) {
   });
 }
 
+function extractRealtimeConfig(html) {
+  // Search both known inline shapes and the bounded MqttWebConfig object.
+  // Facebook markup is mutable; field order is not treated as significant.
+  if (typeof html !== "string" || html.length > MAX_RESPONSE_BYTES) {
+    return Object.freeze({ endpoint: null, region: null, lastSeqId: null });
+  }
+  const scopes = [html];
+  const configPattern = /MqttWebConfig[^{}]{0,256}\{([^{}]{0,4096})\}/g;
+  let configMatch;
+  while ((configMatch = configPattern.exec(html)) !== null) scopes.push(configMatch[1]);
+
+  const read = (scope, patterns) => {
+    for (const pattern of patterns) {
+      const match = pattern.exec(scope);
+      if (match && match[1]) return match[1].replace(/\\\//g, "/");
+    }
+    return null;
+  };
+  for (const scope of scopes) {
+    const appId = read(scope, [
+      /(?:appID|app_id)\s*:\s*"?(\d+)"?/,
+      /["'](?:appID|app_id)["']\s*:\s*["'](\d+)["']/
+    ]);
+    if (appId && appId !== "219994525426954") continue;
+
+    const endpoint = read(scope, [
+      /(?:endpoint|mqttEndpoint)\s*:\s*"([^"]+)"/,
+      /["'](?:endpoint|mqttEndpoint)["']\s*:\s*"([^"]+)"/
+    ]);
+    if (!endpoint) continue;
+    let url;
+    try { url = new URL(endpoint); } catch { continue; }
+    if (url.protocol !== "wss:" || url.hostname !== "edge-chat.facebook.com" ||
+        url.pathname !== "/chat" || url.username || url.password ||
+        (url.port && url.port !== "443")) continue;
+
+    const sequence = read(scope, [
+      /(?:irisSeqID|iris_seq_id|lastSeqId|last_seq_id)\s*:\s*"?([0-9]{1,30})"?/,
+      /["'](?:irisSeqID|iris_seq_id|lastSeqId|last_seq_id)["']\s*:\s*["']([0-9]{1,30})["']/
+    ]);
+    const region = url.searchParams.get("region");
+    if (region && !/^[a-z]{2,8}$/i.test(region)) continue;
+    return Object.freeze({
+      endpoint: url.toString(),
+      region: region ? region.toLowerCase() : null,
+      lastSeqId: sequence
+    });
+  }
+  return Object.freeze({ endpoint: null, region: null, lastSeqId: null });
+}
+
 function collectResponseCookies(response, requestUrl) {
   const raw = typeof response.headers?.getSetCookie === "function"
     ? response.headers.getSetCookie()
@@ -196,6 +247,7 @@ async function createPersonalSession({
 
     const pageUserId = extractIdentity(html);
     const pageTokens = extractFacebookTokens(html);
+    const realtime = extractRealtimeConfig(html);
     if (pageUserId && pageUserId !== userId) {
       throw sessionError("Facebook returned a different account than the supplied c_user session", "FCA_SESSION_IDENTITY_MISMATCH", "error");
     }
@@ -204,6 +256,7 @@ async function createPersonalSession({
       userId,
       state: "active",
       validatedAt: Date.now(),
+      realtime,
       getTokens() {
         if (closed) throw new Error("Facebook session is closed");
         return { ...pageTokens };
@@ -279,4 +332,4 @@ async function createPersonalSession({
   }
 }
 
-module.exports = { createPersonalSession, detectSessionChallenge, extractIdentity, extractFacebookTokens };
+module.exports = { createPersonalSession, detectSessionChallenge, extractIdentity, extractFacebookTokens, extractRealtimeConfig };
