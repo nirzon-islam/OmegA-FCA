@@ -1,6 +1,6 @@
 {
   "name": "@nirzon-islam/omega-fca",
-  "version": "0.1.6-rc.2",
+  "version": "0.1.6-rc.3",
   "description": "OmegA Bot Facebook integration library, developed and maintained by NirZon",
   "main": "index.js",
   "type": "commonjs",
