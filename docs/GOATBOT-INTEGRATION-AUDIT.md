@@ -49,6 +49,12 @@ The native facade now emits a `ready` event after the synthetic/driver MQTT setu
 
 These capabilities are implemented in code but Facebook-specific private endpoints, broker acceptance, and action payload schemas are unofficial and still require authorized live-account verification.
 
+## Partial command-call inventory (2026-11-21)
+
+A source scan of GoatBot command modules found calls to `getAppState` and low-level `httpPost` in addition to the earlier login/listener methods. Both are now exposed by OmegA-FCA: `getAppState` returns the current owner session cookies and must remain owner-only; `httpPost` uses the authenticated bounded web client and only permits Facebook/Messenger HTTPS hosts.
+
+The scan also found calls to `unsendMessage`, `changeGroupImage`, `changeAvatar`, `setTitle`, `changeThreadEmoji`, `changeThreadColor`, `shareContact`, and `setOptions`. These are not yet implemented or behaviorally verified by the first-party native driver. This remains a partial scan, not a full repository-wide inventory.
+
 ## Confirmed remaining compatibility gaps
 
 1. GoatBot currently pins the previously published `0.1.6-rc.2` package. This branch is not active in the Bot until a deliberate package release and dependency/lockfile update.
