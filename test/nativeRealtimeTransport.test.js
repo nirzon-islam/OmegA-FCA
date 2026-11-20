@@ -161,3 +161,22 @@ test("times out a stalled protocol handshake and closes the socket", async () =>
   assert.equal(socket.closeCalls, 1);
   assert.equal(transport.snapshot().state, "disconnected");
 });
+
+
+test("closes the socket and releases handlers after a runtime transport error", async () => {
+  const { transport, socket } = setup();
+  await transport.connect();
+  const errors = [];
+  transport.on("transportError", error => errors.push(error));
+
+  socket.emit("error", new Error("simulated network failure"));
+
+  assert.equal(errors.length, 1);
+  assert.equal(errors[0].code, "FCA_WS_RUNTIME_ERROR");
+  assert.equal(socket.closeCalls, 1);
+  assert.equal(socket.listenerCount("message"), 0);
+  assert.equal(socket.listenerCount("error"), 0);
+  assert.equal(socket.listenerCount("close"), 0);
+  assert.equal(transport.snapshot().state, "disconnected");
+  await transport.disconnect();
+});
