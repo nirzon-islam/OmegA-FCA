@@ -131,6 +131,7 @@ function createNativeRealtimeTransport(options = {}) {
     cleanupListeners();
     const failedSocket = socket;
     socket = null;
+    try { protocol.closeRequests?.(terminalError); } catch {}
     try { failedSocket?.close?.(); } catch {}
   }
 
@@ -344,6 +345,7 @@ function createNativeRealtimeTransport(options = {}) {
       cleanupListeners();
       const current = socket;
       socket = null;
+      try { protocol.closeRequests?.(transportError("WebSocket disconnected", "FCA_WS_DISCONNECTED", true)); } catch {}
       disconnectPromise = (async () => {
         if (current && typeof current.close === "function") {
           await new Promise(resolve => {
