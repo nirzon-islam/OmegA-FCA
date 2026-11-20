@@ -4,7 +4,7 @@ const test = require("node:test");
 const assert = require("node:assert/strict");
 const { EventEmitter } = require("node:events");
 const { createFacebookMqttClient } = require("../src/compat/facebookMqttClient");
-const mqtt = require("../transport/mqtt311Codec");
+const mqtt = require("../src/transport/mqtt311Codec");
 
 const appState = [
   { key: "c_user", value: "123456789012345", domain: ".facebook.com", path: "/", secure: true, httpOnly: true },
