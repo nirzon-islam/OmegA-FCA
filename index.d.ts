@@ -232,6 +232,14 @@ export const mqtt311Codec: {
   encodeDisconnect(): Buffer;
   decodePacket(buffer: Buffer | Uint8Array, options?: { maxPacketBytes?: number }): Readonly<Record<string, unknown>> | null;
 };
+export interface Mqtt311StreamDecoder {
+  push(chunk: Buffer | Uint8Array | ArrayBuffer): Array<Readonly<Record<string, unknown>>>;
+  reset(): void;
+  close(): void;
+  readonly bufferedBytes: number;
+  readonly closed: boolean;
+}
+export function createMqtt311StreamDecoder(options?: { maxPacketBytes?: number; maxBufferedBytes?: number }): Mqtt311StreamDecoder;
 export interface NativeRealtimeSocket {
   readyState?: number;
   send(data: string | Buffer | Uint8Array | ArrayBuffer, callback?: (error?: Error) => void): void;
