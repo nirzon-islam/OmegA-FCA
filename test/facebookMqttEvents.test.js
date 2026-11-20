@@ -45,6 +45,10 @@ test("extracts bounded delta arrays and known sync cursor fields", () => {
   assert.equal(result.events.length, 1);
   assert.deepEqual(result.cursor, { syncToken: "opaque-token", lastSeqId: "42" });
   assert.equal(parseMessengerSyncPayload(Buffer.from("{")).events.length, 0);
+  const referenceShape = parseMessengerSyncPayload({
+    deltas: [], firstDeltaSeqId: "100", lastIssuedSeqId: "105", syncToken: "reference-token"
+  });
+  assert.deepEqual(referenceShape.cursor, { syncToken: "reference-token", lastSeqId: "105" });
 });
 
 test("Messenger MQTT /t_ms frames emit normalized events and cursor updates", () => {
