@@ -33,16 +33,18 @@ test("SessionGuard recovers a corrupt primary from its encrypted backup", async 
   const filePath = path.join(directory, "session.enc");
   const key = "b".repeat(64);
   let recovered;
+  let savedAt = 1;
   const guard = createSessionGuard({
     filePath, key,
-    getSession: () => ({ userId: "123456789", savedAt: 2 }),
+    getSession: () => ({ userId: "123456789", savedAt }),
     onRecovery: event => { recovered = event; }
   });
   try {
     await guard.saveNow();
+    savedAt = 2;
     await guard.saveNow();
     fs.writeFileSync(filePath, "corrupt", "utf8");
-    assert.equal(guard.load().savedAt, 2);
+    assert.equal(guard.load().savedAt, 1);
     assert.deepEqual(recovered, { source: "backup", restored: true });
   } finally {
     guard.close();
