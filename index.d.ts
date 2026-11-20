@@ -103,7 +103,7 @@ export interface ClientApi {
   listen(callback: (event: unknown) => void): () => void;
   listenMqtt(callback: (error: Error | null, event?: unknown) => void): () => void;
   stopListening(callback?: () => void): boolean;
-  sendMessage?: (...args: any[]) => any; getUserInfo?: (...args: any[]) => any;
+  sendRequest?: (payload: Record<string, unknown>, options?: { timeoutMs?: number }) => Promise<unknown>; sendMessage?: (...args: any[]) => any; getUserInfo?: (...args: any[]) => any;
   getThreadInfo?: (...args: any[]) => any; getThreadList?: (...args: any[]) => any;
   markAsRead?: (...args: any[]) => any; setMessageReaction?: (...args: any[]) => any;
   sendTypingIndicator?: (...args: any[]) => any; unsendMessage?: (...args: any[]) => any;
