@@ -14,7 +14,7 @@ const METHOD_FEATURES = Object.freeze({
 });
 
 const DRIVER_METHODS = [
-  "sendRequest", "sendMessage", "httpPost", "getUserInfo", "getThreadInfo", "getThreadList", "getCurrentUserID",
+  "sendRequest", "sendMessage", "httpPost", "getUserInfo", "getThreadInfo", "getThreadList", "getCurrentUserID", "getAppState",
   "markAsRead", "setMessageReaction", "sendTypingIndicator", "unsendMessage",
   "changeNickname", "addUserToGroup", "removeUserFromGroup", "createNewGroup",
   "getThreadHistory", "getMessage", "getFriendsList", "getUserID"
