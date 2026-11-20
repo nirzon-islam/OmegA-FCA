@@ -131,7 +131,7 @@ test("GoatBot adapter rejects credentials stored in account.txt", async () => {
     }, { cwd: root, env: {} });
     let failure;
     assert.equal(await login({}, error => { failure = error; }), null);
-    assert.match(failure.message, /account.txt is AppState\\/cookie-only/);
+    assert.match(failure.message, /account.txt is AppState\/cookie-only/);
     assert.equal(received, undefined);
   } finally {
     fs.rmSync(root, { recursive: true, force: true });
