@@ -40,7 +40,7 @@ function normalizeCookies(input) {
       value: item.value,
       domain,
       path,
-      hostOnly: item.hostOnly === undefined ? !(typeof rawDomain === "string" && rawDomain.trim().startsWith(".")) : Boolean(item.hostOnly),
+      hostOnly: item.hostOnly === undefined ? false : Boolean(item.hostOnly),
       secure: Boolean(item.secure),
       httpOnly: Boolean(item.httpOnly),
       ...(typeof item.sameSite === "string" ? { sameSite: item.sameSite } : {}),
@@ -68,7 +68,8 @@ function parseCookieHeader(header) {
     if (index <= 0) throw new TypeError("Malformed cookie header");
     return { key: part.slice(0, index).trim(), value: part.slice(index + 1).trim(), domain: "facebook.com", path: "/", hostOnly: true };
   });
-  return normalizeCookies(entries);
+  // A raw Cookie header has no host-only metadata. Treat imported Facebook cookies as domain-scoped so they reach www.facebook.com as expected.
+  return normalizeCookies(entries.map(cookie => ({ ...cookie, hostOnly: false })));
 }
 
 function parseNetscapeCookies(text) {

@@ -110,7 +110,6 @@ function extractRealtimeConfig(html) {
   }
   return Object.freeze({ endpoint: null, region: null, lastSeqId: null });
 }
-
 function collectResponseCookies(response, requestUrl) {
   const raw = typeof response.headers?.getSetCookie === "function"
     ? response.headers.getSetCookie()

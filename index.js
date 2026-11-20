@@ -10,7 +10,7 @@ const { ConnectionSupervisor } = require("./src/runtime/connection");
 const { EventDispatcher } = require("./src/events/dispatcher");
 const { CookieJar } = require("./src/network/cookieJar");
 const { createRequestClient, retryAfterMs, isRetryableStatus } = require("./src/network/requestClient");
-const { createPersonalSession, detectSessionChallenge, extractIdentity, extractFacebookTokens, extractRealtimeConfig } = require("./src/auth/personalSession");
+const { createPersonalSession, detectSessionChallenge, extractIdentity, extractFacebookTokens } = require("./src/auth/personalSession");
 const { createAuthenticationAttempt, AUTHENTICATION_ATTEMPT_STATES } = require("./src/auth/authenticationAttempt");
 const { parseAccountText, loadAccountConfig } = require("./src/auth/accountConfig");
 const { generateTotp } = require("./src/auth/totp");
@@ -44,7 +44,7 @@ module.exports = {
   normalizeCookies, validateSessionCookies, parseCookieHeader, parseNetscapeCookies,
   redactSecrets, createDiagnosticRecorder, classifySessionState, describeError, encryptSession, decryptSession,
   saveSession, loadSession, deleteSession, ConnectionSupervisor, EventDispatcher,
-  CookieJar, createRequestClient, retryAfterMs, isRetryableStatus, createPersonalSession, detectSessionChallenge, extractIdentity, extractFacebookTokens, extractRealtimeConfig,
+  CookieJar, createRequestClient, retryAfterMs, isRetryableStatus, createPersonalSession, detectSessionChallenge, extractIdentity, extractFacebookTokens,
   createAuthenticationAttempt, AUTHENTICATION_ATTEMPT_STATES,
   parseAccountText, loadAccountConfig, generateTotp,
   normalizeFacebookResponse, stripFacebookJsonPrefix, createFacebookError,

@@ -19,11 +19,12 @@ test("uses the account sequence cursor in the initial Messenger sync queue", asy
   assert.match(configured.url, /region=ash/);
   const sent = [];
   const socket = { send(frame) { sent.push(Buffer.from(frame)); } };
+  let subackPacketId;
   await configured.protocol.subscribe(socket, {
     async waitForFrame() {
       const remaining = mqtt.decodeRemainingLength(sent[0]);
-      const packetId = sent[0].readUInt16BE(remaining.offset);
-      return Buffer.from([0x90, 0x03, packetId >> 8, packetId & 0xff, 0x01]);
+      subackPacketId = sent[0].readUInt16BE(remaining.offset);
+      return Buffer.from([0x90, 0x03, subackPacketId >> 8, subackPacketId & 0xff, 0x01]);
     }
   });
   const publishes = sent.slice(1).map(frame => mqtt.decodePacket(frame)).filter(packet => packet.type === "publish");
