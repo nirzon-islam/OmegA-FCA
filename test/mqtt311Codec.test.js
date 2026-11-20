@@ -53,3 +53,17 @@ test("MQTT decoder rejects invalid fixed-header flags and oversized packets", ()
 test("MQTT CONNECT refuses password without username", () => {
   assert.throws(() => mqtt.encodeConnect({ clientId: "x", password: "secret" }));
 });
+
+test("MQTT decoder rejects non-canonical remaining length encodings", () => {
+  assert.throws(() => mqtt.decodeRemainingLength(Buffer.from([0x30, 0x80, 0x00])), /Non-canonical/);
+  assert.throws(() => mqtt.decodeRemainingLength(Buffer.from([0x30, 0xff, 0xff, 0xff, 0xff, 0x7f])), /out of range/);
+});
+
+test("MQTT decoder validates CONNACK session-present consistency", () => {
+  assert.throws(() => mqtt.decodePacket(Buffer.from([0x20, 0x02, 0x01, 0x01])), /CONNACK/);
+});
+
+test("MQTT decoder rejects invalid SUBACK grant codes and empty grants", () => {
+  assert.throws(() => mqtt.decodePacket(Buffer.from([0x90, 0x03, 0x00, 0x01, 0x03])), /SUBACK/);
+  assert.throws(() => mqtt.decodePacket(Buffer.from([0x90, 0x02, 0x00, 0x01])), /SUBACK/);
+});
