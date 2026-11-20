@@ -35,6 +35,10 @@ test("encodes gateway subscription frame with bounded two-byte body length", () 
   assert.equal(frame.subarray(4, -2).toString(), '{"method":"test"}');
   assert.deepEqual([...frame.subarray(-2)], [0, 0]);
   assert.throws(() => encodeGatewaySubscription("x".repeat(65536), 0), /two-byte length/);
+  const large = encodeGatewaySubscription("x".repeat(300), 1);
+  assert.equal(large[2], 1);
+  assert.equal(large[3], 44);
+  assert.equal(large.subarray(4, -2).length, 300);
 });
 
 test("decodes a gateway subscription response and notification payload", () => {
