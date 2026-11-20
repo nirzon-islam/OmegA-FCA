@@ -168,7 +168,7 @@ async function createPersonalSession({
     });
 
     const response = bootstrapResponse;
-    emitDiagnostic({ phase: "response", request: { url: FACEBOOK_ORIGIN + "/", method: "GET",  }, response: { status: response.status, contentType: response.headers?.get?.("content-type") || "", bodyBytes: Number(response.headers?.get?.("content-length") || 0) }, durationMs: Date.now() - bootstrapStartedAt });
+    emitDiagnostic({ phase: "response", request: { url: FACEBOOK_ORIGIN + "/", method: "GET" }, response: { status: response.status, contentType: response.headers?.get?.("content-type") || "", bodyBytes: Number(response.headers?.get?.("content-length") || 0) }, durationMs: Date.now() - bootstrapStartedAt });
     if (response.status >= 500) {
       throw sessionError("Facebook is temporarily unavailable while validating the session", "FCA_UPSTREAM_UNAVAILABLE", "error");
     }
