@@ -205,23 +205,47 @@ async function createPersonalSession({
 
   try {
     const bootstrapStartedAt = Date.now();
-    const bootstrapResponse = await fetchImpl(FACEBOOK_ORIGIN + "/", {
-      method: "GET",
-      redirect: "manual",
-      headers: {
-        accept: "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
-        "accept-language": "en-US,en;q=0.9",
-        cookie: jar.getCookieHeader(FACEBOOK_ORIGIN + "/"),
-        "user-agent": userAgent
-      },
-      signal: controller.signal
-    });
-
-    const response = bootstrapResponse;
-    const { accepted: bootstrapCookies, deletions: bootstrapDeletions } = collectResponseCookies(response, new URL(FACEBOOK_ORIGIN + "/"));
-    if (bootstrapCookies.length) jar.setCookies(bootstrapCookies);
-    if (bootstrapDeletions.length) jar.deleteCookies(bootstrapDeletions);
-    emitDiagnostic({ phase: "response", request: { url: FACEBOOK_ORIGIN + "/", method: "GET" }, response: { status: response.status, contentType: response.headers?.get?.("content-type") || "", bodyBytes: Number(response.headers?.get?.("content-length") || 0) }, durationMs: Date.now() - bootstrapStartedAt });
+    const bootstrapHeaders = {
+      accept: "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+      "accept-language": "en-US,en;q=0.9",
+      "user-agent": userAgent
+    };
+    let bootstrapUrl = new URL(FACEBOOK_ORIGIN + "/");
+    let response = null;
+    // Fetch-compatible clients must not silently treat Facebook's normal
+    // same-site locale/canonical redirects as an authentication failure.
+    // Follow only HTTPS redirects that remain on Facebook/Messenger hosts.
+    for (let redirectCount = 0; redirectCount <= 5; redirectCount++) {
+      const requestUrl = bootstrapUrl;
+      response = await fetchImpl(requestUrl, {
+        method: "GET",
+        redirect: "manual",
+        headers: { ...bootstrapHeaders, cookie: jar.getCookieHeader(requestUrl) },
+        signal: controller.signal
+      });
+      const { accepted, deletions } = collectResponseCookies(response, requestUrl);
+      if (accepted.length) jar.setCookies(accepted);
+      if (deletions.length) jar.deleteCookies(deletions);
+      emitDiagnostic({
+        phase: "response",
+        request: { url: requestUrl.origin + requestUrl.pathname, method: "GET" },
+        response: { status: response.status, contentType: response.headers?.get?.("content-type") || "", bodyBytes: Number(response.headers?.get?.("content-length") || 0) },
+        durationMs: Date.now() - bootstrapStartedAt
+      });
+      if (![301, 302, 303, 307, 308].includes(response.status)) break;
+      const location = response.headers?.get?.("location") || "";
+      const target = location ? new URL(location, requestUrl) : null;
+      if (target && /checkpoint|challenge/i.test(target.href)) break;
+      if (target && /login\\.php|\\/login(?:[/?]|$)/i.test(target.href)) break;
+      if (!target || target.protocol !== "https:" ||
+          !/(^|\\.)facebook\\.com$|(^|\\.)messenger\\.com$/.test(target.hostname)) {
+        throw sessionError("Facebook redirected the session validation to an unsupported destination", "FCA_UNEXPECTED_REDIRECT", "error");
+      }
+      if (redirectCount === 5) {
+        throw sessionError("Facebook exceeded the session validation redirect limit", "FCA_REDIRECT_LIMIT", "error");
+      }
+      bootstrapUrl = target;
+    }
     if (response.status >= 500) {
       throw sessionError("Facebook is temporarily unavailable while validating the session", "FCA_UPSTREAM_UNAVAILABLE", "error");
     }
