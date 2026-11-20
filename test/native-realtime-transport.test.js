@@ -104,3 +104,37 @@ test("enforces frame byte limits for text WebSocket frames in both directions", 
   assert.equal(failure.code, "FCA_WS_FRAME_TOO_LARGE");
   await transport.disconnect();
 });
+
+test("bounds a pending socket factory and closes a socket that arrives late", async () => {
+  let resolveFactory;
+  const socket = new EventEmitter();
+  socket.readyState = 0;
+  socket.send = () => {};
+  let closeCount = 0;
+  socket.close = () => { closeCount += 1; socket.readyState = 3; };
+  const transport = createNativeRealtimeTransport({
+    url: "wss://fixture.invalid/realtime",
+    socketFactory: () => new Promise(resolve => { resolveFactory = resolve; }),
+    protocol: makeProtocol(),
+    connectTimeoutMs: 10
+  });
+
+  await assert.rejects(transport.connect(), { code: "FCA_WS_CREATE_TIMEOUT" });
+  resolveFactory(socket);
+  await new Promise(resolve => setImmediate(resolve));
+  assert.equal(closeCount, 1);
+  assert.equal(transport.snapshot().state, "disconnected");
+});
+
+test("aborts a pending socket factory without waiting for its promise", async () => {
+  const controller = new AbortController();
+  const transport = createNativeRealtimeTransport({
+    url: "wss://fixture.invalid/realtime",
+    socketFactory: () => new Promise(() => {}),
+    protocol: makeProtocol(),
+    connectTimeoutMs: 1000
+  });
+  const pending = transport.connect({ signal: controller.signal });
+  controller.abort(Object.assign(new Error("cancelled"), { code: "FCA_WS_ABORTED" }));
+  await assert.rejects(pending, { code: "FCA_WS_ABORTED" });
+});
