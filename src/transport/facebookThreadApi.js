@@ -1,5 +1,7 @@
 "use strict";
 
+const { randomInt } = require("node:crypto");
+const { offlineThreadingId } = require("./messengerActions");
 const { createFacebookWebClient } = require("../auth/facebookWebClient");
 const { createFacebookError } = require("../auth/facebookResponse");
 
@@ -131,7 +133,7 @@ function unwrapGraph(response, operation) {
   return result?.data ?? result;
 }
 
-function createFacebookThreadApi({ session, webClient } = {}) {
+function createFacebookThreadApi({ session, webClient, clientId = "omega-fca" } = {}) {
   if (!session || typeof session.request !== "function") throw new TypeError("An active personal session is required");
   const web = webClient || createFacebookWebClient({ session });
   const currentUserID = id(session.userId, "session.userId");
@@ -292,7 +294,8 @@ function createFacebookThreadApi({ session, webClient } = {}) {
     if (typeof newTitle !== "string" || newTitle.length > 100) throw new TypeError("newTitle must be a string up to 100 characters");
     const thread = id(threadID, "threadID");
     const timestamp = Date.now();
-    const offlineId = String(timestamp * 1000);
+    const offlineId = offlineThreadingId(timestamp);
+    const threadingId = "<" + timestamp + ":" + randomInt(0, 0xffffffff) + "-" + String(clientId) + "@mail.projektitan.com>";
     const body = {
       client: "mercury", action_type: "ma-type:log-message",
       author: "fbid:" + currentUserID, author_email: "", coordinates: "",
@@ -301,7 +304,7 @@ function createFacebookThreadApi({ session, webClient } = {}) {
       is_forward: false, is_filtered_content: false, is_spoof_warning: false,
       source: "source:chat:web", "source_tags[0]": "source:chat", status: "0",
       offline_threading_id: offlineId, message_id: offlineId,
-      threading_id: String(timestamp), manual_retry_cnt: "0",
+      threading_id: threadingId, manual_retry_cnt: "0",
       thread_fbid: thread, thread_name: newTitle, thread_id: thread,
       log_message_type: "log:thread-name"
     };
