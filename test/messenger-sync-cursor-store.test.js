@@ -40,7 +40,7 @@ test("protocol uses stored cursor for diff bootstrap and persists new cursor", (
   const config = createFacebookMqttProtocol({ userId: "123456789", syncCursorStore: store });
   const sent = [];
   const socket = { send: frame => sent.push(Buffer.from(frame)) };
-  const context = { waitForFrame: async () => mqtt.encodePacketId("suback", 1) };
+  const context = { waitForFrame: async () => Buffer.from([0x90, 0x03, 0x00, 0x01, 0x01]) };
   return config.protocol.subscribe(socket, context).then(() => {
     const queue = mqtt.decodePacket(sent[1]);
     assert.equal(queue.topic, "/messenger_sync_get_diffs");
