@@ -427,6 +427,7 @@ export interface FacebookThreadApi {
   changeThreadEmoji(emoji: string, threadID: string | number, callback?: (error?: Error | null) => void): Promise<unknown> | void;
   setTitle(title: string, threadID: string | number, callback?: (error?: Error | null, result?: unknown) => void): Promise<unknown> | void;
   sendTypingIndicator(threadID: string | number, typing?: boolean | ((error?: Error | null) => void), callback?: (error?: Error | null) => void): Promise<unknown> | void;
+  sendTypingIndicator(typ: 0 | 1, threadID: string | number, callback?: (error?: Error | null) => void, isGroup?: boolean): Promise<unknown> | void;
 }
 export const FACEBOOK_THREAD_DOC_IDS: Readonly<{ threadList: string; threadInfo: string; threadHistory: string; reaction: string }>;
 export function createFacebookThreadApi(options: { session: PersonalSession; webClient?: FacebookWebClient }): FacebookThreadApi;
