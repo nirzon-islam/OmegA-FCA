@@ -221,3 +221,24 @@ test("sendTypingIndicator accepts callback as the second argument", async () => 
   await new Promise(resolve => setImmediate(resolve));
   assert.equal(completed, true);
 });
+
+test("markAsDelivered sends the message and thread receipt fields", async () => {
+  let captured;
+  const api = createFacebookThreadApi({
+    session,
+    webClient: { post: async (url, body) => {
+      captured = { url, body };
+      return { payload: { success: true } };
+    } }
+  });
+  await api.markAsDelivered("123456789012345", "mid.123");
+  assert.equal(captured.url, "https://www.facebook.com/ajax/mercury/delivery_receipts.php");
+  assert.equal(captured.body["message_ids[0]"], "mid.123");
+  assert.equal(captured.body["thread_ids[123456789012345][0]"], "mid.123");
+});
+
+test("markAsDelivered validates IDs and normalizes rejected receipts", async () => {
+  const api = createFacebookThreadApi({ session, webClient: { post: async () => ({ payload: { error: 1 } }) } });
+  assert.throws(() => api.markAsDelivered("", "mid.123"), /numeric Facebook ID/);
+  await assert.rejects(api.markAsDelivered("123456789012345", "mid.123"), error => error.code === "FCA_FACEBOOK_REQUEST_REJECTED");
+});
