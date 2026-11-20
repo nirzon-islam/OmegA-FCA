@@ -216,7 +216,29 @@ function createNativeRealtimeTransport(options = {}) {
       });
 
       if (currentGeneration !== generation) throw transportError("Connection superseded", "FCA_WS_SUPERSEDED");
-      const contextWithSignal = { ...context, url };
+      const waitForFrame = (timeoutMs = protocolSetupTimeoutMs) => new Promise((resolve, reject) => {
+        let settled = false;
+        let timer;
+        const finish = (error, value) => {
+          if (settled) return;
+          settled = true;
+          clearTimeout(timer);
+          removeMessage();
+          if (signal) signal.removeEventListener("abort", onAbort);
+          if (error) reject(error); else resolve(value);
+        };
+        const removeMessage = attach(candidate, "message", message => {
+          const raw = message?.data !== undefined ? message.data : message;
+          finish(null, raw);
+        });
+        const onAbort = () => finish(signal.reason || transportError("Connection aborted", "FCA_WS_ABORTED"));
+        timer = setTimeout(() => finish(transportError("Timed out waiting for realtime protocol frame", "FCA_WS_PROTOCOL_FRAME_TIMEOUT", true)), timeoutMs);
+        if (signal) {
+          signal.addEventListener("abort", onAbort, { once: true });
+          if (signal.aborted) onAbort();
+        }
+      });
+      const contextWithSignal = { ...context, url, waitForFrame };
       try {
         await withTimeout((async () => {
           await protocol.authenticate(candidate, contextWithSignal);
