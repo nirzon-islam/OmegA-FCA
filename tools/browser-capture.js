@@ -31,7 +31,7 @@ async function main() {
   let chromium;
   try { ({ chromium } = require("playwright")); }
   catch {
-    process.stderr.write("Playwright is missing. Run: npm install && npx playwright install chromium\n");
+    process.stderr.write("Playwright is missing. Run: npm install --no-save playwright\n");
     process.exitCode = 1;
     return;
   }
@@ -113,7 +113,7 @@ async function main() {
   process.once("SIGINT", stop);
   process.once("SIGTERM", stop);
 
-  process.stdout.write("Browser opened. Log in to Facebook/Messenger manually.\n");
+  process.stdout.write(CDP_URL ? "Attached to the existing browser. Use its tab to log in/open Messenger.\n" : "Browser opened. Log in to Facebook/Messenger manually.\n");
   process.stdout.write("Open Messenger and reproduce the actions needed for the capture.\n");
   process.stdout.write(SAVE_PRIVATE
     ? "WARNING: private raw frame payloads are being saved locally; they may contain secrets or message data.\n"
