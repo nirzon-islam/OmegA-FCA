@@ -30,6 +30,8 @@ function decodeRemainingLength(buffer, offset = 1) {
     const digit = buffer[cursor++];
     value += (digit & 0x7f) * multiplier;
     if ((digit & 0x80) === 0) {
+      if (count > 0 && (digit & 0x7f) === 0) throw new Error("Non-canonical MQTT remaining length");
+      if (value > MAX_REMAINING_LENGTH) throw new Error("MQTT remaining length is out of range");
       return Object.freeze({ value, bytes: cursor - offset, offset: cursor });
     }
     multiplier *= 128;
@@ -189,7 +191,9 @@ function decodePacket(buffer, { maxPacketBytes = 1024 * 1024 } = {}) {
     throw new Error("Invalid MQTT fixed-header flags");
   }
   if (type === 2) {
-    if (body.length !== 2 || body[0] > 1 || body[1] > 5) throw new Error("Invalid MQTT CONNACK");
+    if (body.length !== 2 || body[0] > 1 || body[1] > 5 || (body[1] !== 0 && body[0] !== 0)) {
+      throw new Error("Invalid MQTT CONNACK");
+    }
     return Object.freeze({ type: "connack", sessionPresent: Boolean(body[0] & 1), returnCode: body[1] });
   }
   if (type === 3) {
@@ -210,7 +214,13 @@ function decodePacket(buffer, { maxPacketBytes = 1024 * 1024 } = {}) {
     if (body.length < 2) throw new Error("Truncated MQTT acknowledgement");
     const packetId = body.readUInt16BE(0);
     if (packetId === 0) throw new Error("Invalid MQTT packetId");
-    if (type === 9) return Object.freeze({ type: "suback", packetId, grants: Array.from(body.subarray(2)) });
+    if (type === 9) {
+      const grants = Array.from(body.subarray(2));
+      if (grants.length === 0 || grants.some(grant => ![0, 1, 2, 0x80].includes(grant))) {
+        throw new Error("Invalid MQTT SUBACK return codes");
+      }
+      return Object.freeze({ type: "suback", packetId, grants });
+    }
     if (type === 4 || type === 5 || type === 6 || type === 7 || type === 11) {
       if (type !== 9 && body.length !== 2 && !(type === 9)) throw new Error("Invalid MQTT acknowledgement length");
       return Object.freeze({ type: packetTypes[type], packetId });
