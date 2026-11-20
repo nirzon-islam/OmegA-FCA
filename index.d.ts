@@ -12,7 +12,6 @@ export interface Cookie {
 }
 export interface Credentials {
   mode: LoginMode; appState?: Cookie[]; cookie?: string;
-  twoFactorSecret?: string | null; twoFactorCode?: string | null; userAgent?: string | null; proxy?: unknown;
 }
 export interface PersonalSessionOptions {
   appState: Cookie[];
