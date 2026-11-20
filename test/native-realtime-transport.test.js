@@ -79,3 +79,28 @@ test("reports unexpected socket closure through the driver listener", async () =
   assert.equal(transport.snapshot().state, "disconnected");
   await transport.disconnect();
 });
+
+test("enforces frame byte limits for text WebSocket frames in both directions", async () => {
+  const socket = new FakeSocket();
+  const protocol = {
+    async authenticate() {},
+    async subscribe() {},
+    decodeFrame() { return { events: [] }; },
+    encodeAction() { return "12345"; }
+  };
+  const transport = createNativeRealtimeTransport({
+    url: "wss://fixture.invalid/realtime",
+    socketFactory: async () => socket,
+    protocol,
+    maxFrameBytes: 4
+  });
+  const driver = await transport.connect();
+  await assert.rejects(driver.sendAction({ type: "oversized" }), {
+    code: "FCA_WS_FRAME_TOO_LARGE"
+  });
+  let failure;
+  driver.listen(error => { failure = error; });
+  socket.emit("message", "12345", false);
+  assert.equal(failure.code, "FCA_WS_FRAME_TOO_LARGE");
+  await transport.disconnect();
+});
