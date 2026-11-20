@@ -200,3 +200,17 @@ test("sendTypingIndicator validates thread and state", async () => {
   assert.throws(() => api.sendTypingIndicator("", true), /numeric Facebook ID/);
   assert.throws(() => api.sendTypingIndicator("123456789012345", "yes"), /typing must be a boolean/);
 });
+
+test("sendTypingIndicator accepts callback as the second argument", async () => {
+  let completed = false;
+  const api = createFacebookThreadApi({
+    session,
+    webClient: { post: async () => ({ payload: { success: true } }) }
+  });
+  api.sendTypingIndicator("123456789012345", error => {
+    assert.equal(error, null);
+    completed = true;
+  });
+  await new Promise(resolve => setImmediate(resolve));
+  assert.equal(completed, true);
+});
