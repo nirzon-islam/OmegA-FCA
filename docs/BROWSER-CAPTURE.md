@@ -16,7 +16,7 @@ The browser opens Facebook. Sign in manually in that window, open Messenger, and
 
 Press Ctrl+C when finished. The sanitized report is written to:
 
-` .omega-capture/capture-report.json `
+`.omega-capture/capture-report.json`
 
 The report records request method, origin/path (query strings omitted), response status/content type, WebSocket direction, frame size, and redacted text-frame previews. It does not record HTTP request/response bodies, cookie/header values, or browser storage.
 
