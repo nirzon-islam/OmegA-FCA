@@ -20,7 +20,14 @@ function findJsonObjectEnd(text, start) {
     else if (char === "[") stack.push("]");
     else if (char === "}" || char === "]") {
       if (stack.pop() !== char) return -1;
-      if (stack.length === 0) return i + 1;
+      if (stack.length === 0) {
+        // A stray closing container immediately after this object means the
+        // candidate belongs to a malformed JSON fragment, not a frame.
+        let next = i + 1;
+        while (next < text.length && /\\s/.test(text[next])) next++;
+        if (text[next] === "}" || text[next] === "]") return -1;
+        return i + 1;
+      }
     }
   }
   return -1;
