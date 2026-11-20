@@ -3,6 +3,10 @@
 const test = require("node:test");
 const assert = require("node:assert/strict");
 const { EventEmitter } = require("node:events");
+const fs = require("node:fs");
+const os = require("node:os");
+const path = require("node:path");
+const { createFacebookMqttClient } = require("../src/compat/facebookMqttClient");
 const { createFacebookMqttDriver } = require("../src/transport/facebookMqttDriver");
 const mqtt = require("../src/transport/mqtt311Codec");
 
@@ -58,4 +62,126 @@ test("integrated driver validates AppState, authenticates MQTT and exposes an FC
 
 test("integrated driver requires an injected WebSocket implementation", async () => {
   await assert.rejects(createFacebookMqttDriver({ appState }), /socketFactory is required/);
+});
+
+test("native driver automatically snapshots AppState when SessionGuard is configured", async () => {
+  const directory = fs.mkdtempSync(path.join(os.tmpdir(), "omega-driver-guard-"));
+  const filePath = path.join(directory, "session.enc");
+  const key = "a".repeat(64);
+  let driver;
+  try {
+    driver = await createFacebookMqttDriver({
+      appState, fetchImpl: async () => htmlResponse(),
+      socketFactory: () => new FakeWebSocket(), mqtt: { keepAlive: 0 },
+      sessionGuard: { filePath, key, intervalMs: 60_000 }
+    });
+    assert.equal(driver.sessionGuard().filePath, filePath);
+    const saved = require("../src/security/sessionStore").loadSession(filePath, key);
+    assert.equal(saved.userId, "123456789012345");
+    assert.deepEqual(saved.appState.map(({ key, value }) => ({ key, value })), appState.map(({ key, value }) => ({ key, value })));
+    assert.equal(await driver.stopSessionGuard(), true);
+    assert.throws(() => driver.sessionGuard(), /SessionGuard is not configured/);
+  } finally {
+    if (driver) await driver.disconnect();
+    fs.rmSync(directory, { recursive: true, force: true });
+  }
+});
+
+test("legacy GoatBot account.txt SessionGuard call never writes encrypted data into account.txt", async () => {
+  const directory = fs.mkdtempSync(path.join(os.tmpdir(), "omega-driver-legacy-guard-"));
+  const accountPath = path.join(directory, "account.txt");
+  const encryptedPath = path.join(directory, "private", "facebook-session.enc");
+  const originalAccount = JSON.stringify(appState);
+  fs.writeFileSync(accountPath, originalAccount, "utf8");
+  let driver;
+  try {
+    driver = await createFacebookMqttDriver({
+      appState, fetchImpl: async () => htmlResponse(),
+      socketFactory: () => new FakeWebSocket(), mqtt: { keepAlive: 0 },
+      sessionGuard: { filePath: encryptedPath, key: "b".repeat(64), intervalMs: 60_000 }
+    });
+    const configured = driver.sessionGuard(accountPath, { interval: 180_000, debounce: 30_000 });
+    assert.equal(configured.filePath, encryptedPath);
+    assert.equal(fs.readFileSync(accountPath, "utf8"), originalAccount);
+    assert.notEqual(fs.readFileSync(encryptedPath, "utf8"), originalAccount);
+  } finally {
+    if (driver) await driver.disconnect();
+    fs.rmSync(directory, { recursive: true, force: true });
+  }
+});
+
+test("deployment environment enables GoatBot-compatible encrypted SessionGuard", async () => {
+  const directory = fs.mkdtempSync(path.join(os.tmpdir(), "omega-driver-env-guard-"));
+  const accountPath = path.join(directory, "account.txt");
+  const encryptedPath = path.join(directory, "private", "session.enc");
+  const originalAccount = JSON.stringify(appState);
+  fs.writeFileSync(accountPath, originalAccount, "utf8");
+  const previous = { file: process.env.FCA_SESSION_FILE, key: process.env.FCA_SESSION_KEY, interval: process.env.FCA_SESSION_INTERVAL_MS };
+  let client;
+  try {
+    process.env.FCA_SESSION_FILE = encryptedPath;
+    process.env.FCA_SESSION_KEY = "c".repeat(64);
+    process.env.FCA_SESSION_INTERVAL_MS = "180000";
+    client = createFacebookMqttClient({
+      socketFactory: () => new FakeWebSocket(),
+      fetchImpl: async () => htmlResponse(), mqtt: { keepAlive: 0 }
+    });
+    const api = await client.login({ mode: "appstate", appState });
+    assert.equal(api.sessionGuard(accountPath, { interval: 180_000, debounce: 30_000 }).filePath, encryptedPath);
+    assert.equal(fs.existsSync(encryptedPath), true);
+    assert.equal(fs.readFileSync(accountPath, "utf8"), originalAccount);
+    await client.logout();
+  } finally {
+    if (client) await client.logout().catch(() => {});
+    if (previous.file === undefined) delete process.env.FCA_SESSION_FILE; else process.env.FCA_SESSION_FILE = previous.file;
+    if (previous.key === undefined) delete process.env.FCA_SESSION_KEY; else process.env.FCA_SESSION_KEY = previous.key;
+    if (previous.interval === undefined) delete process.env.FCA_SESSION_INTERVAL_MS; else process.env.FCA_SESSION_INTERVAL_MS = previous.interval;
+    fs.rmSync(directory, { recursive: true, force: true });
+  }
+});
+
+test("native driver rejects SessionGuard without an explicit encryption key", async () => {
+  await assert.rejects(createFacebookMqttDriver({
+    appState, fetchImpl: async () => htmlResponse(),
+    socketFactory: () => new FakeWebSocket(), mqtt: { keepAlive: 0 },
+    sessionGuard: { filePath: "/tmp/omega-session.enc" }
+  }), error => error.message.includes("explicit 32-byte/64-hex encryption key"));
+});
+
+test("native driver rejects encrypted snapshot belonging to a different Facebook account", async () => {
+  const directory = fs.mkdtempSync(path.join(os.tmpdir(), "omega-driver-identity-"));
+  const filePath = path.join(directory, "session.enc");
+  const key = "9".repeat(64);
+  require("../src/security/sessionStore").saveSession(filePath, {
+    version: 1, userId: "999999999999999", appState, savedAt: Date.now()
+  }, key);
+  try {
+    await assert.rejects(createFacebookMqttDriver({
+      fetchImpl: async () => htmlResponse(), socketFactory: () => new FakeWebSocket(),
+      mqtt: { keepAlive: 0 }, sessionGuard: { filePath, key }
+    }), error => error.code === "FCA_SESSION_IDENTITY_MISMATCH");
+  } finally {
+    fs.rmSync(directory, { recursive: true, force: true });
+  }
+});
+
+test("first-party client restores and reconnects using encrypted SessionGuard state", async () => {
+  const directory = fs.mkdtempSync(path.join(os.tmpdir(), "omega-client-restore-"));
+  const sessionGuard = { filePath: path.join(directory, "account.enc"), key: "d".repeat(64), intervalMs: 60_000 };
+  const createClient = () => createFacebookMqttClient({
+    socketFactory: () => new FakeWebSocket(), fetchImpl: async () => htmlResponse(),
+    mqtt: { keepAlive: 0 }, sessionGuard
+  });
+  try {
+    const first = createClient();
+    const firstApi = await first.login({ mode: "appstate", appState });
+    assert.equal(firstApi.getCurrentUserID(), "123456789012345");
+    await first.logout();
+    const second = createClient();
+    const restoredApi = await second.login({ mode: "session" });
+    assert.equal(restoredApi.getCurrentUserID(), "123456789012345");
+    await second.logout();
+  } finally {
+    fs.rmSync(directory, { recursive: true, force: true });
+  }
 });
