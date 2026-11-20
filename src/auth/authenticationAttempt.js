@@ -5,6 +5,11 @@ const STATES = Object.freeze([
   "authenticated", "failed", "closed"
 ]);
 
+function publicFailure() {
+  // Never return provider-controlled messages, names, codes, or causes to callers.
+  return new Error("Authentication failed; inspect the provider error securely");
+}
+
 function publicChallenge(value) {
   if (!value || typeof value !== "object" || Array.isArray(value)) {
     throw new TypeError("Authentication provider returned an invalid challenge");
@@ -120,7 +125,7 @@ function createAuthenticationAttempt({ authenticate, maxChallengeRounds = 3 } = 
         challenge = null;
         credentials = null;
         options = null;
-        throw lastError;
+        throw publicFailure();
       })
       .finally(() => { operation = null; });
     return operation;
@@ -152,7 +157,7 @@ function createAuthenticationAttempt({ authenticate, maxChallengeRounds = 3 } = 
         challenge = null;
         credentials = null;
         options = null;
-        throw lastError;
+        throw publicFailure();
       })
       .finally(() => { operation = null; });
     return operation;
