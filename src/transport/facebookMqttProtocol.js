@@ -3,6 +3,7 @@
 const { randomUUID, randomInt } = require("node:crypto");
 const mqtt = require("./mqtt311Codec");
 const { parseMessengerSyncPayload } = require("./facebookMqttEvents");
+const { createMqttRequestTracker } = require("./mqttRequestTracker");
 
 const DEFAULT_MQTT_URL = "wss://edge-chat.facebook.com/chat";
 const DEFAULT_MQTT_APP_ID = "219994525426954";
@@ -69,6 +70,7 @@ function createFacebookMqttProtocol(options = {}) {
   };
   if (headers.Cookie && /[\r\n]/.test(headers.Cookie)) throw new TypeError("cookie header contains invalid characters");
   let packetId = randomInt(1, 65536);
+  const requestTracker = createMqttRequestTracker({ timeoutMs: options.requestTimeoutMs ?? 15000, maxPending: options.maxPendingRequests ?? 256 });
   const nextPacketId = () => { packetId = packetId >= 65535 ? 1 : packetId + 1; return packetId; };
 
   function decodePacket(frame) {
@@ -145,7 +147,9 @@ function createFacebookMqttProtocol(options = {}) {
             return { events };
           }
           if (packet.topic === "/ls_resp") {
-            return { events: [{ type: "mqtt_response", topic: packet.topic, qos: packet.qos, payload }] };
+            const response = payload && typeof payload === "object" && !Array.isArray(payload) ? payload : null;
+            const matched = response ? requestTracker.resolve(response) : false;
+            return { events: [{ type: "mqtt_response", topic: packet.topic, qos: packet.qos, matched, payload }] };
           }
           return { events: [{ type: "mqtt_publish", topic: packet.topic, qos: packet.qos, payload }] };
         }
@@ -162,7 +166,23 @@ function createFacebookMqttProtocol(options = {}) {
           topic: action.topic, payload, qos: action.qos ?? 1,
           packetId: (action.qos ?? 1) > 0 ? nextPacketId() : undefined
         });
-      }
+      },
+      async request(socket, payload, requestOptions = {}) {
+        if (!socket || typeof socket.send !== "function") throw new TypeError("A connected MQTT socket is required");
+        if (!payload || typeof payload !== "object" || Array.isArray(payload)) throw new TypeError("MQTT request payload must be an object");
+        const requestId = requestTracker.allocateId();
+        const envelope = { ...payload, request_id: requestId };
+        const responsePromise = requestTracker.track(requestId, requestOptions.timeoutMs ?? options.requestTimeoutMs ?? 15000);
+        try {
+          socket.send(mqtt.encodePublish({ topic: "/ls_req", payload: JSON.stringify(envelope), qos: 1, packetId: nextPacketId() }));
+        } catch (error) {
+          requestTracker.rejectAll(error);
+          throw error;
+        }
+        return responsePromise;
+      },
+      closeRequests(reason) { requestTracker.rejectAll(reason); },
+      getPendingRequestCount() { return requestTracker.pendingCount; }
     })
   });
 }
