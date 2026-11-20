@@ -87,6 +87,11 @@ function encodeConnect(options = {}) {
   const clientId = options.clientId;
   if (typeof clientId !== "string" || !clientId.length) throw new TypeError("MQTT clientId is required");
   const keepAlive = options.keepAlive ?? 60;
+  const protocolVersion = options.protocolVersion ?? 4;
+  const protocolId = options.protocolId ?? (protocolVersion === 3 ? "MQIsdp" : "MQTT");
+  if (![3, 4].includes(protocolVersion) || (protocolVersion === 3 && protocolId !== "MQIsdp") || (protocolVersion === 4 && protocolId !== "MQTT")) {
+    throw new TypeError("MQTT protocolId and protocolVersion must be MQIsdp/3 or MQTT/4");
+  }
   if (!Number.isInteger(keepAlive) || keepAlive < 0 || keepAlive > 65535) {
     throw new RangeError("MQTT keepAlive must be between 0 and 65535");
   }
@@ -98,9 +103,9 @@ function encodeConnect(options = {}) {
   if (usernamePresent) flags |= 0x80;
   if (passwordPresent) flags |= 0x40;
   const variable = Buffer.alloc(10);
-  variable.writeUInt16BE(4, 0);
-  variable.write("MQTT", 2, "ascii");
-  variable[6] = 4;
+  variable.writeUInt16BE(protocolId.length, 0);
+  variable.write(protocolId, 2, "ascii");
+  variable[6] = protocolVersion;
   variable[7] = flags;
   variable.writeUInt16BE(keepAlive, 8);
   const payload = [encodeUtf8(clientId, "clientId")];
