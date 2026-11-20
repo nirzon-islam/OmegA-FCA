@@ -181,18 +181,23 @@ test("sendTypingIndicator sends start and stop requests to the Messenger typing 
     session,
     webClient: { post: async (url, body) => {
       calls.push({ url, body });
+      if (url === "https://www.facebook.com/chat/user_info/") {
+        return { payload: { payload: { profiles: { "123456789012345": { name: "Test" } } } } };
+      }
       return { payload: { success: true } };
     } }
   });
   await api.sendTypingIndicator("123456789012345", true);
   await api.sendTypingIndicator("123456789012345", false);
   await api.sendTypingIndicator(1, "123456789012345", undefined, false);
-  assert.equal(calls[0].url, "https://www.facebook.com/ajax/messaging/typ.php");
-  assert.equal(calls[0].body.typ, 1);
-  assert.equal(calls[0].body.thread, "123456789012345");
-  assert.equal(calls[1].body.typ, 0);
-  assert.equal(calls[2].body.typ, 1);
-  assert.equal(calls[2].body.to, "123456789012345");
+  const typingCalls = calls.filter(call => call.url === "https://www.facebook.com/ajax/messaging/typ.php");
+  assert.equal(typingCalls.length, 3);
+  assert.equal(typingCalls[0].body.typ, 1);
+  assert.equal(typingCalls[0].body.thread, "123456789012345");
+  assert.equal(typingCalls[0].body.to, "123456789012345");
+  assert.equal(typingCalls[1].body.typ, 0);
+  assert.equal(typingCalls[2].body.typ, 1);
+  assert.equal(typingCalls[2].body.to, "123456789012345");
 });
 
 test("sendTypingIndicator validates thread and state", async () => {
@@ -205,7 +210,7 @@ test("sendTypingIndicator accepts callback as the second argument", async () => 
   let completed = false;
   const api = createFacebookThreadApi({
     session,
-    webClient: { post: async () => ({ payload: { success: true } }) }
+    webClient: { post: async url => url === "https://www.facebook.com/chat/user_info/" ? ({ payload: { payload: { profiles: { "123456789012345": { name: "Test" } } } } }) : ({ payload: { success: true } }) }
   });
   api.sendTypingIndicator("123456789012345", error => {
     assert.equal(error, null);
