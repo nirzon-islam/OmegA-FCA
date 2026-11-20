@@ -74,6 +74,40 @@ test("personal session emits sanitized request diagnostics without cookie values
   session.close();
 });
 
+test("initial AppState validation applies rotated and deleted cookies", async () => {
+  const session = await createPersonalSession({
+    appState,
+    fetchImpl: async () => response({ setCookies: [
+      "sid=bootstrap-value; Domain=.facebook.com; Path=/; Secure; HttpOnly",
+      "old_session=; Domain=.facebook.com; Path=/; Max-Age=0"
+    ] })
+  });
+  const header = session.getCookieHeader();
+  assert.match(header, /sid=bootstrap-value/);
+  assert.doesNotMatch(header, /old_session=/);
+  session.close();
+});
+
+test("diagnostic callback receives no raw request headers, body, or query string", async () => {
+  const events = [];
+  const session = await createPersonalSession({
+    appState,
+    onDiagnostic: event => events.push(event),
+    fetchImpl: async () => response()
+  });
+  await session.request("https://www.facebook.com/messages/?access_token=private-query", {
+    method: "POST",
+    headers: { "x-private-header": "private-header" },
+    body: "message=private-body"
+  });
+  const output = JSON.stringify(events);
+  for (const secret of ["session-token", "123456789012345", "private-query", "private-header", "private-body"]) {
+    assert.equal(output.includes(secret), false);
+  }
+  assert.equal(events.at(-1).request.url, "https://www.facebook.com/messages/");
+  session.close();
+});
+
 test("personal session reports checkpoint without attempting a bypass", async () => {
   await assert.rejects(
     createPersonalSession({
