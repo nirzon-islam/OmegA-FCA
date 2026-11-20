@@ -20,34 +20,18 @@ test("account.txt contains only a raw cookie header", () => {
   assert.throws(() => parseAccountText("fb_email=a@example.test\nfb_password=secret"), /account.txt is AppState\/cookie-only/);
 });
 
-test("loads cookie session from account.txt before config credentials", () => withRoot(root => {
+test("account.txt takes precedence and credentials are never loaded in AppState-only mode", () => withRoot(root => {
   fs.writeFileSync(path.join(root, "account.txt"), cookie);
-  fs.writeFileSync(path.join(root, "config.json"), JSON.stringify({ facebookAccount: { fb_email: "owner@example.test", password: "secret", "2FASecret": "totp-secret" } }));
-  const config = loadAccountConfig({ cwd: root, env: {} });
+  fs.writeFileSync(path.join(root, "config.json"), JSON.stringify({ facebookAccount: { fb_email: "owner@example.test", password: "secret" } }));
+  const config = loadAccountConfig({ cwd: root, env: { FB_EMAIL: "env@example.test", FB_PASSWORD: "env-secret" } });
   assert.equal(config.mode, "appstate");
   assert.equal(config.source, "account.txt");
   assert.equal(config.appState.length, 2);
 }));
 
-test("loads email/password/TOTP secret from config.json", () => withRoot(root => {
-  fs.writeFileSync(path.join(root, "config.json"), JSON.stringify({ facebookAccount: {
-    fb_email: "owner@example.test", password: "password-value", "2FASecret": "totp-secret",
-    userAgent: "test-agent", proxy: null
-  } }));
-  const config = loadAccountConfig({ cwd: root, env: {} });
-  assert.equal(config.mode, "credentials");
-  assert.equal(config.email, "owner@example.test");
-  assert.equal(config.password, "password-value");
-  assert.equal(config.twoFactorSecret, "totp-secret");
-  assert.equal(config.userAgent, "test-agent");
-}));
-
-test("loads fb_email/password through environment overrides", () => withRoot(root => {
-  fs.writeFileSync(path.join(root, "config.json"), "{}");
-  const config = loadAccountConfig({ cwd: root, env: { FB_EMAIL: "owner@example.test", FB_PASSWORD: "pw", FB_2FA_SECRET: "secret" } });
-  assert.equal(config.email, "owner@example.test");
-  assert.equal(config.password, "pw");
-  assert.equal(config.twoFactorSecret, "secret");
+test("rejects credentials-only configuration while AppState login is the active mode", () => withRoot(root => {
+  fs.writeFileSync(path.join(root, "config.json"), JSON.stringify({ facebookAccount: { fb_email: "owner@example.test", password: "secret" } }));
+  assert.throws(() => loadAccountConfig({ cwd: root, env: { FB_EMAIL: "env@example.test", FB_PASSWORD: "env-secret" } }), error => error.code === "FCA_ACCOUNT_CONFIG_MISSING");
 }));
 
 test("loads AppState JSON as backward-compatible fallback", () => withRoot(root => {
