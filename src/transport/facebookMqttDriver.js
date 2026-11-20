@@ -102,7 +102,7 @@ async function createFacebookMqttDriver({
       await guard.saveNow();
       guard.start(sessionGuardOptions.intervalMs === undefined ? 60_000 : sessionGuardOptions.intervalMs);
     }
-    const threadApi = createFacebookThreadApi({ session });
+    const threadApi = createFacebookThreadApi({ session, clientId: protocolConfig.session.clientId });
     const stopSessionGuard = async () => {
       if (!guard) return false;
       const active = guard;
