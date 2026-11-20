@@ -70,6 +70,6 @@ test("rejects credential-style account.txt keys with whitespace around equals", 
     "password=secret",
     "2FASecret = synthetic"
   ]) {
-    assert.throws(() => parseAccountText(line), /account.txt is AppState\\/cookie-only/);
+    assert.throws(() => parseAccountText(line), /account.txt is AppState\/cookie-only/);
   }
 });
