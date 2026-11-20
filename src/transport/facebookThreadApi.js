@@ -139,6 +139,22 @@ function createFacebookThreadApi({ session, webClient } = {}) {
     return unwrapGraph(payload, operation);
   }
 
+  function httpPost(url, form, callback) {
+    if (typeof form === "function") { callback = form; form = {}; }
+    if (!form || typeof form !== "object" || Array.isArray(form)) {
+      throw new TypeError("httpPost form must be an object");
+    }
+    const operation = web.post(url, form).then(result => {
+      if (typeof result.raw !== "string") {
+        throw createFacebookError("httpPost: response body was not available", {
+          code: "FCA_RESPONSE_SHAPE_INVALID", retryable: false
+        });
+      }
+      return result.raw;
+    });
+    return callbackResult(operation, callback);
+  }
+
   function getThreadList(limit, timestamp = null, tags = [], callback) {
     if (typeof tags === "function") { callback = tags; tags = []; }
     if (!Number.isInteger(limit) || limit < 1 || limit > 100) throw new TypeError("getThreadList limit must be an integer from 1 to 100");
@@ -277,7 +293,7 @@ function createFacebookThreadApi({ session, webClient } = {}) {
     return callbackResult(operation, callback);
   }
 
-  return Object.freeze({ getThreadList, getThreadInfo, getThreadHistory, getUserInfo,
+  return Object.freeze({ httpPost, getThreadList, getThreadInfo, getThreadHistory, getUserInfo,
     addUserToGroup, removeUserFromGroup, changeNickname, setMessageReaction, markAsRead });
 }
 
