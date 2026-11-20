@@ -17,7 +17,7 @@ const cookie = "c_user=123456789; xs=session-cookie-value";
 test("account.txt contains only a raw cookie header", () => {
   const parsed = parseAccountText(cookie);
   assert.equal(parsed.find(item => item.key === "c_user").value, "123456789");
-  assert.throws(() => parseAccountText("fb_email=a@example.test\nfb_password=secret"), /account.txt is AppState\/cookie-only/);
+  assert.throws(() => parseAccountText("fb_email=a@example.test\nfb_password=secret"), new RegExp("account.txt is AppState/cookie-only"));
 });
 
 test("account.txt takes precedence and credentials are never loaded in AppState-only mode", () => withRoot(root => {
@@ -70,6 +70,6 @@ test("rejects credential-style account.txt keys with whitespace around equals", 
     "password=secret",
     "2FASecret = synthetic"
   ]) {
-    assert.throws(() => parseAccountText(line), /account.txt is AppState\/cookie-only/);
+    assert.throws(() => parseAccountText(line), new RegExp("account.txt is AppState/cookie-only"));
   }
 });
