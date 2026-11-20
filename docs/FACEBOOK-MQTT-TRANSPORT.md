@@ -10,6 +10,8 @@ This module is based on publicly available FCA implementation observations, not 
 - The observed topic subscription family and QoS 1 SUBACK validation.
 - Initial queue bootstrap via `/messenger_sync_create_queue`, or `/messenger_sync_get_diffs` when a caller supplies a sync token and sequence ID.
 - QoS 1 PUBACK for inbound PUBLISH frames, outbound topic publish frames, and MQTT PINGREQ keepalive.
+- Defensive `/t_ms` delta parsing for known message, reply, reaction, unsend, typing, read, presence and thread-event classes; unknown classes remain marked as `unknown_delta`.
+- Conservative extraction of sync token / sequence cursor fields as `sync_cursor` events (the application must persist them).
 - Bounded WebSocket connection and protocol setup timeouts through the shared native realtime runtime.
 
 ## Example
@@ -49,7 +51,7 @@ Do not log cookies or raw private message payloads. Store the AppState/cookie on
 ## Still required before calling this a complete FCA
 
 - Decode Messenger sync queue responses and persist the latest sync token / sequence cursor.
-- Parse `/t_ms` delta batches into FCA-compatible message, reply, reaction, unsend, typing, presence, read receipt and thread events.
+- Validate delta field mappings against authorized live frames; current normalization is based on known public FCA shapes and preserves each raw delta for future mapping.
 - Recover gaps after disconnect/restart using validated sync cursor handling.
 - Implement and test the supported Messenger action payload builders and correlate `/ls_resp` acknowledgements.
 - Verify the handshake, queue bootstrap, receive and send behavior against an authorized live account, then test reconnect/long-running stability.
