@@ -15,7 +15,7 @@ function createMessengerSyncCursorStore(options = {}) {
     if (!cursor || typeof cursor !== "object" || Array.isArray(cursor)) throw new TypeError("cursor must be an object");
     const syncToken = cursor.syncToken == null ? null : cursor.syncToken;
     const lastSeqId = cursor.lastSeqId == null ? null : cursor.lastSeqId;
-    if (syncToken !== null && (typeof syncToken !== "string" || syncToken.length > 4096)) throw new TypeError("syncToken is invalid");
+    if (syncToken !== null && (typeof syncToken !== "string" || syncToken.length < 1 || syncToken.length > 4096)) throw new TypeError("syncToken is invalid");
     if (lastSeqId !== null && !(typeof lastSeqId === "string" && /^\d{1,30}$/.test(lastSeqId)) &&
         !(Number.isSafeInteger(lastSeqId) && lastSeqId >= 0)) throw new TypeError("lastSeqId is invalid");
     if (syncToken === null && lastSeqId === null) throw new TypeError("cursor must contain a sync token or sequence ID");
