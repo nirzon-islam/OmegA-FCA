@@ -11,6 +11,7 @@ OmegA-FCA is the Facebook integration library maintained under the **OmegA Bot**
 ## Included
 
 - AppState/cookie validation, secure encrypted session storage, secret redaction.
+- Optional encrypted SessionGuard with explicit owner-managed key, verified backup recovery, periodic saves, account-bound restore, and a non-destructive GoatBot `account.txt` compatibility alias. Configure it with `FCA_SESSION_FILE`, `FCA_SESSION_KEY`, and optionally `FCA_SESSION_INTERVAL_MS`; encrypted output never replaces `account.txt`.
 - `createDiagnosticRecorder()`: bounded request metadata reports that omit header values, query values, body values, response bodies and credentials.
 - Native personal-session bootstrap for owner-supplied AppState, including HTTPS-only Facebook/Messenger requests, cookie rotation, and checkpoint/expiry detection.
 - `createFacebookWebClient()`: bounded authenticated GET/POST/HEAD request layer, session-token injection for POST forms, redirect challenge classification, response normalization, and request/response size limits. It deliberately requires caller-supplied verified paths and payload schemas.
@@ -56,7 +57,7 @@ This is a session foundation only: it does not yet provide the full FCA action A
 
 ## Experimental Messenger MQTT transport
 
-`createFacebookMqttClient()` provides the first-party AppState-only path: it validates the supplied session, opens the native WebSocket/MQTT transport, subscribes and initializes sync, and exposes a GoatBot-style callback listener. Known Messenger delta classes are normalized conservatively; unknown classes remain explicit. A limited set of web/thread and MQTT actions is available, but this is not full FCA parity. The private broker protocol, delta schemas, and action payloads are unofficial and have not been validated against a live Facebook account. See [Facebook MQTT transport notes](docs/FACEBOOK-MQTT-TRANSPORT.md) and [implementation status](docs/IMPLEMENTATION-STATUS.md).
+`createFacebookMqttClient()` provides the first-party AppState and optional encrypted-session restore path: it validates the supplied session, opens the native WebSocket/MQTT transport, subscribes and initializes sync, and exposes a GoatBot-style callback listener. Known Messenger delta classes are normalized conservatively; unknown classes remain explicit. A limited set of web/thread and MQTT actions is available, but this is not full FCA parity. The private broker protocol, delta schemas, and action payloads are unofficial and have not been validated against a live Facebook account. See [Facebook MQTT transport notes](docs/FACEBOOK-MQTT-TRANSPORT.md) and [implementation status](docs/IMPLEMENTATION-STATUS.md).
 
 ## Realtime frame inspection
 
