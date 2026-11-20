@@ -65,9 +65,17 @@ test("first-party client logs in with AppState and exposes callback-compatible M
   assert.equal(typeof api.changeNickname, "function");
   assert.equal(typeof api.setMessageReaction, "function");
   assert.equal(typeof api.markAsRead, "function");
+  let readyEvent = null;
+  const stop = api.listenMqtt((error, event) => {
+    if (!error && event?.type === "ready") readyEvent = event;
+  });
+  await new Promise(resolve => setImmediate(resolve));
+  assert.equal(readyEvent?.source, "omega-fca");
+  assert.equal(readyEvent?.connectionState?.connected, true);
+  stop();
   await client.logout();
 });
 
-test("first-party client requires an injected WebSocket implementation", () => {
-  assert.throws(() => createFacebookMqttClient(), /socketFactory is required/);
+test("first-party client supplies its package-managed WebSocket implementation by default", () => {
+  assert.doesNotThrow(() => createFacebookMqttClient());
 });
