@@ -59,5 +59,8 @@
       "default": "./index.js"
     }
   },
-  "author": "NirZon"
+  "author": "NirZon",
+  "dependencies": {
+    "ws": "^8.18.3"
+  }
 }
