@@ -89,6 +89,43 @@ function createLegacyFcaProvider({ login, options = {}, timeoutMs = 45_000 } = {
     for (const method of API_METHODS) {
       if (typeof api[method] === "function") driver[method] = api[method].bind(api);
     }
+    // createClient's sendMessage facade uses the promise-based transport
+    // contract. Bridge it to classic FCA's (message, threadID, callback)
+    // signature while preserving direct legacy calls used by adapter tests.
+    if (typeof api.sendMessage === "function") {
+      driver.sendMessage = (input, requestOptions) => {
+        if (!input || typeof input !== "object" || Array.isArray(input) ||
+            input.threadID == null || !Object.prototype.hasOwnProperty.call(input, "message")) {
+          return api.sendMessage(input, requestOptions);
+        }
+        return new Promise((resolve, reject) => {
+          let settled = false;
+          const finish = (error, result) => {
+            if (settled) return;
+            settled = true;
+            if (error) reject(error);
+            else resolve(result);
+          };
+          let returned;
+          try {
+            returned = api.sendMessage(
+              input.message,
+              input.threadID,
+              (error, result) => finish(error, result),
+              input.replyToMessageID
+            );
+          } catch (error) {
+            finish(error);
+            return;
+          }
+          if (returned && typeof returned.then === "function") {
+            returned.then(value => finish(null, value), finish);
+          } else if (returned !== undefined && api.sendMessage.length < 3) {
+            finish(null, returned);
+          }
+        });
+      };
+    }
     if (typeof api.sessionGuard === "function") driver.sessionGuard = api.sessionGuard.bind(api);
     if (typeof api.stopSessionGuard === "function") driver.stopSessionGuard = api.stopSessionGuard.bind(api);
     if (typeof api.setOptions === "function") driver.setOptions = api.setOptions.bind(api);
