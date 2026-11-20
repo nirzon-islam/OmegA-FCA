@@ -125,6 +125,7 @@ function createAuthenticationAttempt({ authenticate, maxChallengeRounds = 3 } = 
         challenge = null;
         credentials = null;
         options = null;
+        if (lastError.code === "FCA_CHALLENGE_LIMIT") throw Object.assign(new Error("Authentication challenge limit exceeded"), { code: "FCA_CHALLENGE_LIMIT", retryable: false });
         throw publicFailure();
       })
       .finally(() => { operation = null; });
