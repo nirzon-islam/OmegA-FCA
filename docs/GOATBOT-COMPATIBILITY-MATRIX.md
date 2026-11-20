@@ -48,7 +48,7 @@ The client exposes each method below only when the injected driver provides that
 
 The source scan of the current `fca-migration-cleanup` branch found additional method calls beyond the core login contract:
 
-- Implemented in the native facade: `getAppState`, `httpPost`, `sendMessage`, `getCurrentUserID`, `getThreadList`, `getThreadInfo`, `getThreadHistory`, `getUserInfo`, `addUserToGroup`, `removeUserFromGroup`, `changeNickname`, `changeThreadEmoji`/color/title are not yet implemented, and `setMessageReaction`.
+- Implemented in the native facade: `getAppState`, `httpPost`, `sendMessage`, `getCurrentUserID`, `getThreadList`, `getThreadInfo`, `getThreadHistory`, `getUserInfo`, `addUserToGroup`, `removeUserFromGroup`, `changeNickname`, and `setMessageReaction`.
 - Still missing or not verified: `unsendMessage`, `changeGroupImage`, `changeAvatar`, `setTitle`, `changeThreadEmoji`, `changeThreadColor`, `shareContact`, and the runtime semantics of `setOptions`.
 - This was a partial scan of command files, not the complete 271-file repository inventory; event handlers, dashboard, database, custom scripts, and dynamically accessed methods still need review.
 
