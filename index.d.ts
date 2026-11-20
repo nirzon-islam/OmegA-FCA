@@ -368,3 +368,8 @@ export function normalizeMessengerDelta(delta: unknown): Record<string, unknown>
 
 export interface MqttRequestTracker { allocateId(): number; track(requestId: string | number, timeoutMs?: number): Promise<unknown>; resolve(response: unknown): boolean; rejectAll(reason?: unknown): void; readonly pendingCount: number; }
 export function createMqttRequestTracker(options?: { timeoutMs?: number; maxPending?: number; initialRequestId?: number }): MqttRequestTracker;
+
+export const MESSENGER_MQTT_APP_ID: string;
+export const SEND_MESSAGE_VERSION_ID: string;
+export function offlineThreadingId(now?: number, random?: number): string;
+export function createMessengerSendMessageRequest(input: { threadID: string | number; message: string | { body?: string; sticker?: string | number }; replyToMessageID?: string | number; timestamp?: number; otid?: string; epochId?: string; requestId?: number }): Readonly<{ app_id: string; payload: string; request_id: number | null; type: 3 }>;
