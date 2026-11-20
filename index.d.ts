@@ -220,6 +220,7 @@ export function verifyUpdateManifest(manifest: unknown, options?: Record<string,
 export function verifyArtifactDigest(data: string | Uint8Array, digest: string): boolean;
 /** Broker-agnostic MQTT 3.1.1 packet codec primitives (OASIS specification). */
 export const mqtt311Codec: {
+  readonly MAX_REMAINING_LENGTH: number;
   encodeRemainingLength(value: number): Buffer;
   decodeRemainingLength(buffer: Buffer, offset?: number): Readonly<{ value: number; bytes: number; offset: number }> | null;
   encodeConnect(options: { clientId: string; keepAlive?: number; cleanSession?: boolean; username?: string; password?: Buffer | Uint8Array | string }): Buffer;
