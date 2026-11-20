@@ -102,12 +102,13 @@ function encodeConnect(options = {}) {
   let flags = cleanSession ? 0x02 : 0;
   if (usernamePresent) flags |= 0x80;
   if (passwordPresent) flags |= 0x40;
-  const variable = Buffer.alloc(10);
+  const variable = Buffer.alloc(2 + protocolId.length + 4);
   variable.writeUInt16BE(protocolId.length, 0);
   variable.write(protocolId, 2, "ascii");
-  variable[6] = protocolVersion;
-  variable[7] = flags;
-  variable.writeUInt16BE(keepAlive, 8);
+  const versionOffset = 2 + protocolId.length;
+  variable[versionOffset] = protocolVersion;
+  variable[versionOffset + 1] = flags;
+  variable.writeUInt16BE(keepAlive, versionOffset + 2);
   const payload = [encodeUtf8(clientId, "clientId")];
   if (usernamePresent) payload.push(encodeUtf8(options.username, "username"));
   if (passwordPresent) payload.push(encodeBinary(options.password, "password"));
