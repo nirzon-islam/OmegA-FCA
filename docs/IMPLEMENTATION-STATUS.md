@@ -24,6 +24,12 @@
 - Optional Ed25519 licensing and signed update-manifest verification.
 - Separate official Meta Messenger Page transport and webhook example.
 
+## Public-FCA-style web action layer
+
+- Added AppState-session-backed `getThreadList`, `getThreadInfo`, `getThreadHistory`, and `getUserInfo` adapters using the legacy public FCA GraphQL-batch and `/chat/user_info/` conventions, with normalized responses, validation, pagination, and Promise/callback forms.
+- Added `addUserToGroup`, `removeUserFromGroup`, `changeNickname`, `setMessageReaction`, and `markAsRead` using public FCA request patterns. Wired into the first-party MQTT driver.
+- Synthetic request/response tests cover these adapters. Facebook private endpoints and document IDs are unofficial and may change; live account acceptance remains unverified. `createNewGroup` is intentionally not exposed until its request contract is evidenced.
+
 ## Not yet implemented — standalone personal FCA blockers
 
 This package is **not yet a standalone, drop-in personal-account FCA replacement**.

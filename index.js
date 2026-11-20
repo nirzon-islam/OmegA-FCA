@@ -37,6 +37,7 @@ const { DEFAULT_MQTT_URL, DEFAULT_MQTT_APP_ID, DEFAULT_MQTT_TOPICS, createFacebo
 const { parseMessengerSyncPayload, normalizeMessengerDelta } = require("./src/transport/facebookMqttEvents");
 const { createMessengerSyncCursorStore } = require("./src/transport/messengerSyncCursorStore");
 const { createFacebookMqttDriver } = require("./src/transport/facebookMqttDriver");
+const { createFacebookThreadApi, DOC_IDS: FACEBOOK_THREAD_DOC_IDS } = require("./src/transport/facebookThreadApi");
 const { parseVersion, compareVersions, verifyUpdateManifest, verifyArtifactDigest } = require("./src/update/manifest");
 
 module.exports = {
@@ -55,7 +56,7 @@ module.exports = {
   inspectRealtimeBinaryPayload, DEFAULT_MAX_BINARY_PAYLOAD_BYTES,
   inspectRealtimeSyncEnvelope, DEFAULT_MAX_SYNC_FRAME_BYTES,
   createNativeRealtimeTransport, DEFAULT_CONNECT_TIMEOUT_MS, DEFAULT_CLOSE_TIMEOUT_MS, DEFAULT_PROTOCOL_SETUP_TIMEOUT_MS,
-  DEFAULT_GATEWAY_URL, DEFAULT_APP_ID, FACEBOOK_GATEWAY_SUBSCRIPTIONS, encodeGatewaySubscription, decodeGatewayFrame, createFacebookGatewayProtocol, mqtt311Codec, createMqtt311StreamDecoder, createMqttRequestTracker, MESSENGER_MQTT_APP_ID, SEND_MESSAGE_VERSION_ID, offlineThreadingId, createMessengerSendMessageRequest, DEFAULT_MQTT_URL, DEFAULT_MQTT_APP_ID, DEFAULT_MQTT_TOPICS, createFacebookMqttProtocol, parseMessengerSyncPayload, normalizeMessengerDelta, createMessengerSyncCursorStore, createFacebookMqttDriver,
+  DEFAULT_GATEWAY_URL, DEFAULT_APP_ID, FACEBOOK_GATEWAY_SUBSCRIPTIONS, encodeGatewaySubscription, decodeGatewayFrame, createFacebookGatewayProtocol, mqtt311Codec, createMqtt311StreamDecoder, createMqttRequestTracker, MESSENGER_MQTT_APP_ID, SEND_MESSAGE_VERSION_ID, offlineThreadingId, createMessengerSendMessageRequest, DEFAULT_MQTT_URL, DEFAULT_MQTT_APP_ID, DEFAULT_MQTT_TOPICS, createFacebookMqttProtocol, parseMessengerSyncPayload, normalizeMessengerDelta, createMessengerSyncCursorStore, createFacebookMqttDriver, createFacebookThreadApi, FACEBOOK_THREAD_DOC_IDS,
   parseVersion, compareVersions, verifyUpdateManifest, verifyArtifactDigest,
   version: require("./package.json").version
 };

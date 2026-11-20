@@ -389,3 +389,19 @@ export interface FacebookMqttClientOptions extends Omit<FacebookMqttDriverOption
   onLicenseError?: (error: Error) => void;
 }
 export function createFacebookMqttClient(options: FacebookMqttClientOptions): ReturnType<typeof createClient>;
+
+
+/** Personal-account thread and group actions following public FCA web request conventions. */
+export interface FacebookThreadApi {
+  getThreadList(limit: number, timestamp?: number | null, tags?: string[] | ((error: Error | null, result?: unknown[]) => void), callback?: (error: Error | null, result?: unknown[]) => void): Promise<unknown[]> | void;
+  getThreadInfo(threadID: string | number, callback?: (error: Error | null, result?: unknown) => void): Promise<unknown> | void;
+  getThreadHistory(threadID: string | number, amount: number, timestamp?: number | null, callback?: (error: Error | null, result?: unknown[]) => void): Promise<unknown[]> | void;
+  getUserInfo(ids: string | number | Array<string | number>, callback?: (error: Error | null, result?: Record<string, unknown>) => void): Promise<Record<string, unknown>> | void;
+  addUserToGroup(userIDs: string | number | Array<string | number>, threadID: string | number, callback?: (error?: Error | null) => void): Promise<unknown> | void;
+  removeUserFromGroup(userID: string | number, threadID: string | number, callback?: (error?: Error | null) => void): Promise<unknown> | void;
+  changeNickname(nickname: string, threadID: string | number, participantID: string | number, callback?: (error?: Error | null) => void): Promise<unknown> | void;
+  setMessageReaction(reaction: string, messageID: string, callback?: (error?: Error | null) => void): Promise<unknown> | void;
+  markAsRead(threadID: string | number, read?: boolean | ((error?: Error | null) => void), callback?: (error?: Error | null) => void): Promise<unknown> | void;
+}
+export const FACEBOOK_THREAD_DOC_IDS: Readonly<{ threadList: string; threadInfo: string; threadHistory: string; reaction: string }>;
+export function createFacebookThreadApi(options: { session: PersonalSession; webClient?: FacebookWebClient }): FacebookThreadApi;
