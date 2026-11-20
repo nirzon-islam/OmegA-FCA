@@ -120,10 +120,41 @@ function createNativeRealtimeTransport(options = {}) {
       const signal = context.signal;
       if (signal?.aborted) throw signal.reason || transportError("Connection aborted", "FCA_WS_ABORTED");
       let candidate;
+      let factoryTimer;
+      let abortFactory;
+      const factoryPromise = Promise.resolve().then(() => socketFactory({ url, protocols, headers, signal }));
+      // If the factory resolves after timeout/abort, close the orphaned socket.
+      factoryPromise.then(lateSocket => {
+        if (currentGeneration !== generation || state !== "connecting") {
+          try { lateSocket?.close?.(); } catch {}
+        }
+      }, () => {});
       try {
-        candidate = await socketFactory({ url, protocols, headers, signal });
-      } catch {
-        throw transportError("WebSocket creation failed", "FCA_WS_CREATE_FAILED", true);
+        candidate = await new Promise((resolve, reject) => {
+          let settled = false;
+          const finish = (error, value) => {
+            if (settled) return;
+            settled = true;
+            clearTimeout(factoryTimer);
+            if (signal && abortFactory) signal.removeEventListener("abort", abortFactory);
+            if (error) reject(error);
+            else resolve(value);
+          };
+          factoryTimer = setTimeout(() => finish(
+            transportError("WebSocket creation timed out", "FCA_WS_CREATE_TIMEOUT", true)
+          ), connectTimeoutMs);
+          if (signal) {
+            abortFactory = () => finish(signal.reason || transportError("Connection aborted", "FCA_WS_ABORTED"));
+            signal.addEventListener("abort", abortFactory, { once: true });
+            if (signal.aborted) abortFactory();
+          }
+          factoryPromise.then(value => finish(null, value), () => finish(
+            transportError("WebSocket creation failed", "FCA_WS_CREATE_FAILED", true)
+          ));
+        });
+      } finally {
+        clearTimeout(factoryTimer);
+        if (signal && abortFactory) signal.removeEventListener("abort", abortFactory);
       }
       if (!candidate || typeof candidate.send !== "function") {
         throw transportError("socketFactory returned an invalid WebSocket", "FCA_WS_INVALID_SOCKET");
@@ -214,7 +245,7 @@ function createNativeRealtimeTransport(options = {}) {
         try { failed.close?.(); } catch {}
       }
       cleanupListeners();
-      state = "disconnected";
+      if (currentGeneration === generation && state !== "closing" && state !== "closed") state = "disconnected";
       diagnostic("connect_failed", { code: error.code || null });
       throw error;
     }).finally(() => { connectPromise = null; });
