@@ -359,3 +359,9 @@ export interface FacebookMqttProtocolConfig {
   protocol: NativeRealtimeProtocolAdapter;
 }
 export function createFacebookMqttProtocol(options: FacebookMqttProtocolOptions): FacebookMqttProtocolConfig;
+
+export interface MessengerSyncCursor { syncToken: string | null; lastSeqId: string | number | null; }
+export interface MessengerSyncParseResult { events: ReadonlyArray<Record<string, unknown>>; envelope: unknown; cursor: MessengerSyncCursor | null; }
+/** Parses known Messenger sync delta envelopes conservatively. */
+export function parseMessengerSyncPayload(input: unknown): MessengerSyncParseResult;
+export function normalizeMessengerDelta(delta: unknown): Record<string, unknown> | null;
