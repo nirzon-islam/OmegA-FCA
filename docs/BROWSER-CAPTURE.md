@@ -7,7 +7,7 @@ This owner-operated tool launches a visible Chromium window for manual Facebook/
 Node.js 20+ is required.
 
 ```sh
-npm install
+npm install --no-save playwright
 npx playwright install chromium
 npm run capture:browser
 ```
