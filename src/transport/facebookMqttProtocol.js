@@ -34,7 +34,7 @@ function createFacebookMqttProtocol(options = {}) {
   if (typeof clientId !== "string" || !/^[A-Za-z0-9_-]{8,128}$/.test(clientId)) {
     throw new TypeError("clientId must be 8-128 safe characters");
   }
-  const sessionId = options.sessionId ?? randomInt(1, Number.MAX_SAFE_INTEGER);
+  const sessionId = options.sessionId ?? randomInt(1, 2 ** 48);
   if (!Number.isSafeInteger(sessionId) || sessionId < 1) throw new TypeError("sessionId must be a positive safe integer");
   const deviceId = options.deviceId ?? randomUUID();
   if (typeof deviceId !== "string" || deviceId.length > 128) throw new TypeError("deviceId is invalid");
@@ -146,7 +146,7 @@ function createFacebookMqttProtocol(options = {}) {
             !action.topic.startsWith("/") || action.topic.length > 256) {
           throw new TypeError("MQTT action requires a valid topic");
         }
-        const payload = typeof action.payload === "string" || Buffer.isBuffer(action.payload)
+        const payload = typeof action.payload === "string" || Buffer.isBuffer(action.payload) || action.payload instanceof Uint8Array
           ? action.payload : JSON.stringify(action.payload);
         return mqtt.encodePublish({
           topic: action.topic, payload, qos: action.qos ?? 1,
