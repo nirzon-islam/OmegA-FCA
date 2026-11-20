@@ -4,6 +4,7 @@ const { randomUUID, randomInt } = require("node:crypto");
 const mqtt = require("./mqtt311Codec");
 const { parseMessengerSyncPayload } = require("./facebookMqttEvents");
 const { createMqttRequestTracker } = require("./mqttRequestTracker");
+const { createMessengerSendMessageRequest } = require("./messengerActions");
 
 const DEFAULT_MQTT_URL = "wss://edge-chat.facebook.com/chat";
 const DEFAULT_MQTT_APP_ID = "219994525426954";
@@ -69,6 +70,10 @@ function createFacebookMqttProtocol(options = {}) {
     ...(options.cookie ? { Cookie: String(options.cookie) } : {})
   };
   if (headers.Cookie && /[\r\n]/.test(headers.Cookie)) throw new TypeError("cookie header contains invalid characters");
+  const cursorStore = options.syncCursorStore || null;
+  const storedCursor = cursorStore ? cursorStore.load() : null;
+  const syncToken = options.syncToken ?? storedCursor?.syncToken ?? null;
+  const lastSeqId = options.lastSeqId ?? storedCursor?.lastSeqId ?? null;
   let packetId = randomInt(1, 65536);
   const requestTracker = createMqttRequestTracker({ timeoutMs: options.requestTimeoutMs ?? 15000, maxPending: options.maxPendingRequests ?? 256 });
   const nextPacketId = () => { packetId = packetId >= 65535 ? 1 : packetId + 1; return packetId; };
@@ -110,13 +115,12 @@ function createFacebookMqttProtocol(options = {}) {
         const queue = {
           sync_api_version: 11, max_deltas_able_to_process: 200, delta_batch_size: 200,
           encoding: "JSON", entity_fbid: userId,
-          initial_titan_sequence_id: options.lastSeqId ?? null, device_params: null
+          initial_titan_sequence_id: lastSeqId ?? null, device_params: null
         };
-        const syncToken = options.syncToken;
         const queueTopic = syncToken ? "/messenger_sync_get_diffs" : "/messenger_sync_create_queue";
         if (syncToken) {
           if (typeof syncToken !== "string" || syncToken.length > 4096) throw new TypeError("syncToken is invalid");
-          queue.last_seq_id = options.lastSeqId;
+          queue.last_seq_id = lastSeqId;
           queue.sync_token = syncToken;
         }
         socket.send(mqtt.encodePublish({ topic: queueTopic, payload: JSON.stringify(queue), qos: 1, packetId: nextPacketId() }));
@@ -143,7 +147,11 @@ function createFacebookMqttProtocol(options = {}) {
             const events = parsed.events.length ? parsed.events : [{
               type: "mqtt_publish", topic: packet.topic, qos: packet.qos, payload
             }];
-            if (parsed.cursor) events.push({ type: "sync_cursor", cursor: parsed.cursor });
+            if (parsed.cursor) {
+              if (cursorStore) { try { cursorStore.save(parsed.cursor); } catch { events.push({ type: "sync_cursor_persist_error" }); } }
+              try { options.onSyncCursor?.(parsed.cursor); } catch {}
+              events.push({ type: "sync_cursor", cursor: parsed.cursor });
+            }
             return { events };
           }
           if (packet.topic === "/ls_resp") {
@@ -166,6 +174,10 @@ function createFacebookMqttProtocol(options = {}) {
           topic: action.topic, payload, qos: action.qos ?? 1,
           packetId: (action.qos ?? 1) > 0 ? nextPacketId() : undefined
         });
+      },
+      async sendMessage(socket, input, requestOptions = {}) {
+        const built = createMessengerSendMessageRequest(input);
+        return this.request(socket, { app_id: built.app_id, payload: built.payload, type: built.type }, requestOptions);
       },
       async request(socket, payload, requestOptions = {}) {
         if (!socket || typeof socket.send !== "function") throw new TypeError("A connected MQTT socket is required");
