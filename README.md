@@ -137,7 +137,7 @@ MIT License. See [LICENSE](LICENSE).
 OmegA-FCA includes an owner-operated Playwright capture utility. It launches a visible Chromium browser so the account owner can sign in manually, then records sanitized HTTP/WebSocket metadata for current protocol research. Setup and privacy guidance: [Browser Capture](docs/BROWSER-CAPTURE.md).
 
 ```sh
-npm install
+npm install --no-save playwright
 npx playwright install chromium
 npm run capture:browser
 ```
