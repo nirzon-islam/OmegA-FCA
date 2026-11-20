@@ -26,7 +26,13 @@ jobs:
           npm test
           npm run test:syntax
           npm pack --dry-run
-      - name: Publish public package
-        run: npm publish --access public
+      - name: Publish prerelease to next or stable to latest
+        run: |
+          VERSION="$(node -p "require('./package.json').version")"
+          if [[ "$VERSION" == *-* ]]; then
+            npm publish --access public --tag next
+          else
+            npm publish --access public
+          fi
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
