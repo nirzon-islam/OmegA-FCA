@@ -35,7 +35,7 @@ The current account loader supports several formats before it calls FCA:
 - AppState JSON array, including legacy `name` cookie keys and `key` cookie keys.
 - Cookie header string.
 - Netscape cookie text.
-- Legacy email/password/2FA configuration and interactive owner input.
+- The current OmegA-FCA `public-package` branch is AppState-only at the account-loader boundary. Direct credential-mode plumbing exists for an injected provider, but no native credential login or interactive challenge UI is implemented here.
 - Legacy token-based input paths.
 
 The current OmegA-FCA client has explicit `appstate`, `cookie`, and `credentials` modes. The compatibility adapter currently maps AppState arrays and email/password credentials; it does not yet reproduce every legacy account-file parser or interactive login behavior.
