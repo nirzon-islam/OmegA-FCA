@@ -9,7 +9,7 @@ const {
 
 test("builds the observed Messenger MQTT broker URL and browser headers", () => {
   const config = createFacebookMqttProtocol({
-    userId: "123456789", region: "FRA", cookie: "c_user=123456789; xs=private"
+    userId: "123456789", region: "FRA", cookie: "c_user=123456789; xs=private", userAgent: "OmegA-Test-UA"
   });
   const url = new URL(config.url);
   assert.equal(url.origin + url.pathname, DEFAULT_MQTT_URL);
@@ -19,6 +19,7 @@ test("builds the observed Messenger MQTT broker URL and browser headers", () => 
   assert.equal(config.headers.Origin, "https://www.facebook.com");
   assert.equal(config.headers.Cookie, "c_user=123456789; xs=private");
   assert.equal(DEFAULT_MQTT_TOPICS.includes("/t_ms"), true);
+  assert.equal(DEFAULT_MQTT_TOPICS.includes("/legacy_web_mtouch"), true);
 });
 
 test("performs MQTT 3.1 CONNECT and validates broker CONNACK", async () => {
@@ -31,6 +32,7 @@ test("performs MQTT 3.1 CONNECT and validates broker CONNACK", async () => {
   const connect = mqtt.decodeRemainingLength(sent[0]);
   assert.equal(sent[0][0], 0x10);
   assert.equal(sent[0].toString("ascii", connect.offset + 2, connect.offset + 8), "MQIsdp");
+  assert.equal(sent[0].toString("utf8").includes('"a":"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/120.0.0.0 Safari/537.36"'), true);
   await assert.rejects(config.protocol.authenticate(socket, {
     waitForFrame: async () => Buffer.from([0x20, 0x02, 0x00, 0x05])
   }), error => error.code === "FCA_MQTT_CONNACK_REJECTED");
@@ -53,6 +55,10 @@ test("subscribes to observed topics and initializes the Messenger sync queue", a
   assert.equal(queue.type, "publish");
   assert.equal(queue.topic, "/messenger_sync_create_queue");
   assert.equal(JSON.parse(queue.payload.toString()).entity_fbid, "123456789");
+  assert.equal(mqtt.decodePacket(sent[2]).topic, "/foreground_state");
+  assert.deepEqual(JSON.parse(mqtt.decodePacket(sent[2]).payload.toString()), { foreground: true });
+  assert.equal(mqtt.decodePacket(sent[3]).topic, "/set_client_settings");
+  assert.deepEqual(JSON.parse(mqtt.decodePacket(sent[3]).payload.toString()), { make_user_available_when_in_foreground: true });
 });
 
 test("decodes MQTT publish frames and encodes bounded topic actions", async () => {
