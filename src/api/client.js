@@ -141,8 +141,9 @@ function createClient({ authenticate, options = {}, reconnect = {}, license = {}
         try {
           return validateTransportDriver(result);
         } catch (error) {
-          // A provider may allocate resources before returning an invalid
-          // driver. Dispose it before surfacing the local contract error.
+          // Preserve the local contract error for the caller, while disposing
+          // any provider resource allocated before the invalid result.
+          lastConnectError = error;
           if (result && typeof result.disconnect === "function") {
             try { await result.disconnect(); }
             catch (cleanupError) { error.cleanupError = cleanupError; }
