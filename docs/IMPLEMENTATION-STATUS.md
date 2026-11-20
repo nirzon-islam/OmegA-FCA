@@ -4,7 +4,7 @@
 
 - Node.js 20+ CommonJS package, root exports and TypeScript declarations.
 - Cookie/AppState parsing and validation, encrypted session helpers, restrictive file permissions and secret redaction.
-- **Updated:** account configuration now treats `account.txt` as AppState/cookie-only and rejects credential-like key/value text. Credential configuration reads canonical `facebookAccount.fb_email` (legacy `email` and `FB_EMAIL` environment aliases remain supported); it does not read `fb_username`.
+- **Updated:** account configuration is AppState-only for this phase. `account.txt` accepts cookie/AppState data only and rejects credential-like key/value text. The loader does not read email, username, password, 2FA, or `FB_*` environment credentials; credential login is deferred.
 - **New AppState test entry point:** `npm run test:appstate` validates an owner-supplied AppState from `account.txt` (or the documented `appstate.json` fallback), reports only non-secret session metadata, and is deliberately excluded from CI because it requires a real authorized session and network access.
 - **New native personal-session foundation:** `createPersonalSession()` validates an owner-supplied AppState against Facebook over HTTPS, scopes session cookies to Facebook/Messenger hosts, provides bounded-time authenticated web requests, and reports expired sessions/checkpoints without bypassing them.
 - Bounded HTTPS request helper and secure cookie jar.
@@ -17,7 +17,7 @@
 - **New OASIS MQTT 3.1.1 codec primitives:** CONNECT, PUBLISH, SUBSCRIBE, UNSUBSCRIBE, packet acknowledgements, PINGREQ and DISCONNECT encoding plus bounded packet decoding and specification-based unit fixtures. This is broker-agnostic MQTT protocol support, not a Facebook MQTT session implementation.
 - **New research register (2026-11-20):** separates Meta's historical MQTT/snapshot-delta architecture statements, OASIS MQTT 3.1.1 normative transport rules, and unofficial FCA source observations from current Facebook-specific facts.
 - **New:** `createLegacyFcaProvider()` bridges an existing callback-style personal-account FCA implementation into OmegA-FCA's transport contract. It maps AppState or credentials login, manual 2FA inputs, current-user lookup, MQTT listener lifecycle and supported FCA methods.
-- Manual 2FA input plumbing; checkpoint and expired-session classification. The owner must resolve Facebook challenges through the platform. The repository configuration loader does not treat `account.txt` as a credential source.
+- Checkpoint and expired-session classification. The owner must resolve Facebook challenges through Facebook. Credential/2FA login plumbing is not part of the current AppState-only account loader.
 - Provider-neutral authentication-attempt coordinator with bounded challenge rounds, single-use continuation, optional provider cleanup on cancellation, and secret-safe public snapshots. This is lifecycle plumbing only; no Facebook credential provider is included.
 - Optional Ed25519 licensing and signed update-manifest verification.
 - Separate official Meta Messenger Page transport and webhook example.
