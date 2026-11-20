@@ -161,3 +161,6 @@ The browser runs locally; it is not remotely visible to ChatGPT. The default rep
 ### Session bootstrap redirect handling
 
 The personal-session bootstrap follows up to five same-site HTTPS redirects on Facebook/Messenger hosts, preserving rotated cookies between hops. Login and checkpoint redirects remain authentication failures, and redirects to unrelated hosts are rejected.
+
+
+<!-- temporary CI verification branch; do not merge -->
