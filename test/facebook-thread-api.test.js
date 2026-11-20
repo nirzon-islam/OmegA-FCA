@@ -156,8 +156,8 @@ test("thread title, color and emoji actions use the authenticated customization 
   assert.equal(calls[0].url, "https://www.facebook.com/messaging/set_thread_name/");
   assert.equal(calls[0].body.thread_name, "Test Group");
   assert.equal(calls[0].body.thread_fbid, "123456789012345");
-  assert.match(calls[0].body.offline_threading_id, /^\\d{10,24}$/);
-  assert.match(calls[0].body.threading_id, /^<\\d+:\\d+-omega-fca@mail\\.projektitan\\.com>$/);
+  assert.match(calls[0].body.offline_threading_id, /^[0-9]{10,24}$/);
+  assert.match(calls[0].body.threading_id, /^<[0-9]+:[0-9]+-omega-fca@mail[.]projektitan[.]com>$/);
   assert.equal(calls[1].url, "https://www.facebook.com/messaging/save_thread_color/?source=thread_settings&dpr=1");
   assert.equal(calls[1].body.color_choice, "");
   assert.equal(calls[2].url, "https://www.facebook.com/messaging/save_thread_emoji/?source=thread_settings&dpr=1");
