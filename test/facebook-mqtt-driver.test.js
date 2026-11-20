@@ -55,6 +55,7 @@ test("integrated driver validates AppState, authenticates MQTT and exposes an FC
   });
   assert.equal(driver.getCurrentUserID(), "123456789012345");
   assert.equal(driver.getSessionState(), "active");
+  assert.deepEqual(driver.getAppState().map(({ key, value }) => ({ key, value })), appState.map(({ key, value }) => ({ key, value })));
   assert.equal(typeof driver.listen, "function");
   assert.equal(typeof driver.sendMessage, "function");
   await driver.disconnect();
