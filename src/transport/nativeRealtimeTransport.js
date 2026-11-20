@@ -262,7 +262,7 @@ function createNativeRealtimeTransport(options = {}) {
           return;
         }
         try {
-          const decoded = protocol.decodeFrame(raw, { isBinary: Boolean(isBinary), maxFrameBytes });
+          const decoded = protocol.decodeFrame(raw, { isBinary: Boolean(isBinary), maxFrameBytes, socket: candidate });
           const events = Array.isArray(decoded) ? decoded : decoded?.events;
           if (!Array.isArray(events)) throw transportError("Protocol decoder returned no events array", "FCA_WS_DECODE_CONTRACT");
           for (const event of events) {
