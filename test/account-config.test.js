@@ -58,7 +58,7 @@ test("rejects account and config symlinks that escape project root", () => withR
     fs.symlinkSync(outside, path.join(root, "account.txt"));
     assert.throws(() => loadAccountConfig({ cwd: root, env: {} }), /resolve inside the project root/);
   } finally { fs.rmSync(outside, { force: true }); }
-});
+}));
 
 test("rejects credential-style account.txt keys with whitespace around equals", () => {
   for (const line of [
