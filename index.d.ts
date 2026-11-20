@@ -1,4 +1,4 @@
-export type LoginMode = "appstate" | "cookie" | "credentials";
+export type LoginMode = "appstate" | "cookie";
 export type AuthenticationAttemptState = "idle" | "authenticating" | "challenge_required" | "verifying_challenge" | "authenticated" | "failed" | "closed";
 export interface AuthenticationChallenge { readonly type: string; readonly message: string | null; readonly methods: readonly string[]; }
 export interface AuthenticationAttemptSnapshot { readonly state: AuthenticationAttemptState; readonly challenge: AuthenticationChallenge | null; readonly challengeRounds: number; readonly authenticated: boolean; readonly error: Readonly<{ name: string; code: string | null; message: string }> | null; }
@@ -11,7 +11,7 @@ export interface Cookie {
   secure?: boolean; httpOnly?: boolean; sameSite?: string; expires?: number | null;
 }
 export interface Credentials {
-  mode: LoginMode; appState?: Cookie[]; cookie?: string; username?: string; email?: string; password?: string;
+  mode: LoginMode; appState?: Cookie[]; cookie?: string;
   twoFactorSecret?: string | null; twoFactorCode?: string | null; userAgent?: string | null; proxy?: unknown;
 }
 export interface PersonalSessionOptions {
@@ -86,7 +86,7 @@ export interface TransportDriver {
   setOptions?(options: Record<string, unknown>): unknown;
 }
 export interface ClientOptions {
-  authenticate(context: { mode: LoginMode; credentials: Cookie[] | Record<string, unknown>;
+  authenticate(context: { mode: LoginMode; credentials: Cookie[];
     options: Record<string, unknown>; context: ConnectionContext; license: VerifiedLicense | null;
   }): Promise<TransportDriver> | TransportDriver;
   options?: Record<string, unknown>;
@@ -156,7 +156,7 @@ export interface LegacyFcaProviderOptions {
 }
 /** Bridges an existing personal-account FCA login implementation; does not implement Facebook's private wire protocol. */
 export function createLegacyFcaProvider(options: LegacyFcaProviderOptions): (context: {
-  mode: LoginMode; credentials: Cookie[] | Record<string, unknown>; options?: Record<string, unknown>;
+  mode: LoginMode; credentials: Cookie[]; options?: Record<string, unknown>;
 }) => Promise<TransportDriver>;
 export function normalizeCookies(input: Cookie[]): Cookie[];
 export function validateSessionCookies(input: Cookie[]): Cookie[];
