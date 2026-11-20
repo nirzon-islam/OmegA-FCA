@@ -77,7 +77,7 @@ FCA_SESSION_KEY=<64-hex-character-owner-generated-key>
 FCA_SESSION_INTERVAL_MS=180000
 ~~~
 
-Use a private persistent volume for the encrypted file. Generate and retain the 32-byte key outside the repository; losing it makes snapshots unrecoverable. The legacy GoatBot call `api.sessionGuard(account.txt, { interval, debounce })` is supported as an activation alias. Its interval option is honored, but encrypted bytes are stored only in `FCA_SESSION_FILE` (plus a `.bak` backup). The encrypted path and backup path are explicitly rejected if either resolves to the GoatBot project-root `account.txt`. If the optional environment variables are absent, the encrypted guard remains disabled and the existing AppState workflow continues unchanged.
+Use a private persistent volume for the encrypted file. Generate and retain the 32-byte key outside the repository; losing it makes snapshots unrecoverable. The legacy GoatBot call `api.sessionGuard(account.txt, { interval, debounce })` is supported as an activation alias. Its `interval` option is honored; `debounce` is accepted for call compatibility but periodic snapshots do not use debounce semantics. Encrypted bytes are stored only in `FCA_SESSION_FILE` (plus a `.bak` backup). The encrypted path and backup path are explicitly rejected if either resolves to the GoatBot project-root `account.txt`. If the optional environment variables are absent, the encrypted guard remains disabled and the existing AppState workflow continues unchanged.
 
 ## Railway / Render notes
 
