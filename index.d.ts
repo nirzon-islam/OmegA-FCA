@@ -103,7 +103,7 @@ export interface ClientApi {
   listen(callback: (event: unknown) => void): () => void;
   listenMqtt(callback: (error: Error | null, event?: unknown) => void): () => void;
   stopListening(callback?: () => void): boolean;
-  sendRequest?: (payload: Record<string, unknown>, options?: { timeoutMs?: number }) => Promise<unknown>; sendMessage?: (...args: any[]) => any; getUserInfo?: (...args: any[]) => any;
+  sendRequest?: (payload: Record<string, unknown>, options?: { timeoutMs?: number }) => Promise<unknown>; sendMessage?: (input: { threadID: string | number; message: string | { body?: string; sticker?: string | number }; replyToMessageID?: string | number }, options?: { timeoutMs?: number }) => Promise<unknown>; getUserInfo?: (...args: any[]) => any;
   getThreadInfo?: (...args: any[]) => any; getThreadList?: (...args: any[]) => any;
   markAsRead?: (...args: any[]) => any; setMessageReaction?: (...args: any[]) => any;
   sendTypingIndicator?: (...args: any[]) => any; unsendMessage?: (...args: any[]) => any;
@@ -351,7 +351,7 @@ export interface FacebookMqttProtocolOptions {
   userId: string | number; clientId?: string; sessionId?: number; deviceId?: string;
   appId?: string; url?: string; region?: string; userAgent?: string; cookie?: string;
   online?: boolean; keepAlive?: number; topics?: readonly string[];
-  syncToken?: string; lastSeqId?: string | number | null;
+  syncToken?: string; lastSeqId?: string | number | null; syncCursorStore?: MessengerSyncCursorStore; onSyncCursor?: (cursor: MessengerSyncCursor) => void; requestTimeoutMs?: number; maxPendingRequests?: number;
 }
 export interface FacebookMqttProtocolConfig {
   url: string; headers: Readonly<Record<string, string>>;
@@ -373,3 +373,6 @@ export const MESSENGER_MQTT_APP_ID: string;
 export const SEND_MESSAGE_VERSION_ID: string;
 export function offlineThreadingId(now?: number, random?: number): string;
 export function createMessengerSendMessageRequest(input: { threadID: string | number; message: string | { body?: string; sticker?: string | number }; replyToMessageID?: string | number; timestamp?: number; otid?: string; epochId?: string; requestId?: number }): Readonly<{ app_id: string; payload: string; request_id: number | null; type: 3 }>;
+
+export interface MessengerSyncCursorStore { load(): MessengerSyncCursor | null; save(cursor: MessengerSyncCursor): MessengerSyncCursor; clear(): void; readonly current: MessengerSyncCursor | null; }
+export function createMessengerSyncCursorStore(options: { filePath: string; key: string | Buffer | Uint8Array; userId: string | number }): MessengerSyncCursorStore;
