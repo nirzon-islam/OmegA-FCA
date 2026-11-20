@@ -174,3 +174,26 @@ test("thread customization methods validate input and normalize Facebook errors"
   await assert.rejects(api.changeThreadColor("#ff0000", "123456789012345"), error => error.code === "FCA_FACEBOOK_REQUEST_REJECTED");
   await assert.rejects(api.changeThreadEmoji("🎉", "123456789012345"), error => error.code === "FCA_FACEBOOK_REQUEST_REJECTED");
 });
+
+test("sendTypingIndicator sends start and stop requests to the Messenger typing endpoint", async () => {
+  const calls = [];
+  const api = createFacebookThreadApi({
+    session,
+    webClient: { post: async (url, body) => {
+      calls.push({ url, body });
+      return { payload: { success: true } };
+    } }
+  });
+  await api.sendTypingIndicator("123456789012345", true);
+  await api.sendTypingIndicator("123456789012345", false);
+  assert.equal(calls[0].url, "https://www.facebook.com/ajax/messaging/typ.php");
+  assert.equal(calls[0].body.typ, 1);
+  assert.equal(calls[0].body.thread, "123456789012345");
+  assert.equal(calls[1].body.typ, 0);
+});
+
+test("sendTypingIndicator validates thread and state", async () => {
+  const api = createFacebookThreadApi({ session, webClient: { post: async () => ({ payload: {} }) } });
+  assert.throws(() => api.sendTypingIndicator("", true), /numeric Facebook ID/);
+  assert.throws(() => api.sendTypingIndicator("123456789012345", "yes"), /typing must be a boolean/);
+});
