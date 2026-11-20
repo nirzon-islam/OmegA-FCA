@@ -168,6 +168,9 @@ async function createPersonalSession({
     });
 
     const response = bootstrapResponse;
+    const { accepted: bootstrapCookies, deletions: bootstrapDeletions } = collectResponseCookies(response, new URL(FACEBOOK_ORIGIN + "/"));
+    if (bootstrapCookies.length) jar.setCookies(bootstrapCookies);
+    if (bootstrapDeletions.length) jar.deleteCookies(bootstrapDeletions);
     emitDiagnostic({ phase: "response", request: { url: FACEBOOK_ORIGIN + "/", method: "GET" }, response: { status: response.status, contentType: response.headers?.get?.("content-type") || "", bodyBytes: Number(response.headers?.get?.("content-length") || 0) }, durationMs: Date.now() - bootstrapStartedAt });
     if (response.status >= 500) {
       throw sessionError("Facebook is temporarily unavailable while validating the session", "FCA_UPSTREAM_UNAVAILABLE", "error");
