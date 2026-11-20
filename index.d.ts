@@ -73,7 +73,7 @@ export interface ConnectionContext { attempt: number; generation: number; signal
 export interface TransportDriver {
   listen(callback: (error: Error | null, event?: unknown) => void): (() => void) | void;
   disconnect?(): void | Promise<void>; getCurrentUserID?(): string | number | null | Promise<string | number | null>;
-  sendMessage?(...args: unknown[]): unknown; getUserInfo?(...args: unknown[]): unknown;
+  sendMessage?(...args: unknown[]): unknown; httpPost?(url: string, form: Record<string, unknown>, callback?: (error: Error | null, result?: string) => void): Promise<string> | void; getUserInfo?(...args: unknown[]): unknown;
   getThreadInfo?(...args: unknown[]): unknown; getThreadList?(...args: unknown[]): unknown;
   markAsRead?(...args: unknown[]): unknown; setMessageReaction?(...args: unknown[]): unknown;
   sendTypingIndicator?(...args: unknown[]): unknown; unsendMessage?(...args: unknown[]): unknown;
@@ -412,6 +412,7 @@ export function createSessionGuard(options: SessionGuardOptions): SessionGuard;
 
 /** Personal-account thread and group actions following public FCA web request conventions. */
 export interface FacebookThreadApi {
+  httpPost(url: string, form: Record<string, unknown>, callback?: (error: Error | null, result?: string) => void): Promise<string> | void;
   getThreadList(limit: number, timestamp?: number | null, tags?: string[] | ((error: Error | null, result?: unknown[]) => void), callback?: (error: Error | null, result?: unknown[]) => void): Promise<unknown[]> | void;
   getThreadInfo(threadID: string | number, callback?: (error: Error | null, result?: unknown) => void): Promise<unknown> | void;
   getThreadHistory(threadID: string | number, amount: number, timestamp?: number | null, callback?: (error: Error | null, result?: unknown[]) => void): Promise<unknown[]> | void;
