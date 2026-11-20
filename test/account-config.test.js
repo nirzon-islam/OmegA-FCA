@@ -42,6 +42,15 @@ test("loads AppState JSON as backward-compatible fallback", () => withRoot(root 
   assert.deepEqual(config.appState, state.map(cookie => ({ ...cookie, path: "/", hostOnly: true, secure: false, httpOnly: false })));
 }));
 
+test("does not read credential config while loading AppState", () => withRoot(root => {
+  const state = [{ key: "c_user", value: "123456789", domain: "facebook.com" }, { key: "xs", value: "session-cookie-value", domain: "facebook.com" }];
+  fs.writeFileSync(path.join(root, "appstate.json"), JSON.stringify(state));
+  fs.writeFileSync(path.join(root, "config.json"), "{ invalid credential config");
+  const config = loadAccountConfig({ cwd: root, env: {} });
+  assert.equal(config.mode, "appstate");
+  assert.equal(config.source, "appstate.json");
+}));
+
 test("ignores credential configuration during AppState-only phase and rejects paths outside project root", () => withRoot(root => {
   fs.writeFileSync(path.join(root, "config.json"), JSON.stringify({ facebookAccount: { email: "owner@example.test" } }));
   assert.throws(
@@ -51,7 +60,7 @@ test("ignores credential configuration during AppState-only phase and rejects pa
   assert.throws(() => loadAccountConfig({ cwd: root, accountFile: "../outside.txt", env: {} }), /inside the project root/);
 }));
 
-test("rejects account and config symlinks that escape project root", () => withRoot(root => {
+test("rejects account symlinks that escape project root", () => withRoot(root => {
   const outside = path.join(os.tmpdir(), "omega-fca-outside-" + process.pid + ".txt");
   fs.writeFileSync(outside, cookie);
   try {
