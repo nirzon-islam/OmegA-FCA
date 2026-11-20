@@ -24,6 +24,13 @@ test("encodes MQTT 3.1.1 CONNECT with required protocol header", () => {
   assert.equal(packet[remaining.offset + 6], 4);
 });
 
+test("encodes legacy MQTT 3.1 CONNECT using MQIsdp protocol identifier", () => {
+  const packet = mqtt.encodeConnect({ clientId: "omega-legacy", protocolId: "MQIsdp", protocolVersion: 3 });
+  const remaining = mqtt.decodeRemainingLength(packet);
+  assert.equal(packet.toString("ascii", remaining.offset + 2, remaining.offset + 8), "MQIsdp");
+  assert.equal(packet[remaining.offset + 8], 3);
+});
+
 test("encodes PUBLISH with QoS 0 and QoS 1 packet identifiers", () => {
   const qos0 = mqtt.encodePublish({ topic: "fixture/topic", payload: "hello" });
   const decoded0 = mqtt.decodePacket(qos0);
