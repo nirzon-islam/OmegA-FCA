@@ -1,6 +1,6 @@
 {
-  "name": "@omega/fca",
-  "version": "0.1.1",
+  "name": "@octopusworldpro-web/omega-fca",
+  "version": "0.1.2",
   "description": "OmegA Bot Facebook integration library, developed and maintained by NirZon",
   "main": "index.js",
   "type": "commonjs",
@@ -62,5 +62,8 @@
   "author": "NirZon",
   "dependencies": {
     "ws": "^8.18.3"
+  },
+  "publishConfig": {
+    "registry": "https://npm.pkg.github.com"
   }
 }
