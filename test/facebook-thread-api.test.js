@@ -83,3 +83,36 @@ test("Thread API validates identifiers and supports error-first callbacks", asyn
   await new Promise(resolve => setImmediate(resolve));
   assert.ok(callbackError instanceof Error);
 });
+
+test("httpPost preserves authenticated Facebook response text for GoatBot legacy commands", async () => {
+  let captured;
+  const raw = '{"data":{"viewer":{"friending_possibilities":{"edges":[]}}}}';
+  const api = createFacebookThreadApi({
+    session,
+    webClient: {
+      post: async (url, form) => {
+        captured = { url, form };
+        return { raw, payload: JSON.parse(raw) };
+      }
+    }
+  });
+  const response = await api.httpPost("https://www.facebook.com/api/graphql/", { doc_id: "123", variables: "{}" });
+  assert.equal(response, raw);
+  assert.equal(captured.url, "https://www.facebook.com/api/graphql/");
+  assert.equal(captured.form.doc_id, "123");
+});
+
+test("httpPost supports error-first callbacks and rejects non-object forms", async () => {
+  const api = createFacebookThreadApi({
+    session,
+    webClient: { post: async () => ({ raw: "ok" }) }
+  });
+  assert.throws(() => api.httpPost("https://www.facebook.com/api/graphql/", "not-an-object"), /form must be an object/);
+  let result;
+  api.httpPost("https://www.facebook.com/api/graphql/", {}, (error, value) => {
+    assert.equal(error, null);
+    result = value;
+  });
+  await new Promise(resolve => setImmediate(resolve));
+  assert.equal(result, "ok");
+});
