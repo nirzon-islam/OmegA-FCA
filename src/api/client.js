@@ -112,27 +112,37 @@ function createClient({ authenticate, options = {}, reconnect = {}, license = {}
         let result;
         try {
           result = await authenticate({ mode, credentials: normalized, options: loginOptions || {}, context, license: verifiedLicense });
-          return validateTransportDriver(result);
         } catch (caught) {
-          // Providers are expected to throw Error objects, but third-party
-          // adapters sometimes reject with strings or other primitives.
-          // Normalize those values before attaching structured session data.
-          const error = caught instanceof Error
-            ? caught
-            : new Error(typeof caught === "string" ? caught : "Authentication provider failed");
-          if (error !== caught && caught !== undefined) error.cause = caught;
+          // Provider-controlled messages and causes may echo credentials,
+          // cookies, challenge answers, or tokens. Classify privately, then
+          // expose only a fixed safe error to the application.
           const sessionState = classifySessionState(caught);
-          if (sessionState === "checkpoint" || sessionState === "logged_out") {
+          const error = new Error(sessionState === "checkpoint"
+            ? "Facebook requires the account owner to complete a checkpoint"
+            : sessionState === "logged_out"
+              ? "The Facebook session has expired; supply a fresh authorized AppState"
+              : "Authentication failed; inspect provider diagnostics securely");
+          if (sessionState === "checkpoint") {
+            error.code = "FCA_CHECKPOINT_REQUIRED";
             error.sessionState = sessionState;
-            error.code = error.code || (sessionState === "checkpoint"
-              ? "FCA_CHECKPOINT_REQUIRED" : "FCA_SESSION_EXPIRED");
-            // Do not repeatedly retry a challenged or expired session.
-            // The owner resolves it externally and retries with a fresh session.
             error.retryable = false;
+          } else if (sessionState === "logged_out") {
+            error.code = "FCA_SESSION_EXPIRED";
+            error.sessionState = sessionState;
+            error.retryable = false;
+          } else {
+            error.code = caught?.code === "FCA_CHALLENGE_LIMIT"
+              ? "FCA_CHALLENGE_LIMIT" : "FCA_AUTHENTICATION_FAILED";
+            error.retryable = typeof caught?.retryable === "boolean" ? caught.retryable : true;
           }
           lastConnectError = error;
+          throw error;
+        }
+        try {
+          return validateTransportDriver(result);
+        } catch (error) {
           // A provider may allocate resources before returning an invalid
-          // driver. Dispose it before surfacing the permanent contract error.
+          // driver. Dispose it before surfacing the local contract error.
           if (result && typeof result.disconnect === "function") {
             try { await result.disconnect(); }
             catch (cleanupError) { error.cleanupError = cleanupError; }
