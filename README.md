@@ -17,7 +17,8 @@ OmegA-FCA is the Facebook integration library maintained under the **OmegA Bot**
 - AppState/cookie login is the only enabled login path in this phase. Direct email/username-password and 2FA login attempts are rejected before the authentication provider is called; credential login is deferred.
 - Checkpoint/session-expiry classification. Challenges must be resolved by the account owner.
 - Connection supervision, bounded reconnect/backoff and event dispatch.
-- Bounded realtime binary-frame envelope inspection based only on the observed WebSocket capture; no private protocol assumptions.
+- Bounded realtime binary-frame envelope inspection based on observed captures.
+- Experimental Facebook Messenger MQTT 3.1 transport adapter using public FCA observations: `edge-chat.facebook.com/chat`, broker handshake, subscriptions and sync-queue bootstrap. Event normalization and live validation remain incomplete.
 - `inspectRealtimeSyncEnvelope()`: parses the captured outer sync JSON envelope and nested payload with size/type checks; it does not infer the unknown binary prefix or protocol semantics.
 - `createLegacyFcaProvider()`: adapter for an existing callback-style personal-account FCA implementation.
 - `createGoatBotLogin()`: callback-style GoatBot login adapter.
@@ -51,6 +52,10 @@ console.log(session.userId, response.status);
 ```
 
 This is a session foundation only: it does not yet provide the full FCA action API or realtime listener.
+
+## Experimental Messenger MQTT transport
+
+`createFacebookMqttProtocol()` provides the observed MQTT 3.1 broker handshake, topic subscription and initial sync queue setup. It can be supplied to `createNativeRealtimeTransport()` with a WebSocket implementation. The adapter exposes raw MQTT publish events; it does not yet convert all Messenger delta payloads into stable FCA `message` / `message_reply` / `read` events or implement all FCA send actions. See [Facebook MQTT transport notes](docs/FACEBOOK-MQTT-TRANSPORT.md).
 
 ## Realtime frame inspection
 
