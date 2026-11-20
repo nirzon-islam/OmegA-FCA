@@ -322,6 +322,11 @@ function createNativeRealtimeTransport(options = {}) {
       if (typeof protocol.request !== "function") throw transportError("Protocol does not support request-response actions", "FCA_WS_REQUEST_UNSUPPORTED");
       return protocol.request(socket, payload, requestOptions);
     },
+    async sendMessage(input, requestOptions) {
+      if (state !== "connected" || !socket) throw transportError("WebSocket is not connected", "FCA_WS_NOT_CONNECTED", true);
+      if (typeof protocol.sendMessage !== "function") throw transportError("Protocol does not support Messenger sendMessage", "FCA_WS_ACTION_UNSUPPORTED");
+      return protocol.sendMessage(socket, input, requestOptions);
+    },
     async sendAction(action) {
       if (state !== "connected" || !socket) throw transportError("WebSocket is not connected", "FCA_WS_NOT_CONNECTED", true);
       let frame;
