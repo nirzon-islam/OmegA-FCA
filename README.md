@@ -14,8 +14,8 @@ OmegA-FCA is the Facebook integration library maintained under the **OmegA Bot**
 - `createDiagnosticRecorder()`: bounded request metadata reports that omit header values, query values, body values, response bodies and credentials.
 - Native personal-session bootstrap for owner-supplied AppState, including HTTPS-only Facebook/Messenger requests, cookie rotation, and checkpoint/expiry detection.
 - `createFacebookWebClient()`: bounded authenticated GET/POST/HEAD request layer, session-token injection for POST forms, redirect challenge classification, response normalization, and request/response size limits. It deliberately requires caller-supplied verified paths and payload schemas.
-- The transport contract can accept credentials from an explicitly supplied provider, but the current account-file loader is AppState-only; it does not load credentials from config.json or environment variables.
-- Manual 2FA input plumbing and checkpoint/session-expiry classification. Challenges must be resolved by the account owner.
+- AppState/cookie login is the only enabled login path in this phase. Direct email/username-password and 2FA login attempts are rejected before the authentication provider is called; credential login is deferred.
+- Checkpoint/session-expiry classification. Challenges must be resolved by the account owner.
 - Connection supervision, bounded reconnect/backoff and event dispatch.
 - Bounded realtime binary-frame envelope inspection based only on the observed WebSocket capture; no private protocol assumptions.
 - `inspectRealtimeSyncEnvelope()`: parses the captured outer sync JSON envelope and nested payload with size/type checks; it does not infer the unknown binary prefix or protocol semantics.
@@ -64,7 +64,7 @@ A secret-safe diagnostic recorder is available for the current AppState-backed s
 
 ## Legacy compatibility adapter (temporary migration/test utility)
 
-The adapter lets an existing FCA implementation plug into OmegA-FCA without pretending that the Facebook protocol has been reimplemented:
+The adapter is a temporary migration/test utility for AppState-backed sessions. It lets an existing FCA implementation plug into OmegA-FCA without pretending that the Facebook protocol has been reimplemented:
 
 ```js
 const { createClient, createLegacyFcaProvider } = require("@omega/fca");
