@@ -18,6 +18,7 @@ OmegA-FCA is the Facebook integration library maintained under the **OmegA Bot**
 - Manual 2FA input plumbing and checkpoint/session-expiry classification. Challenges must be resolved by the account owner.
 - Connection supervision, bounded reconnect/backoff and event dispatch.
 - Bounded realtime binary-frame envelope inspection based only on the observed WebSocket capture; no private protocol assumptions.
+- `inspectRealtimeSyncEnvelope()`: parses the captured outer sync JSON envelope and nested payload with size/type checks; it does not infer the unknown binary prefix or protocol semantics.
 - `createLegacyFcaProvider()`: adapter for an existing callback-style personal-account FCA implementation.
 - `createGoatBotLogin()`: callback-style GoatBot login adapter.
 - Personal-account driver method forwarding for messaging, threads, reactions, typing, and group actions when the supplied FCA implementation supports those methods.
