@@ -2,7 +2,7 @@
 
 const REQUIRED_DRIVER_METHODS = Object.freeze(["listen"]);
 const OPTIONAL_DRIVER_METHODS = Object.freeze([
-  "disconnect", "getCurrentUserID", "sendMessage", "getUserInfo", "getThreadInfo",
+  "disconnect", "getCurrentUserID", "sendRequest", "sendMessage", "getUserInfo", "getThreadInfo",
   "getThreadList", "markAsRead", "setMessageReaction", "sendTypingIndicator",
   "unsendMessage", "changeNickname", "addUserToGroup", "removeUserFromGroup",
   "createNewGroup", "getThreadHistory", "getMessage", "getFriendsList", "getUserID"
