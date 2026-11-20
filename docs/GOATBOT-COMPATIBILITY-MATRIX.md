@@ -43,3 +43,18 @@ The client exposes each method below only when the injected driver provides that
 ## Release decision
 
 **Do not replace GoatBot's current FCA dependency, merge this branch, or deploy on the strength of this matrix.** Native auth, HTTP actions, realtime transport, event decoding, E2EE, and complete call-site coverage remain unverified or unimplemented. Never put live AppState, cookies, passwords, 2FA material, or session keys in fixtures, logs, commits, or CI.
+
+
+## Working-branch integration update
+
+The GoatBot `fca-migration-cleanup` branch now depends on this package and
+routes its login entrypoint through `createGoatBotLogin`. Its
+`bot/login/omegaFca.js` currently injects the existing `@eryxenx/fca`
+implementation through `createLegacyFcaProvider`.
+
+This verifies the package-to-bot integration boundary only. The actual
+Facebook authentication and MQTT event stream still come from the legacy
+transport. Native OmegA-FCA authentication/realtime must remain marked
+experimental until an authorized live account test proves login readiness,
+message receive/send, and recovery. Do not remove the legacy dependency or
+claim a standalone native replacement yet.
