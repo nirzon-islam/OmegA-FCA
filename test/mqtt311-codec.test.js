@@ -53,5 +53,5 @@ test("rejects invalid packet identifiers, topics and malformed headers", () => {
   assert.throws(() => mqtt.encodeSubscribe(0, [{ topic: "a" }]), /packetId/);
   assert.throws(() => mqtt.encodePublish({ topic: "bad/#/topic", payload: "x" }), /topic/);
   assert.throws(() => mqtt.encodePacketId("puback", 0), /packetId/);
-  assert.throws(() => mqtt.decodePacket(Buffer.from([0x62, 0x02, 0x00, 0x01])), /fixed-header flags/);
+  assert.throws(() => mqtt.decodePacket(Buffer.from([0x60, 0x02, 0x00, 0x01])), /fixed-header flags/);
 });
