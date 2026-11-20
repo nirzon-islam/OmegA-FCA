@@ -31,6 +31,7 @@ const { DEFAULT_GATEWAY_URL, DEFAULT_APP_ID, FACEBOOK_GATEWAY_SUBSCRIPTIONS, enc
 const mqtt311Codec = require("./src/transport/mqtt311Codec");
 const { createMqtt311StreamDecoder } = require("./src/transport/mqtt311StreamDecoder");
 const { DEFAULT_MQTT_URL, DEFAULT_MQTT_APP_ID, DEFAULT_MQTT_TOPICS, createFacebookMqttProtocol } = require("./src/transport/facebookMqttProtocol");
+const { parseMessengerSyncPayload, normalizeMessengerDelta } = require("./src/transport/facebookMqttEvents");
 const { parseVersion, compareVersions, verifyUpdateManifest, verifyArtifactDigest } = require("./src/update/manifest");
 
 module.exports = {
@@ -49,7 +50,7 @@ module.exports = {
   inspectRealtimeBinaryPayload, DEFAULT_MAX_BINARY_PAYLOAD_BYTES,
   inspectRealtimeSyncEnvelope, DEFAULT_MAX_SYNC_FRAME_BYTES,
   createNativeRealtimeTransport, DEFAULT_CONNECT_TIMEOUT_MS, DEFAULT_CLOSE_TIMEOUT_MS, DEFAULT_PROTOCOL_SETUP_TIMEOUT_MS,
-  DEFAULT_GATEWAY_URL, DEFAULT_APP_ID, FACEBOOK_GATEWAY_SUBSCRIPTIONS, encodeGatewaySubscription, decodeGatewayFrame, createFacebookGatewayProtocol, mqtt311Codec, createMqtt311StreamDecoder, DEFAULT_MQTT_URL, DEFAULT_MQTT_APP_ID, DEFAULT_MQTT_TOPICS, createFacebookMqttProtocol,
+  DEFAULT_GATEWAY_URL, DEFAULT_APP_ID, FACEBOOK_GATEWAY_SUBSCRIPTIONS, encodeGatewaySubscription, decodeGatewayFrame, createFacebookGatewayProtocol, mqtt311Codec, createMqtt311StreamDecoder, DEFAULT_MQTT_URL, DEFAULT_MQTT_APP_ID, DEFAULT_MQTT_TOPICS, createFacebookMqttProtocol, parseMessengerSyncPayload, normalizeMessengerDelta,
   parseVersion, compareVersions, verifyUpdateManifest, verifyArtifactDigest,
   version: require("./package.json").version
 };
