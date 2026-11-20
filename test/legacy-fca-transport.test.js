@@ -45,6 +45,11 @@ test("legacy FCA provider maps AppState and exposes personal account methods/eve
   assert.equal(received.options.userAgent, "test-agent");
   assert.equal(driver.getCurrentUserID(), "123456789");
   assert.deepEqual(await driver.sendMessage("hello"), { messageID: "hello" });
+  assert.deepEqual(await driver.sendMessage({
+    message: "mapped hello",
+    threadID: "thread-42",
+    replyToMessageID: "message-7"
+  }), { messageID: "mapped hello" });
   assert.deepEqual(await driver.getThreadInfo("thread-1"), { threadID: "thread-1" });
   assert.equal(driver.sessionGuard(), "guard");
   let receivedEvent;
