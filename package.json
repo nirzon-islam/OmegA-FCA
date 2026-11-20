@@ -47,7 +47,9 @@
     "docs/NTKHANG-REFERENCE-STUDY.md",
     "docs/SAFE-DIAGNOSTICS.md",
     "docs/REALTIME-FRAME-EVIDENCE.md",
-    "docs/NESTED-REALTIME-PAYLOAD.md"
+    "docs/NESTED-REALTIME-PAYLOAD.md",
+    "tools/",
+    "docs/BROWSER-CAPTURE.md"
   ],
   "exports": {
     ".": {
