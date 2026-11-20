@@ -98,12 +98,12 @@ export interface LicenseOptions {
   checkIntervalMs?: number; refresh?: () => string | Promise<string>;
 }
 export interface ClientApi {
-  getCurrentUserID(): string | null; getConnectionState(): ConnectionSnapshot; getLicense(): VerifiedLicense | null;
+  getCurrentUserID(): string | null; getUserID?(): string | null; getConnectionState(): ConnectionSnapshot; getLicense(): VerifiedLicense | null;
   getCapabilities(): Readonly<{ methods: readonly string[]; events: boolean; sessionGuard: boolean; e2ee: false }>;
   listen(callback: (event: unknown) => void): () => void;
   listenMqtt(callback: (error: Error | null, event?: unknown) => void): () => void;
   stopListening(callback?: () => void): boolean;
-  sendRequest?: (payload: Record<string, unknown>, options?: { timeoutMs?: number }) => Promise<unknown>; sendMessage?: (input: { threadID: string | number; message: string | { body?: string; sticker?: string | number }; replyToMessageID?: string | number }, options?: { timeoutMs?: number }) => Promise<unknown>; getUserInfo?: (...args: any[]) => any;
+  sendRequest?: (payload: Record<string, unknown>, options?: { timeoutMs?: number }) => Promise<unknown>; sendMessage?: { (input: { threadID: string | number; message: string | { body?: string; sticker?: string | number }; replyToMessageID?: string | number }, options?: { timeoutMs?: number }): Promise<unknown>; (message: string | { body?: string; sticker?: string | number }, threadID: string | number, callback: (error: Error | null, result?: unknown) => void, replyToMessageID?: string | number): void; }; getUserInfo?: (...args: any[]) => any;
   getThreadInfo?: (...args: any[]) => any; getThreadList?: (...args: any[]) => any;
   markAsRead?: (...args: any[]) => any; setMessageReaction?: (...args: any[]) => any;
   sendTypingIndicator?: (...args: any[]) => any; unsendMessage?: (...args: any[]) => any;
