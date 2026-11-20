@@ -128,6 +128,29 @@ test("personal session reports expired AppState on login redirect", async () => 
   );
 });
 
+test("personal session follows safe same-site redirects and validates the final page", async () => {
+  const requests = [];
+  const session = await createPersonalSession({
+    appState,
+    fetchImpl: async (url, options) => {
+      requests.push({ url: String(url), cookie: options.headers.cookie });
+      if (requests.length === 1) {
+        return response({
+          status: 302,
+          location: "https://www.facebook.com/?locale=en_GB",
+          setCookies: ["redirect_sid=kept; Domain=.facebook.com; Path=/; Secure"]
+        });
+      }
+      return response({ html: '<html>{"USER_ID":"123456789012345"}</html>' });
+    }
+  });
+  assert.equal(requests.length, 2);
+  assert.equal(requests[1].url, "https://www.facebook.com/?locale=en_GB");
+  assert.match(requests[1].cookie, /redirect_sid=kept/);
+  assert.equal(session.userId, "123456789012345");
+  session.close();
+});
+
 test("identity extraction is conservative and bounded to numeric Facebook IDs", () => {
   assert.equal(extractIdentity('{"USER_ID":"123456789012345"}'), "123456789012345");
   assert.equal(extractIdentity('{"USER_ID":"not-an-id"}'), null);
