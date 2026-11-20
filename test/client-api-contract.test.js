@@ -23,6 +23,26 @@ test("credentials login forwards a manually entered two-factor code to the provi
   await client.logout();
 });
 
+test("provider authentication errors never expose secret-bearing messages or causes", async () => {
+  const client = createClient({
+    authenticate: async () => {
+      const error = new Error("login failed password=hunter2 cookie=private-session");
+      error.cause = new Error("xs=private-cookie");
+      throw error;
+    },
+    reconnect: { maxAttempts: 1 }
+  });
+  await assert.rejects(client.login({ mode: "appstate", appState }), error => {
+    assert.equal(error.code, "FCA_AUTHENTICATION_FAILED");
+    assert.match(error.message, /inspect provider diagnostics securely/);
+    assert.equal(error.message.includes("hunter2"), false);
+    assert.equal(error.message.includes("private-session"), false);
+    assert.equal(error.cause, undefined);
+    return true;
+  });
+  await client.logout();
+});
+
 test("checkpoint and expired-session errors stop automatic authentication retries", async () => {
   for (const [message, expectedState, expectedCode] of [
     ["checkpoint required", "checkpoint", "FCA_CHECKPOINT_REQUIRED"],
