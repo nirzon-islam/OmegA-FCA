@@ -120,9 +120,10 @@ npm ci
 npm test
 npm run test:syntax
 npm run test:appstate
+npm run test:messenger-mqtt
 ~~~
 
-The live AppState check prints only the account ID and session status; it does not print cookies. It validates the HTTPS session bootstrap only—not Messenger realtime, message sending, or full GoatBot compatibility. See [AppState deployment/test instructions](docs/DEPLOYMENT.md).
+The live AppState check prints only the account ID and session status; it does not print cookies. It validates the HTTPS session bootstrap only—not Messenger realtime, message sending, or full GoatBot compatibility. See [AppState deployment/test instructions](docs/DEPLOYMENT.md). The separate `test:messenger-mqtt` command attempts the native broker handshake and listens for event types without printing message content. An outgoing test message requires explicit `--send`, `FCA_TEST_THREAD_ID`, and `FCA_TEST_MESSAGE` settings; verify actual delivery on the recipient device.
 
 ## Development
 
