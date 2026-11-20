@@ -77,7 +77,7 @@ export interface TransportDriver {
   getThreadInfo?(...args: unknown[]): unknown; getThreadList?(...args: unknown[]): unknown;
   markAsRead?(...args: unknown[]): unknown; setMessageReaction?(...args: unknown[]): unknown;
   sendTypingIndicator?(...args: unknown[]): unknown; unsendMessage?(...args: unknown[]): unknown;
-  changeNickname?(...args: unknown[]): unknown; addUserToGroup?(...args: unknown[]): unknown;
+  changeNickname?(...args: unknown[]): unknown; changeThreadColor?(color: string, threadID: string | number, callback?: (error?: Error | null) => void): Promise<unknown> | void; changeThreadEmoji?(emoji: string, threadID: string | number, callback?: (error?: Error | null) => void): Promise<unknown> | void; setTitle?(title: string, threadID: string | number, callback?: (error?: Error | null, result?: unknown) => void): Promise<unknown> | void; addUserToGroup?(...args: unknown[]): unknown;
   removeUserFromGroup?(...args: unknown[]): unknown; createNewGroup?(...args: unknown[]): unknown;
   getThreadHistory?(...args: unknown[]): unknown; getMessage?(...args: unknown[]): unknown;
   getFriendsList?(...args: unknown[]): unknown; getUserID?(...args: unknown[]): unknown;
@@ -423,6 +423,9 @@ export interface FacebookThreadApi {
   setMessageReaction(reaction: string, messageID: string, callback?: (error?: Error | null) => void): Promise<unknown> | void;
   markAsRead(threadID: string | number, read?: boolean | ((error?: Error | null) => void), callback?: (error?: Error | null) => void): Promise<unknown> | void;
   unsendMessage(messageID: string, callback?: (error: Error | null, result?: unknown) => void): Promise<unknown> | void;
+  changeThreadColor(color: string, threadID: string | number, callback?: (error?: Error | null) => void): Promise<unknown> | void;
+  changeThreadEmoji(emoji: string, threadID: string | number, callback?: (error?: Error | null) => void): Promise<unknown> | void;
+  setTitle(title: string, threadID: string | number, callback?: (error?: Error | null, result?: unknown) => void): Promise<unknown> | void;
 }
 export const FACEBOOK_THREAD_DOC_IDS: Readonly<{ threadList: string; threadInfo: string; threadHistory: string; reaction: string }>;
 export function createFacebookThreadApi(options: { session: PersonalSession; webClient?: FacebookWebClient }): FacebookThreadApi;
