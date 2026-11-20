@@ -71,9 +71,6 @@ function createFacebookMqttProtocol(options = {}) {
   };
   if (headers.Cookie && /[\r\n]/.test(headers.Cookie)) throw new TypeError("cookie header contains invalid characters");
   const cursorStore = options.syncCursorStore || null;
-  const storedCursor = cursorStore ? cursorStore.load() : null;
-  const syncToken = options.syncToken ?? storedCursor?.syncToken ?? null;
-  const lastSeqId = options.lastSeqId ?? storedCursor?.lastSeqId ?? null;
   let packetId = randomInt(1, 65536);
   const requestTracker = createMqttRequestTracker({ timeoutMs: options.requestTimeoutMs ?? 15000, maxPending: options.maxPendingRequests ?? 256 });
   const nextPacketId = () => { packetId = packetId >= 65535 ? 1 : packetId + 1; return packetId; };
@@ -104,6 +101,9 @@ function createFacebookMqttProtocol(options = {}) {
         }
       },
       async subscribe(socket, context) {
+        const currentCursor = cursorStore ? cursorStore.load() : null;
+        const syncToken = options.syncToken ?? currentCursor?.syncToken ?? null;
+        const lastSeqId = options.lastSeqId ?? currentCursor?.lastSeqId ?? null;
         const id = nextPacketId();
         socket.send(mqtt.encodeSubscribe(id, topics.map(topic => ({ topic, qos: 1 }))));
         const response = decodePacket(await context.waitForFrame());
