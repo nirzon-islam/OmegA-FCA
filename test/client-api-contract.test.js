@@ -9,18 +9,19 @@ const appState = [
   { key: "xs", value: "synthetic-session-value", domain: "facebook.com" }
 ];
 
-test("credentials login forwards a manually entered two-factor code to the provider", async () => {
-  let received;
+test("credential login and manual 2FA are deferred in the AppState-only phase", async () => {
+  let authenticated = false;
   const client = createClient({
-    authenticate: async ({ credentials }) => {
-      received = credentials;
+    authenticate: async () => {
+      authenticated = true;
       return { listen: () => () => {}, getCurrentUserID: () => "123456", disconnect: async () => {} };
     }
   });
-  await client.login({ mode: "credentials", email: "owner@example.test", password: "synthetic-password", twoFactorCode: "123456" });
-  assert.equal(received.twoFactorCode, "123456");
-  assert.equal(received.twoFactorSecret, null);
-  await client.logout();
+  await assert.rejects(
+    client.login({ mode: "credentials", email: "owner@example.test", password: "synthetic-password", twoFactorCode: "123456" }),
+    /login is deferred/
+  );
+  assert.equal(authenticated, false);
 });
 
 test("provider authentication errors never expose secret-bearing messages or causes", async () => {
