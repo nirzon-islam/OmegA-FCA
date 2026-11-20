@@ -2,7 +2,7 @@ name: Publish OmegA-FCA to GitHub Packages
 
 on:
   push:
-    branches: [public-package]
+    branches: [main]
     paths:
       - package.json
       - package-lock.json
@@ -23,7 +23,7 @@ jobs:
         with:
           node-version: 20
           registry-url: https://npm.pkg.github.com
-          scope: '@octopusworldpro-web'
+          scope: '@nirzon-islam'
       - name: Install dependencies
         run: npm ci
       - name: Test
