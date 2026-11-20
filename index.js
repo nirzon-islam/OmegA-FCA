@@ -25,6 +25,7 @@ const { validateTransportDriver, createTransportFactory } = require("./src/trans
 const { createMetaMessengerTransport, normalizeWebhookPayload, verifyWebhookSignature, verifyWebhookChallenge } = require("./src/transport/metaMessenger");
 const { decodeRealtimeFrame, summarizeRealtimeFrame, DEFAULT_MAX_FRAME_BYTES } = require("./src/transport/realtimeFrameDecoder");
 const { inspectRealtimeBinaryPayload, DEFAULT_MAX_BINARY_PAYLOAD_BYTES } = require("./src/transport/binaryPayloadInspector");
+const { inspectRealtimeSyncEnvelope, DEFAULT_MAX_SYNC_FRAME_BYTES } = require("./src/transport/realtimeSyncEnvelope");
 const { createNativeRealtimeTransport, DEFAULT_CONNECT_TIMEOUT_MS, DEFAULT_CLOSE_TIMEOUT_MS } = require("./src/transport/nativeRealtimeTransport");
 const mqtt311Codec = require("./src/transport/mqtt311Codec");
 const { parseVersion, compareVersions, verifyUpdateManifest, verifyArtifactDigest } = require("./src/update/manifest");
@@ -43,6 +44,7 @@ module.exports = {
   normalizeWebhookPayload, verifyWebhookSignature, verifyWebhookChallenge,
   decodeRealtimeFrame, summarizeRealtimeFrame, DEFAULT_MAX_FRAME_BYTES,
   inspectRealtimeBinaryPayload, DEFAULT_MAX_BINARY_PAYLOAD_BYTES,
+  inspectRealtimeSyncEnvelope, DEFAULT_MAX_SYNC_FRAME_BYTES,
   createNativeRealtimeTransport, DEFAULT_CONNECT_TIMEOUT_MS, DEFAULT_CLOSE_TIMEOUT_MS, mqtt311Codec,
   parseVersion, compareVersions, verifyUpdateManifest, verifyArtifactDigest,
   version: require("./package.json").version
