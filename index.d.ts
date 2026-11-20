@@ -380,3 +380,12 @@ export function createMessengerSyncCursorStore(options: { filePath: string; key:
 export interface FacebookMqttDriverOptions extends Omit<PersonalSessionOptions, "appState"> { appState: Cookie[]; socketFactory(options: { url: string; protocols?: string | string[]; headers?: Record<string, string>; signal: AbortSignal }): unknown | Promise<unknown>; connectTimeoutMs?: number; closeTimeoutMs?: number; protocolSetupTimeoutMs?: number; maxFrameBytes?: number; syncCursorStore?: MessengerSyncCursorStore; onSyncCursor?: (cursor: MessengerSyncCursor) => void; requestTimeoutMs?: number; maxPendingRequests?: number; mqtt?: Record<string, unknown>; }
 export function createFacebookMqttDriver(options: FacebookMqttDriverOptions): Promise<TransportDriver & { getCurrentUserID(): string; getSessionState(): "active"; sendRequest(payload: Record<string, unknown>, options?: { timeoutMs?: number }): Promise<unknown>; sendMessage(input: { threadID: string | number; message: string | { body?: string; sticker?: string | number }; replyToMessageID?: string | number }, options?: { timeoutMs?: number }): Promise<unknown>; disconnect(): Promise<void>; }>;
 export interface MessengerSyncCursor { syncToken: string | null; lastSeqId: string | number | null; }
+
+/** Creates the native AppState-only personal Messenger client; caller supplies WebSocket implementation. */
+export interface FacebookMqttClientOptions extends Omit<FacebookMqttDriverOptions, "appState"> {
+  reconnect?: { minDelayMs?: number; maxDelayMs?: number; factor?: number; jitter?: number; maxAttempts?: number };
+  license?: LicenseOptions;
+  requireLicense?: boolean;
+  onLicenseError?: (error: Error) => void;
+}
+export function createFacebookMqttClient(options: FacebookMqttClientOptions): ReturnType<typeof createClient>;
