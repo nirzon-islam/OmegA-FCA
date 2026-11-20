@@ -39,23 +39,11 @@ function parseAccountText(text) {
   return parseCookieHeader(source.replace(/\|/g, ";"));
 }
 
-function readJsonConfig(filePath) {
-  try {
-    const stat = fs.statSync(filePath);
-    if (!stat.isFile() || stat.size > 256 * 1024) throw new Error("config.json must be a regular file no larger than 256 KiB");
-    const parsed = JSON.parse(fs.readFileSync(filePath, "utf8"));
-    if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) throw new TypeError("config.json must contain an object");
-    return parsed;
-  } catch (error) {
-    if (error.code === "ENOENT") return {};
-    throw error;
-  }
-}
 
 function loadAccountConfig({
   cwd = process.cwd(),
   accountFile = "account.txt",
-  configFile = "config.json",
+  configFile = "config.json", // Reserved for the later credential-login phase; not read here.
   appStateFile = null,
   env = process.env
 } = {}) {
@@ -71,9 +59,7 @@ function loadAccountConfig({
   }
 
   // This release path is intentionally AppState-only. Credential login is
-  // deferred; never silently fall back to FB_EMAIL/FB_PASSWORD from env/config.
-  const configPath = resolveProjectFile(root, configFile, "configFile");
-  readJsonConfig(configPath);
+  // deferred; config.json and FB_* environment values are not read here.
 
   const statePath = resolveProjectFile(root, appStateFile || "appstate.json", "AppState file");
   try {
