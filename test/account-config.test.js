@@ -42,9 +42,12 @@ test("loads AppState JSON as backward-compatible fallback", () => withRoot(root 
   assert.deepEqual(config.appState, state);
 }));
 
-test("rejects incomplete credentials and paths outside project root", () => withRoot(root => {
+test("ignores credential configuration during AppState-only phase and rejects paths outside project root", () => withRoot(root => {
   fs.writeFileSync(path.join(root, "config.json"), JSON.stringify({ facebookAccount: { email: "owner@example.test" } }));
-  assert.throws(() => loadAccountConfig({ cwd: root, env: {} }), /requires fb_email/);
+  assert.throws(
+    () => loadAccountConfig({ cwd: root, env: { FB_EMAIL: "env@example.test", FB_PASSWORD: "secret" } }),
+    error => error.code === "FCA_ACCOUNT_CONFIG_MISSING"
+  );
   assert.throws(() => loadAccountConfig({ cwd: root, accountFile: "../outside.txt", env: {} }), /inside the project root/);
 }));
 
