@@ -10,6 +10,7 @@ const REMOVE_URL = "https://www.facebook.com/chat/remove_participants";
 const NICKNAME_URL = "https://www.facebook.com/messaging/save_thread_nickname/?source=thread_settings&dpr=1";
 const REACTION_URL = "https://www.facebook.com/webgraphql/mutation/";
 const READ_URL = "https://www.facebook.com/ajax/mercury/change_read_status.php";
+const UNSEND_URL = "https://www.facebook.com/messaging/unsend_message/";
 
 // Public FCA document IDs. Facebook changes private web query IDs without notice.
 const DOC_IDS = Object.freeze({
@@ -283,6 +284,21 @@ function createFacebookThreadApi({ session, webClient } = {}) {
     return callbackResult(operation, callback);
   }
 
+  function unsendMessage(messageID, callback) {
+    if (typeof messageID !== "string" || !messageID || messageID.length > 256) {
+      throw new TypeError("messageID is invalid");
+    }
+    const operation = web.post(UNSEND_URL, { message_id: messageID }).then(result => {
+      if (!result.payload || result.payload.error) {
+        throw createFacebookError("unsendMessage: Facebook rejected the unsend request", {
+          code: "FCA_FACEBOOK_REQUEST_REJECTED", retryable: false
+        });
+      }
+      return result.payload;
+    });
+    return callbackResult(operation, callback);
+  }
+
   function markAsRead(threadID, read = true, callback) {
     if (typeof read === "function") { callback = read; read = true; }
     if (typeof read !== "boolean") throw new TypeError("read must be a boolean");
@@ -294,7 +310,7 @@ function createFacebookThreadApi({ session, webClient } = {}) {
   }
 
   return Object.freeze({ httpPost, getThreadList, getThreadInfo, getThreadHistory, getUserInfo,
-    addUserToGroup, removeUserFromGroup, changeNickname, setMessageReaction, markAsRead });
+    addUserToGroup, removeUserFromGroup, changeNickname, setMessageReaction, markAsRead, unsendMessage });
 }
 
 module.exports = { createFacebookThreadApi, DOC_IDS };
