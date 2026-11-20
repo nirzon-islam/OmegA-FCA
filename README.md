@@ -26,27 +26,16 @@ OmegA-FCA is the Facebook integration library maintained under the **OmegA Bot**
 
 ## GoatBot account configuration
 
-Credential login reads the canonical `fb_email` field from `config.json`:
+The current authentication phase is **AppState-only**. Email/password and username/password login are deferred and are not loaded from configuration or environment variables.
 
-```json
-{
-  "facebookAccount": {
-    "fb_email": "you@example.com",
-    "password": "YOUR_FACEBOOK_PASSWORD",
-    "2FASecret": "YOUR_BASE32_TOTP_SECRET",
-    "proxy": null,
-    "userAgent": "Mozilla/5.0"
-  }
-}
-```
+Put only an authorized cookie export in the project-root `account.txt`. Accepted formats are:
+- Raw cookie header (`c_user=...; xs=...`).
+- Netscape cookie export.
+- JSON cookie array.
 
-The legacy `email` property and `FB_EMAIL` environment variable are accepted for compatibility, but `fb_email` is canonical. `fb_username` / `FB_USERNAME` is not used. `2FASecret` is a Base32 TOTP seed; the adapter generates a fresh six-digit RFC 6238 code when it starts a credentials login. The secret itself is never used as the one-time code.
+Alternatively, put a JSON cookie array in `appstate.json`. A non-empty `account.txt` takes precedence. Credential-like key/value text in `account.txt` is rejected. The loader deliberately does not fall back to `fb_email`, `fb_username`, passwords, 2FA values, or `FB_*` environment variables.
 
-For cookie/AppState login, put only the cookie header, Netscape cookie export, or JSON cookie array in the project-root `account.txt`. A non-empty `account.txt` takes precedence over credentials in `config.json`; remove/empty it when you want the configured credentials mode. Credential-like key/value text in `account.txt` is rejected rather than interpreted as cookies. The root `appstate.json` remains a compatibility fallback.
-
-**Important:** `account.txt` is strictly AppState/cookie-only. Never put email, password, username, or 2FA values in it. Credentials and TOTP configuration belong in `config.json → facebookAccount`.
-
-`account.txt`, `config.json`, passwords, cookies, and 2FA seeds must stay private and must not be committed. This is configuration/TOTP wiring only; it does **not** implement Facebook's native password-login protocol or realtime MQTT transport.
+`account.txt`, `appstate.json`, passwords, cookies, 2FA seeds, and session keys must stay private and must not be committed. Email/password authentication will be implemented as a separate later phase; it is not available in this AppState-only release path.
 
 ## Personal AppState session foundation
 
