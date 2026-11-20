@@ -130,3 +130,16 @@ npm pack --dry-run
 **OmegA Bot** — developed and maintained by **NirZon**.
 
 MIT License. See [LICENSE](LICENSE).
+
+
+## Browser-based protocol capture
+
+OmegA-FCA includes an owner-operated Playwright capture utility. It launches a visible Chromium browser so the account owner can sign in manually, then records sanitized HTTP/WebSocket metadata for current protocol research. Setup and privacy guidance: [Browser Capture](docs/BROWSER-CAPTURE.md).
+
+```sh
+npm install
+npx playwright install chromium
+npm run capture:browser
+```
+
+The browser runs locally; it is not remotely visible to ChatGPT. The default report omits cookies, query strings, request/response bodies, and binary frame contents. An explicit `--save-private-frames` option stores raw WebSocket frames locally for owner-only inspection; those files may contain secrets or private messages and must not be shared unredacted.
