@@ -29,7 +29,7 @@ function encodeGatewaySubscription(payload, index) {
   }
   const body = Buffer.from(payload, "utf8");
   if (body.length > 65535) throw new RangeError("Realtime subscription exceeds two-byte length");
-  return Buffer.concat([Buffer.from([14, index, 0, body.length]), body, Buffer.from([0, 0])]);
+  return Buffer.concat([Buffer.from([14, index, (body.length >> 8) & 0xff, body.length & 0xff]), body, Buffer.from([0, 0])]);
 }
 
 function decodeGatewayFrame(frame, { maxFrameBytes = 1024 * 1024 } = {}) {
