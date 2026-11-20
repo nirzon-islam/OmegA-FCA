@@ -3,15 +3,21 @@
 const { createClient } = require("../api/client");
 const { createFacebookMqttDriver } = require("../transport/facebookMqttDriver");
 
+function defaultSocketFactory({ url, protocols, headers } = {}) {
+  // Keep the WebSocket implementation inside the package so applications do
+  // not need to provide an adapter or install a separate transport dependency.
+  const WebSocket = require("ws");
+  return new WebSocket(url, protocols, { headers });
+}
+
 /**
  * Creates the first-party AppState-only personal Messenger client.
- * The WebSocket implementation is injected by the application (for example,
- * the "ws" package). This does not enable password/2FA login or invent
- * unsupported private Facebook action endpoints.
+ * The package owns its WebSocket implementation; tests and advanced users
+ * may still inject a compatible socketFactory.
  */
 function createFacebookMqttClient(options = {}) {
   const {
-    socketFactory,
+    socketFactory = defaultSocketFactory,
     fetchImpl,
     userAgent,
     timeoutMs,
@@ -32,7 +38,7 @@ function createFacebookMqttClient(options = {}) {
   } = options;
 
   if (typeof socketFactory !== "function") {
-    throw new TypeError("socketFactory is required");
+    throw new TypeError("socketFactory must be a function");
   }
 
   return createClient({
