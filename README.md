@@ -20,7 +20,7 @@ OmegA-FCA is the Facebook integration library maintained under the **OmegA Bot**
 - Connection supervision, bounded reconnect/backoff and event dispatch.
 - Bounded realtime binary-frame envelope inspection based on observed captures.
 - Experimental Facebook Messenger MQTT 3.1 transport adapter using public FCA observations: `edge-chat.facebook.com/chat`, broker handshake, subscriptions and sync-queue bootstrap. Event normalization and live validation remain incomplete.
-- `createFacebookMqttClient()`: first-party AppState-only client factory that wires the native personal-session bootstrap, MQTT driver, reconnect supervisor and GoatBot-style `listenMqtt` facade. Supply a WebSocket implementation; real Facebook broker acceptance is not yet verified.
+- `createFacebookMqttClient()`: first-party AppState client factory with optional encrypted SessionGuard restore that wires the native personal-session bootstrap, MQTT driver, reconnect supervisor and GoatBot-style `listenMqtt` facade. Supply a WebSocket implementation; real Facebook broker acceptance is not yet verified.
 - `inspectRealtimeSyncEnvelope()`: parses the captured outer sync JSON envelope and nested payload with size/type checks; it does not infer the unknown binary prefix or protocol semantics.
 - `createLegacyFcaProvider()`: adapter for an existing callback-style personal-account FCA implementation.
 - `createGoatBotLogin()`: callback-style GoatBot login adapter.
