@@ -96,8 +96,8 @@ function parseMessengerSyncPayload(input) {
   const deltas = extractDeltas(envelope);
   const events = deltas.map(normalizeDelta).filter(Boolean);
   const cursor = {
-    syncToken: firstString(envelope.sync_token, envelope.syncToken, envelope.payload?.sync_token),
-    lastSeqId: envelope.last_seq_id ?? envelope.lastSeqId ?? envelope.seq ?? null
+    syncToken: firstString(envelope.syncToken, envelope.sync_token, envelope.payload?.syncToken, envelope.payload?.sync_token),
+    lastSeqId: envelope.lastIssuedSeqId ?? envelope.last_seq_id ?? envelope.lastSeqId ?? envelope.firstDeltaSeqId ?? envelope.seq ?? null
   };
   if (cursor.syncToken === null && cursor.lastSeqId === null) return { events, envelope, cursor: null };
   return { events, envelope, cursor };
