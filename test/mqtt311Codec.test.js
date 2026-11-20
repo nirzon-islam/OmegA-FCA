@@ -56,7 +56,7 @@ test("MQTT CONNECT refuses password without username", () => {
 
 test("MQTT decoder rejects non-canonical remaining length encodings", () => {
   assert.throws(() => mqtt.decodeRemainingLength(Buffer.from([0x30, 0x80, 0x00])), /Non-canonical/);
-  assert.throws(() => mqtt.decodeRemainingLength(Buffer.from([0x30, 0xff, 0xff, 0xff, 0xff, 0x7f])), /out of range/);
+  assert.throws(() => mqtt.decodeRemainingLength(Buffer.from([0x30, 0xff, 0xff, 0xff, 0xff, 0x7f])), /Malformed MQTT remaining length/);
 });
 
 test("MQTT decoder validates CONNACK session-present consistency", () => {
