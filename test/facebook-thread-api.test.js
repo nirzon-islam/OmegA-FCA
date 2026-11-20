@@ -116,3 +116,27 @@ test("httpPost supports error-first callbacks and rejects non-object forms", asy
   await new Promise(resolve => setImmediate(resolve));
   assert.equal(result, "ok");
 });
+
+test("unsendMessage uses the authenticated Facebook unsend endpoint", async () => {
+  let captured;
+  const api = createFacebookThreadApi({
+    session,
+    webClient: { post: async (url, body) => {
+      captured = { url, body };
+      return { payload: { success: true } };
+    } }
+  });
+  const result = await api.unsendMessage("mid.123");
+  assert.equal(captured.url, "https://www.facebook.com/messaging/unsend_message/");
+  assert.deepEqual(captured.body, { message_id: "mid.123" });
+  assert.deepEqual(result, { success: true });
+});
+
+test("unsendMessage rejects invalid IDs and reports Facebook action errors", async () => {
+  const api = createFacebookThreadApi({
+    session,
+    webClient: { post: async () => ({ payload: { error: "rejected" } }) }
+  });
+  assert.throws(() => api.unsendMessage(""), /messageID is invalid/);
+  await assert.rejects(api.unsendMessage("mid.123"), error => error.code === "FCA_FACEBOOK_REQUEST_REJECTED");
+});
