@@ -265,6 +265,7 @@ export interface NativeRealtimeTransportOptions {
   headers?: Record<string, string>;
   connectTimeoutMs?: number;
   closeTimeoutMs?: number;
+  protocolSetupTimeoutMs?: number;
   maxFrameBytes?: number;
   onDiagnostic?: (event: Readonly<Record<string, unknown>>) => void;
 }
@@ -277,6 +278,7 @@ export interface NativeRealtimeTransport {
 }
 export const DEFAULT_CONNECT_TIMEOUT_MS: number;
 export const DEFAULT_CLOSE_TIMEOUT_MS: number;
+export const DEFAULT_PROTOCOL_SETUP_TIMEOUT_MS: number;
 /**
  * Protocol-neutral WebSocket runtime. A separately verified adapter must supply
  * Facebook-specific authentication, subscriptions, decoding and action encoding.
