@@ -26,7 +26,7 @@ test("builds the Facebook realtime gateway URL and safe upgrade headers", () => 
   assert.equal(FACEBOOK_GATEWAY_SUBSCRIPTIONS.length, 8);
 });
 
-test("encodes gateway subscription frame with bounded one-byte body length", () => {
+test("encodes gateway subscription frame with bounded two-byte body length", () => {
   const frame = encodeGatewaySubscription('{"method":"test"}', 2);
   assert.equal(frame[0], 14);
   assert.equal(frame[1], 2);
@@ -34,7 +34,7 @@ test("encodes gateway subscription frame with bounded one-byte body length", () 
   assert.equal(frame[3], Buffer.byteLength('{"method":"test"}'));
   assert.equal(frame.subarray(4, -2).toString(), '{"method":"test"}');
   assert.deepEqual([...frame.subarray(-2)], [0, 0]);
-  assert.throws(() => encodeGatewaySubscription("x".repeat(256), 0), /one-byte length/);
+  assert.throws(() => encodeGatewaySubscription("x".repeat(65536), 0), /two-byte length/);
 });
 
 test("decodes a gateway subscription response and notification payload", () => {
@@ -64,7 +64,7 @@ test("decodes a gateway subscription response and notification payload", () => {
 test("rejects malformed IDs, unsafe endpoints and cookie header injection", () => {
   assert.throws(() => createFacebookGatewayProtocol({ userId: "not-an-id" }), /numeric Facebook ID/);
   assert.throws(() => createFacebookGatewayProtocol({ userId: "123", url: "wss://evil.example/ws/realtime" }), /verified gateway/);
-  assert.throws(() => createFacebookGatewayProtocol({ userId: "123", cookie: "a=b\\r\\nInjected: yes" }), /invalid characters/);
+  assert.throws(() => createFacebookGatewayProtocol({ userId: "123", cookie: "a=b\r\nInjected: yes" }), /invalid characters/);
 });
 
 test("subscribes with numbered frames and does not pretend to support send actions", async () => {
