@@ -53,7 +53,8 @@ The client exposes each method below only when the injected driver provides that
 | `sendTypingIndicator` | `messaging` | Native authenticated typing endpoint; supports the legacy FCA argument order and the simpler thread/state form, with synthetic tests. Live acceptance is unverified. |
 | `getUserInfo`, `getThreadInfo`, `getThreadList`, `getThreadHistory` | `threads` | Native AppState-backed web actions with synthetic tests; live Facebook endpoint behavior is unverified. |
 | `httpPost` | compatibility | Authenticated low-level POST returning response text; restricted to Facebook/Messenger HTTPS hosts and bounded request/response sizes. Supports custom GoatBot GraphQL commands such as friend-request management. |
-| `getMessage`, `getFriendsList` | `threads` | Not yet implemented by the first-party native driver; optional pass-through only. |
+| `getMessage` | `threads` | Implemented by looking up the requested ID in the latest 100 normalized thread-history messages; callback and Promise forms are supported. Older messages may require a future cursor-based lookup. |
+| `getFriendsList` | `threads` | Not yet implemented by the first-party native driver; optional pass-through only. |
 | `getUserID` | `threads` | Alias to the authenticated account identity. |
 | `addUserToGroup`, `removeUserFromGroup`, `changeNickname`, `setTitle` | `groups` | Native AppState-backed web actions with synthetic tests; live acceptance is unverified. |
 | `createNewGroup` | `groups` | Not exposed until its request contract is evidenced. |
