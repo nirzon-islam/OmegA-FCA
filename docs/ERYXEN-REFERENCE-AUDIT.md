@@ -26,7 +26,7 @@ Status labels:
 | Messages | sendMessage, editMessage, unsendMessage, deleteMessage, getMessage, broadcast | sendMessage is experimental; unsendMessage is implemented with synthetic web-action tests; delete/broadcast are missing or not verified; `editMessage` and `shareContact` now have native MQTT request builders with synthetic response tests; `getMessage` is implemented as a lookup in the latest 100 normalized thread-history messages |
 | Attachments and media | uploadAttachment, forwardAttachment, sendImage, sendVideo, sendAudio, sendFile, sendGif, sendLocation, shareLink, shareContact | Full upload/download and attachment event parity are missing; do not return dummy success |
 | Reactions and receipts | setMessageReaction, markAsRead, markAsReadAll, markAsDelivered, markAsSeen, typing | setMessageReaction, markAsRead, markAsDelivered and sendTypingIndicator have first-party synthetic-tested paths; markAsReadAll/markAsSeen need audit |
-| Threads | getThreadList, getThreadInfo, getThreadHistory, getMessage, createGroup, deleteThread, muteThread, archive, request handling, search | list/info/history and `getMessage` latest-100 lookup plus selected group operations have synthetic-tested adapters; createNewGroup is withheld pending evidenced request contract; other thread operations need audit |
+| Threads | getThreadList, getThreadInfo, getThreadHistory, getMessage, createGroup, deleteThread, muteThread, archive, request handling, search | list/info/history, latest-100 `getMessage`, typeahead `getUserID`, `getFriendsList`, `getUID`, `resolvePhotoUrl`, and selected group operations now have synthetic-tested adapters; createNewGroup is withheld pending evidenced request contract; other thread operations need audit |
 | Thread customization | setTitle, changeThreadColor, changeThreadEmoji, changeNickname, changeGroupImage, changeAdminStatus, polls, pin/unpin | title/color/emoji/nickname and add/remove member paths have synthetic-tested adapters; image/admin/poll/pin operations are missing or unverified |
 | Users and social | getUserInfo, getUID, getFriendsList, avatar/profile/public data, friend/block/follow actions, post/comment/share/reactions | getUserInfo is implemented with synthetic tests; other methods are missing or require an evidence-backed contract |
 | HTTP helpers | httpGet, httpPost, multipart form data | bounded authenticated Facebook/Messenger HTTPS web client and httpPost facade exist; GET/multipart upload parity needs audit |
@@ -81,3 +81,12 @@ The public checklist is a comparison target, not proof that every method is safe
 
 - `fca-eryxenx` 4.0.3: public API quick reference captured from [Socket's package overview](https://socket.dev/npm/package/fca-eryxenx/overview/4.0.3).
 - `@eryxenx/fca`: separate npm package name. The OSV advisory linked below applies to the reported affected versions of this package; do not generalize it to the separate `fca-eryxenx` package without evidence.
+
+
+## Latest native user/group lookup additions
+
+- `getUserID(name)` now uses the authenticated Facebook typeahead endpoint and returns normalized user-ID entries; `getUID(profile)` resolves numeric IDs, `profile.php?id=` URLs, `/people/name/id` URLs, and vanity names.
+- `resolvePhotoUrl(photoID)` uses the authenticated Mercury photo lookup and only returns HTTPS URLs on Facebook-owned CDN hosts.
+- `getFriendsList()` normalizes the authenticated `/chat/user_info_all` response.
+- `createNewGroup(participantIDs, title?)` uses the observed Messenger GraphQL mutation, validates participant IDs, and returns the created thread ID.
+- These private Facebook endpoints are unofficial and still need authorized live-account acceptance; synthetic tests verify request construction and response normalization.
