@@ -6,7 +6,9 @@ const { createSessionGuard } = require("../security/sessionGuard");
 const { createFacebookMqttProtocol } = require("./facebookMqttProtocol");
 const { createNativeRealtimeTransport } = require("./nativeRealtimeTransport");
 const { createFacebookThreadApi } = require("./facebookThreadApi");
-const { createMessengerEditMessageRequest, createMessengerShareContactRequest } = require("./messengerActions");
+const { createFacebookWebClient } = require("../auth/facebookWebClient");
+const { readImageInput } = require("../compat/imageUpload");
+const { createMessengerEditMessageRequest, createMessengerShareContactRequest, createMessengerChangeGroupImageRequest } = require("./messengerActions");
 const { createHumanizer } = require("../compat/humanizer");
 
 /**
@@ -128,6 +130,7 @@ async function createFacebookMqttDriver({
       error.retryable = false;
       throw error;
     }
+    const webClient = createFacebookWebClient({ session });
     const protocolConfig = createFacebookMqttProtocol({
       ...mqtt, userId: session.userId,
       url: mqtt.url || session.realtime.endpoint || undefined,
@@ -149,7 +152,7 @@ async function createFacebookMqttDriver({
       await guard.saveNow();
       guard.start(sessionGuardOptions.intervalMs === undefined ? 60_000 : sessionGuardOptions.intervalMs);
     }
-    const threadApi = createFacebookThreadApi({ session, clientId: protocolConfig.session.clientId });
+    const threadApi = createFacebookThreadApi({ session, clientId: protocolConfig.session.clientId, webClient });
     const stopSessionGuard = async () => {
       if (!guard) return false;
       const active = guard;
@@ -215,6 +218,92 @@ async function createFacebookMqttDriver({
         };
       },
       getHumanizer: () => humanizer,
+      changeGroupImage(image, threadID, callback) {
+        const operation = (async () => {
+          const file = await readImageInput(image);
+          const form = new FormData();
+          form.append("images_only", "true");
+          form.append("attachment[]", new Blob([file.buffer], { type: file.mimeType }), file.fileName);
+          const uploaded = await webClient.postMultipart("https://www.facebook.com/ajax/mercury/upload.php", form);
+          const imageID = uploaded?.payload?.metadata?.[0]?.image_id;
+          if (!imageID) {
+            const error = new Error("Facebook did not return an uploaded group image ID");
+            error.code = "FCA_RESPONSE_SHAPE_INVALID";
+            throw error;
+          }
+          const request = createMessengerChangeGroupImageRequest({ threadID, imageID });
+          const response = await driver.sendRequest(request);
+          return { success: true, response: response?.payload ?? response };
+        })();
+        return callbackResult(operation, callback);
+      },
+      changeAvatar(image, caption, timestamp, callback) {
+        let captionText = "";
+        let expirationTime = null;
+        let done = callback;
+        if (typeof caption === "function") done = caption;
+        else if (typeof caption === "string") captionText = caption;
+        else if (typeof caption === "number") expirationTime = caption;
+        if (typeof timestamp === "function") done = timestamp;
+        else if (timestamp !== undefined && timestamp !== null) {
+          const parsed = Number(timestamp);
+          if (!Number.isFinite(parsed) || parsed < 0) throw new TypeError("timestamp must be a non-negative number");
+          expirationTime = parsed;
+        }
+        if (captionText.length > 2000) throw new RangeError("avatar caption exceeds 2000 characters");
+        const operation = (async () => {
+          const file = await readImageInput(image);
+          const form = new FormData();
+          form.append("profile_id", session.userId);
+          form.append("photo_source", "57");
+          form.append("av", session.userId);
+          form.append("file", new Blob([file.buffer], { type: file.mimeType }), file.fileName);
+          const uploaded = await webClient.postMultipart("https://www.facebook.com/profile/picture/upload/", form);
+          const photoID = uploaded?.payload?.fbid;
+          if (!photoID) {
+            const error = new Error("Facebook did not return an uploaded profile photo ID");
+            error.code = "FCA_RESPONSE_SHAPE_INVALID";
+            throw error;
+          }
+          const variables = {
+            input: {
+              caption: captionText,
+              existing_photo_id: String(photoID),
+              expiration_time: expirationTime,
+              profile_id: session.userId,
+              profile_pic_method: "EXISTING",
+              profile_pic_source: "TIMELINE",
+              scaled_crop_rect: { height: 1, width: 1, x: 0, y: 0 },
+              skip_cropping: true,
+              actor_id: session.userId,
+              client_mutation_id: String(Math.floor(Math.random() * 20))
+            },
+            isPage: false,
+            isProfile: true,
+            scale: 3
+          };
+          const updated = await webClient.post("https://www.facebook.com/api/graphql/", {
+            av: session.userId,
+            fb_api_req_friendly_name: "ProfileCometProfilePictureSetMutation",
+            fb_api_caller_class: "RelayModern",
+            doc_id: "5066134240065849",
+            variables: JSON.stringify(variables)
+          });
+          if (updated?.payload?.errors?.length) {
+            const error = new Error("Facebook rejected the profile picture update");
+            error.code = "FCA_FACEBOOK_REQUEST_REJECTED";
+            throw error;
+          }
+          const result = updated?.payload?.data?.profile_picture_set;
+          if (!result) {
+            const error = new Error("Facebook returned an invalid profile picture update response");
+            error.code = "FCA_RESPONSE_SHAPE_INVALID";
+            throw error;
+          }
+          return result;
+        })();
+        return callbackResult(operation, done);
+      },
       editMessage(text, messageID, callback) {
         const request = createMessengerEditMessageRequest({ text, messageID });
         const operation = driver.sendRequest(request).then(response => {
