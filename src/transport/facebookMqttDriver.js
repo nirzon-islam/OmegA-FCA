@@ -16,14 +16,37 @@ async function createFacebookMqttDriver({
   appState, socketFactory, fetchImpl, userAgent, timeoutMs = 20000,
   connectTimeoutMs = 15000, closeTimeoutMs = 3000, protocolSetupTimeoutMs = 15000,
   maxFrameBytes, syncCursorStore, onSyncCursor, requestTimeoutMs, maxPendingRequests,
-  mqtt = {}, onDiagnostic, sessionGuard: sessionGuardOptions
+  mqtt = {}, onDiagnostic, sessionGuard: sessionGuardOptions, options: loginOptions = {}
 } = {}) {
   if (typeof socketFactory !== "function") throw new TypeError("socketFactory is required");
   let session = null;
   let closed = false;
   let transport;
   let guard = null;
-  const runtimeOptions = { logLevel: "warn" };
+  if (!loginOptions || typeof loginOptions !== "object" || Array.isArray(loginOptions)) {
+    throw new TypeError("login options must be an object");
+  }
+  const effectiveUserAgent = userAgent || loginOptions.userAgent || undefined;
+  const runtimeOptions = {
+    logLevel: loginOptions.logLevel || "warn",
+    selfListen: loginOptions.selfListen === true,
+    selfListenEvent: loginOptions.selfListenEvent === true,
+    listenEvents: loginOptions.listenEvents === true,
+    listenTyping: loginOptions.listenTyping === true,
+    updatePresence: loginOptions.updatePresence === true,
+    autoMarkDelivery: loginOptions.autoMarkDelivery === true,
+    autoMarkRead: loginOptions.autoMarkRead === true
+  };
+  for (const key of ["selfListen", "selfListenEvent", "listenEvents", "listenTyping", "updatePresence", "autoMarkDelivery", "autoMarkRead"]) {
+    if (loginOptions[key] !== undefined && typeof loginOptions[key] !== "boolean") {
+      throw new TypeError(key + " must be a boolean");
+    }
+  }
+  if (loginOptions.proxy) {
+    const error = new TypeError("Native Messenger transport does not support proxy login options yet");
+    error.code = "FCA_OPTION_UNSUPPORTED";
+    throw error;
+  }
   try {
     if (sessionGuardOptions != null) {
       if (!sessionGuardOptions || typeof sessionGuardOptions !== "object" ||
@@ -76,7 +99,7 @@ async function createFacebookMqttDriver({
       }
       activeAppState = restoredSnapshot.appState;
     }
-    session = await createPersonalSession({ appState: activeAppState, fetchImpl, userAgent, timeoutMs, onDiagnostic });
+    session = await createPersonalSession({ appState: activeAppState, fetchImpl, userAgent: effectiveUserAgent, timeoutMs, onDiagnostic });
     if (restoredSnapshot?.userId != null && String(restoredSnapshot.userId) !== session.userId) {
       const error = new Error("Restored Facebook session identity does not match the encrypted snapshot");
       error.code = "FCA_SESSION_IDENTITY_MISMATCH";
@@ -89,7 +112,8 @@ async function createFacebookMqttDriver({
       region: mqtt.region || session.realtime.region || undefined,
       lastSeqId: mqtt.lastSeqId || session.realtime.lastSeqId || undefined,
       cookie: session.getCookieHeader("https://edge-chat.facebook.com/chat"),
-      userAgent, syncCursorStore, onSyncCursor, requestTimeoutMs, maxPendingRequests
+      userAgent: effectiveUserAgent, syncCursorStore, onSyncCursor, requestTimeoutMs, maxPendingRequests,
+      online: loginOptions.online ?? mqtt.online
     });
     transport = createNativeRealtimeTransport({
       url: protocolConfig.url, headers: protocolConfig.headers, socketFactory,
@@ -132,6 +156,30 @@ async function createFacebookMqttDriver({
     return Object.freeze({
       ...driver,
       ...threadApi,
+      listen: callback => {
+        if (typeof callback !== "function") throw new TypeError("listener callback is required");
+        return driver.listen((error, event) => {
+          if (error || !event || typeof event !== "object") {
+            callback(error || null, event);
+            return;
+          }
+          const senderID = event.senderID == null ? null : String(event.senderID);
+          const isSelf = senderID !== null && senderID === session.userId;
+          if ((event.type === "message" || event.type === "message_reply") && isSelf && !runtimeOptions.selfListen) return;
+          if (event.type === "event" && (isSelf ? !runtimeOptions.selfListenEvent : !runtimeOptions.listenEvents)) return;
+          if (event.type === "typ" && !runtimeOptions.listenTyping) return;
+          if (event.type === "presence" && !runtimeOptions.updatePresence) return;
+          if ((event.type === "message" || event.type === "message_reply") && event.threadID && event.messageID) {
+            if (runtimeOptions.autoMarkDelivery && typeof threadApi.markAsDelivered === "function") {
+              Promise.resolve(threadApi.markAsDelivered(event.threadID, event.messageID)).catch(() => {});
+            }
+            if (runtimeOptions.autoMarkRead && typeof threadApi.markAsRead === "function") {
+              Promise.resolve(threadApi.markAsRead(event.threadID)).catch(() => {});
+            }
+          }
+          callback(null, event);
+        });
+      },
       getCurrentUserID: () => session.userId,
       getAppState: () => session.getAppState(),
       refreshFb_dtsg: () => session.refreshTokens(),
@@ -139,7 +187,8 @@ async function createFacebookMqttDriver({
         if (!options || typeof options !== "object" || Array.isArray(options)) {
           throw new TypeError("setOptions requires an options object");
         }
-        const unsupported = Object.keys(options).filter(key => key !== "logLevel");
+        const supported = ["logLevel", "selfListen", "selfListenEvent", "listenEvents", "listenTyping", "updatePresence", "autoMarkDelivery", "autoMarkRead"];
+        const unsupported = Object.keys(options).filter(key => !supported.includes(key));
         if (unsupported.length) {
           const error = new TypeError("Unsupported native FCA options: " + unsupported.join(", "));
           error.code = "FCA_OPTION_UNSUPPORTED";
@@ -150,6 +199,12 @@ async function createFacebookMqttDriver({
             throw new TypeError("logLevel must be silent, error, warn, info, or debug");
           }
           runtimeOptions.logLevel = options.logLevel;
+        }
+        for (const key of supported.slice(1)) {
+          if (options[key] !== undefined) {
+            if (typeof options[key] !== "boolean") throw new TypeError(key + " must be a boolean");
+            runtimeOptions[key] = options[key];
+          }
         }
         return Object.freeze({ ...runtimeOptions });
       },
