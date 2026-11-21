@@ -1,0 +1,78 @@
+name: Publish npm prerelease
+
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Existing Git tag to publish (for example v0.1.6-rc.4)
+        required: true
+        type: string
+  release:
+    types: [published]
+
+permissions:
+  contents: read
+  id-token: write
+
+concurrency:
+  group: npm-prerelease-${{ github.event.release.tag_name || inputs.tag }}
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    if: github.event_name == 'workflow_dispatch' || github.event.release.prerelease == true
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Resolve release tag
+        id: release
+        shell: bash
+        env:
+          DISPATCH_TAG: ${{ inputs.tag }}
+          RELEASE_TAG: ${{ github.event.release.tag_name }}
+        run: |
+          set -euo pipefail
+          TAG="${RELEASE_TAG:-$DISPATCH_TAG}"
+          if [[ ! "$TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+- ]]; then
+            echo "Refusing to publish a non-prerelease tag: $TAG" >&2
+            exit 1
+          fi
+          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
+
+      - name: Checkout release source
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ steps.release.outputs.tag }}
+
+      - name: Set up Node.js and npm registry
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          registry-url: https://registry.npmjs.org/
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run tests and type checks
+        run: |
+          npm test
+          npm run test:types
+          npm run test:syntax
+
+      - name: Verify package version matches release tag
+        shell: bash
+        env:
+          RELEASE_TAG: ${{ steps.release.outputs.tag }}
+        run: |
+          set -euo pipefail
+          PACKAGE_VERSION="$(node -p "require('./package.json').version")"
+          TAG_VERSION="${RELEASE_TAG#v}"
+          if [[ "$PACKAGE_VERSION" != "$TAG_VERSION" || "$PACKAGE_VERSION" != *-* ]]; then
+            echo "package.json version ($PACKAGE_VERSION) does not match prerelease tag ($TAG_VERSION)" >&2
+            exit 1
+          fi
+          npm pack --dry-run --json
+
+      - name: Publish to npm using the next dist-tag
+        run: npm publish --access public --tag next --provenance
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
