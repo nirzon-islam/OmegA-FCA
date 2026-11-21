@@ -121,4 +121,33 @@ function createMessengerShareContactRequest(input = {}) {
   });
 }
 
-module.exports = { MESSENGER_MQTT_APP_ID, SEND_MESSAGE_VERSION_ID, offlineThreadingId, createMessengerSendMessageRequest, createMessengerEditMessageRequest, createMessengerShareContactRequest };
+
+const CHANGE_GROUP_IMAGE_VERSION_ID = "8798795233522156";
+
+function createMessengerChangeGroupImageRequest(input = {}) {
+  const threadID = String(input.threadID ?? "");
+  const imageID = String(input.imageID ?? "");
+  if (!/^\\d{5,30}$/.test(threadID)) throw new TypeError("threadID must be a numeric Facebook ID");
+  if (!/^\\d{5,30}$/.test(imageID)) throw new TypeError("imageID must be a numeric Facebook ID");
+  const taskId = input.taskId ?? randomInt(1, 65536);
+  if (!Number.isInteger(taskId) || taskId < 1 || taskId > 65535) throw new TypeError("taskId is invalid");
+  const epochId = input.epochId ?? offlineThreadingId();
+  if (!/^\\d{10,24}$/.test(String(epochId))) throw new TypeError("epochId is invalid");
+  return Object.freeze({
+    app_id: MESSENGER_MQTT_APP_ID,
+    payload: JSON.stringify({
+      epoch_id: String(epochId),
+      tasks: [{
+        failure_count: null,
+        label: "37",
+        payload: JSON.stringify({ thread_key: threadID, image_id: imageID, sync_group: 1 }),
+        queue_name: "thread_image",
+        task_id: taskId
+      }],
+      version_id: CHANGE_GROUP_IMAGE_VERSION_ID
+    }),
+    type: 3
+  });
+}
+
+module.exports = { MESSENGER_MQTT_APP_ID, SEND_MESSAGE_VERSION_ID, offlineThreadingId, createMessengerSendMessageRequest, createMessengerEditMessageRequest, createMessengerShareContactRequest, createMessengerChangeGroupImageRequest };
