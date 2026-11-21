@@ -262,7 +262,7 @@ function createFacebookThreadApi({ session, webClient, clientId = "omega-fca" } 
     if (!raw || raw.length > 2048) throw new TypeError("profile input is invalid");
     if (/^\d{5,30}$/.test(raw)) return callbackResult(Promise.resolve(raw), callback);
     let username = raw;
-    if (/facebook\.com/i.test(raw)) {
+    if (/^https?:\/\//i.test(raw) || /facebook\.com/i.test(raw)) {
       let parsed;
       try { parsed = new URL(/^https?:\\/\\//i.test(raw) ? raw : "https://" + raw); }
       catch { throw new TypeError("profile URL is invalid"); }
