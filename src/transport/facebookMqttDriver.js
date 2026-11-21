@@ -185,6 +185,7 @@ async function createFacebookMqttDriver({
         });
         const detach = driver.listen((error, event) => {
           if (error || !event || typeof event !== "object") {
+            if (humanizer) humanizer.stop();
             callback(error || null, event);
             return;
           }
@@ -286,6 +287,7 @@ async function createFacebookMqttDriver({
       disconnect: async () => {
         if (closed) return;
         closed = true;
+        if (humanizer) humanizer.stop();
         try {
           try { await stopSessionGuard(); }
           finally { await transport.disconnect(); }
