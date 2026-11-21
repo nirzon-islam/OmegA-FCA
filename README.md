@@ -27,6 +27,7 @@ OmegA-FCA is the Facebook integration library maintained under the **OmegA Bot**
 - GoatBot login-time listener options are forwarded to the native driver: `selfListen`, `selfListenEvent`, `listenEvents`, `listenTyping`, `updatePresence`, `autoMarkDelivery`, `autoMarkRead`, `online`, and `userAgent`. Supported event filters can be changed with `setOptions()`; unknown options are rejected.
 - Personal-account driver method forwarding for messaging, threads, reactions, typing, and group actions when the supplied FCA implementation supports those methods.
 - Native `getMessage(threadID, messageID)` looks up the target in the latest 100 normalized thread-history messages; older-history cursor lookup is not yet implemented.
+- Sensitive legacy `getCookies()` exposes the current Facebook cookie header for owner-only compatibility paths; never log or send it to ordinary users.
 - Separate official Meta Messenger Page transport (not a personal-account replacement).
 - TypeScript declarations, signed update-manifest verification, optional Ed25519 licensing.
 
