@@ -7,6 +7,7 @@ const { createFacebookMqttProtocol } = require("./facebookMqttProtocol");
 const { createNativeRealtimeTransport } = require("./nativeRealtimeTransport");
 const { createFacebookThreadApi } = require("./facebookThreadApi");
 const { createMessengerEditMessageRequest, createMessengerShareContactRequest } = require("./messengerActions");
+const { createHumanizer } = require("../compat/humanizer");
 
 /**
  * Builds an owner-authorized personal Messenger MQTT driver.
@@ -57,6 +58,7 @@ async function createFacebookMqttDriver({
     autoMarkDelivery: loginOptions.autoMarkDelivery === true,
     autoMarkRead: loginOptions.autoMarkRead === true
   };
+  let humanizer = null;
   for (const key of ["selfListen", "selfListenEvent", "listenEvents", "listenTyping", "updatePresence", "autoMarkDelivery", "autoMarkRead"]) {
     if (loginOptions[key] !== undefined && typeof loginOptions[key] !== "boolean") {
       throw new TypeError(key + " must be a boolean");
@@ -178,7 +180,10 @@ async function createFacebookMqttDriver({
       ...threadApi,
       listen: callback => {
         if (typeof callback !== "function") throw new TypeError("listener callback is required");
-        return driver.listen((error, event) => {
+        if (!humanizer) humanizer = createHumanizer({
+          sendTypingIndicator: (threadID, isTyping) => threadApi.sendTypingIndicator(threadID, isTyping)
+        });
+        const detach = driver.listen((error, event) => {
           if (error || !event || typeof event !== "object") {
             callback(error || null, event);
             return;
@@ -197,9 +202,18 @@ async function createFacebookMqttDriver({
               Promise.resolve(threadApi.markAsRead(event.threadID)).catch(() => {});
             }
           }
+          if ((event.type === "message" || event.type === "message_reply") && !isSelf && !event.isE2EE) {
+            humanizer.processEvent(event, callback);
+            return;
+          }
           callback(null, event);
         });
+        return () => {
+          if (humanizer) humanizer.stop();
+          return detach();
+        };
       },
+      getHumanizer: () => humanizer,
       editMessage(text, messageID, callback) {
         const request = createMessengerEditMessageRequest({ text, messageID });
         const operation = driver.sendRequest(request).then(response => {
