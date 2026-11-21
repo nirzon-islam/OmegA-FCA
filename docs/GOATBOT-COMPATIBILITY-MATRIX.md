@@ -65,7 +65,7 @@ The client exposes each method below only when the injected driver provides that
 The source scan of the current `fca-migration-cleanup` branch found additional method calls beyond the core login contract:
 
 - Implemented in the native facade: `getAppState`, `refreshFb_dtsg`, `httpPost`, `sendMessage`, `unsendMessage`, `markAsDelivered`, `getCurrentUserID`, `getThreadList`, `getThreadInfo`, `getThreadHistory`, `getUserInfo`, `addUserToGroup`, `removeUserFromGroup`, `changeNickname`, `setTitle`, `changeThreadColor`, `changeThreadEmoji`, `sendTypingIndicator`, and `setMessageReaction`.
-- Still missing or not verified: `changeGroupImage`, `changeAvatar`, `shareContact`, and the runtime semantics of `setOptions`.
+- Still missing or not verified: `changeGroupImage`, `changeAvatar`, and `shareContact`. `setOptions` now applies the supported native listener filters documented above; full parity with every legacy FCA option remains incomplete.
 - This was a partial scan of command files, not the complete 271-file repository inventory; event handlers, dashboard, database, custom scripts, and dynamically accessed methods still need review.
 
 ## Required work before migration
