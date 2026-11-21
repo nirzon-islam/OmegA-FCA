@@ -83,3 +83,11 @@ Never commit live cookies, AppState, passwords, 2FA material, Page tokens, or en
 - Added `getCookies()` to the native driver and client facade. It returns the authenticated Facebook cookie header required by GoatBot's existing `suspend` command.
 - The cookie header is credential material: never log it, include it in diagnostics, or expose it to ordinary users. The method is documented as sensitive alongside `getAppState()`.
 - Added TypeScript declarations and regression tests for driver and client-facade access. A fresh Node 20/22 CI run is required for this change.
+
+
+## Additional Messenger action compatibility — 2026-11-21
+
+- Added `editMessage(text, messageID, callback?)` using the observed Messenger Lightspeed `edit_message` task and correlated `/ls_resp` response parsing. It rejects malformed responses and reports old/non-owned message rejection rather than claiming success.
+- Added `shareContact(text, senderID, threadID, callback?)` using the observed `messenger_contact_sharing` task. The legacy fourth string argument used by GoatBot is accepted as a compatibility placeholder.
+- Added client-facade method registration, TypeScript declarations, and deterministic fake-broker tests for both request/response flows.
+- GitHub Actions verification is pending for these latest action additions and the sensitive `getCookies()` method.
