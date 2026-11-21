@@ -132,6 +132,8 @@ test("deployment environment enables GoatBot-compatible encrypted SessionGuard",
     const api = await client.login({ mode: "appstate", appState });
     assert.equal(typeof api.httpPost, "function");
     assert.equal(typeof api.getAppState, "function");
+    assert.equal(typeof api.getCookies, "function");
+    assert.match(api.getCookies(), /c_user=123456789012345/);
     for (const method of ["unsendMessage", "setTitle", "changeThreadColor", "changeThreadEmoji", "sendTypingIndicator", "markAsDelivered", "refreshFb_dtsg"]) assert.equal(typeof api[method], "function", method);
     assert.equal(api.sessionGuard(accountPath, { interval: 180_000, debounce: 30_000 }).filePath, encryptedPath);
     assert.equal(fs.existsSync(encryptedPath), true);
