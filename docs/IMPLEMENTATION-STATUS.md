@@ -52,3 +52,12 @@ The personal-account MQTT adapter is experimental and based on public FCA wire o
 Synthetic AppState session, authenticated web-client, redirect-classification, body-limit and adapter tests have been added. GitHub Actions must run on the latest branch commit before claiming the test suite passes. A real authorized account test is still required for login, MQTT readiness, message receive/send, group actions, reconnect, and checkpoint/session-expiry reporting.
 
 Never commit live cookies, AppState, passwords, 2FA material, Page tokens, or encryption keys. Do not bypass checkpoints or platform security controls.
+
+
+## Latest verification update — 2026-11-21
+
+- MQTT keepalive is now a single validated CONNECT setting; PINGREQ is scheduled at half the negotiated interval, and zero disables the periodic ping. Regression tests cover the default and explicit values.
+- Eryxen public API coverage and security comparison is documented in `docs/ERYXEN-REFERENCE-AUDIT.md`; the audit is included in the npm package file allowlist.
+- README now correctly states that the package supplies its own `ws` implementation by default; injection remains available for tests.
+- GitHub Actions run `44842962868` passed on Node.js 20 and 22 for the exact same source tree as this prerelease head: `npm ci`, all 302 tests (302 passed, 0 failed), syntax checks, package root export smoke test, and `npm pack --dry-run`.
+- This is synthetic CI verification only. No live authorized Facebook account, broker acceptance, recipient-confirmed delivery, or full FCA parity is claimed.
