@@ -81,7 +81,7 @@ export interface TransportDriver {
   changeNickname?(...args: unknown[]): unknown; changeThreadColor?(color: string, threadID: string | number, callback?: (error?: Error | null) => void): Promise<unknown> | void; changeThreadEmoji?(emoji: string, threadID: string | number, callback?: (error?: Error | null) => void): Promise<unknown> | void; setTitle?(title: string, threadID: string | number, callback?: (error?: Error | null, result?: unknown) => void): Promise<unknown> | void; addUserToGroup?(...args: unknown[]): unknown;
   removeUserFromGroup?(...args: unknown[]): unknown; createNewGroup?(...args: unknown[]): unknown;
   getThreadHistory?(...args: unknown[]): unknown; getMessage?(...args: unknown[]): unknown;
-  getFriendsList?(...args: unknown[]): unknown; getUserID?(...args: unknown[]): unknown;
+  getFriendsList?(...args: unknown[]): unknown; getUserID?(...args: unknown[]): unknown; getUID?(...args: unknown[]): unknown; resolvePhotoUrl?(...args: unknown[]): unknown;
   sessionGuard?(...args: unknown[]): unknown; stopSessionGuard?(): unknown;
   setOptions?(options: Record<string, unknown>): unknown;
 }
@@ -99,7 +99,7 @@ export interface LicenseOptions {
   checkIntervalMs?: number; refresh?: () => string | Promise<string>;
 }
 export interface ClientApi {
-  getCurrentUserID(): string | null; getCookies?(): string; getAppState?(): Cookie[]; getUserID?(): string | null; getConnectionState(): ConnectionSnapshot; getLicense(): VerifiedLicense | null;
+  getCurrentUserID(): string | null; getCookies?(): string; getAppState?(): Cookie[]; getUserID?(): string | null; getUserID?(name: string, callback?: (error: Error | null, result?: Array<Record<string, unknown>>) => void): Promise<Array<Record<string, unknown>>> | void; getUID?(input: string | number, callback?: (error: Error | null, result?: string) => void): Promise<string> | void; resolvePhotoUrl?(photoID: string | number, callback?: (error: Error | null, result?: string) => void): Promise<string> | void; getFriendsList?(callback?: (error: Error | null, result?: Array<Record<string, unknown>>) => void): Promise<Array<Record<string, unknown>>> | void; createNewGroup?(participantIDs: Array<string | number>, groupTitle?: string | ((error: Error | null, result?: string) => void) | null, callback?: (error: Error | null, result?: string) => void): Promise<string> | void; getConnectionState(): ConnectionSnapshot; getLicense(): VerifiedLicense | null;
   getCapabilities(): Readonly<{ methods: readonly string[]; events: boolean; sessionGuard: boolean; e2ee: false }>;
   listen(callback: (event: unknown) => void): () => void;
   listenMqtt(callback: (error: Error | null, event?: unknown) => void): () => void;
@@ -111,7 +111,7 @@ export interface ClientApi {
   changeNickname?: (...args: any[]) => any; addUserToGroup?: (...args: any[]) => any;
   removeUserFromGroup?: (...args: any[]) => any; createNewGroup?: (...args: any[]) => any;
   getThreadHistory?: (...args: any[]) => any; getMessage?: (...args: any[]) => any;
-  getFriendsList?: (...args: any[]) => any; getUserID?: (...args: any[]) => any;
+  getFriendsList?: (...args: any[]) => any; getUserID?: (...args: any[]) => any; getUID?: (...args: any[]) => any; resolvePhotoUrl?: (...args: any[]) => any;
   sessionGuard?: (...args: any[]) => any; stopSessionGuard?: () => any;
   setOptions?: (options: Record<string, unknown>) => any;
 }
