@@ -299,7 +299,7 @@ test("getUserID and getUID resolve Facebook profile names and URLs", async () =>
   assert.equal(calls[0].url, "https://www.facebook.com/ajax/typeahead/search.php");
   assert.equal(calls[0].options.query.viewer, session.userId);
   assert.equal(calls[0].options.query.value, "alice example");
-  await assert.rejects(api.getUID("https://evil.example/alice"), /facebook.com/);
+  assert.throws(() => api.getUID("https://evil.example/alice"), /facebook.com/);
 });
 
 test("resolvePhotoUrl extracts only HTTPS Facebook CDN photo URLs", async () => {
