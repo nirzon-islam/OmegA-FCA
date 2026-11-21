@@ -267,3 +267,52 @@ test("honors GoatBot listener options and filters self, event, typing and presen
   detach();
   await driver.disconnect();
 });
+
+
+test("implements editMessage and shareContact with correlated MQTT requests", async () => {
+  const socket = new FakeWebSocket();
+  const driver = await createFacebookMqttDriver({
+    appState, fetchImpl: async () => htmlResponse(), socketFactory: () => socket,
+    mqtt: { keepAlive: 0 }
+  });
+  const originalSend = socket.send.bind(socket);
+  socket.send = frame => {
+    originalSend(frame);
+    const packet = mqtt.decodePacket(Buffer.from(frame));
+    if (packet.type !== "publish" || packet.topic !== "/ls_req") return;
+    const request = JSON.parse(packet.payload.toString("utf8"));
+    const envelope = JSON.parse(request.payload);
+    const task = envelope.tasks[0];
+    const taskPayload = JSON.parse(task.payload);
+    let response;
+    if (task.queue_name === "edit_message") {
+      assert.equal(taskPayload.message_id, "mid-edit");
+      assert.equal(taskPayload.text, "edited text");
+      const candidate = [null, null, "mid-edit", null, "edited text"];
+      response = {
+        request_id: request.request_id,
+        payload: { step: [null, [null, null, [null, null, [null, candidate]]]] }
+      };
+    } else {
+      assert.equal(task.queue_name, "messenger_contact_sharing");
+      assert.deepEqual(taskPayload, {
+        contact_id: "111111111111111",
+        sync_group: 1,
+        text: "contact",
+        thread_id: "222222222222222"
+      });
+      response = { request_id: request.request_id, payload: { success: true } };
+    }
+    setImmediate(() => socket.emit("message", mqtt.encodePublish({
+      topic: "/ls_resp", payload: JSON.stringify(response), qos: 1, packetId: 91
+    })));
+  };
+  try {
+    const edited = await driver.editMessage("edited text", "mid-edit");
+    assert.deepEqual(edited, { body: "edited text", messageID: "mid-edit" });
+    const shared = await driver.shareContact("contact", "111111111111111", "222222222222222", "legacy-message-id");
+    assert.equal(shared.payload.success, true);
+  } finally {
+    await driver.disconnect();
+  }
+});
