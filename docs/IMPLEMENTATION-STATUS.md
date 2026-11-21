@@ -76,3 +76,10 @@ Never commit live cookies, AppState, passwords, 2FA material, Page tokens, or en
 - Added native `getMessage(threadID, messageID, callback?)`, implemented through the authenticated thread-history adapter and normalized message format.
 - The lookup currently searches the latest 100 messages returned for that thread; it returns `null` when the target is not in that page. This is not yet an unbounded historical search.
 - Added synthetic tests for found, missing and invalid message IDs. The next CI run must validate this addition before it is considered green.
+
+
+## GoatBot credential-access compatibility — 2026-11-21
+
+- Added `getCookies()` to the native driver and client facade. It returns the authenticated Facebook cookie header required by GoatBot's existing `suspend` command.
+- The cookie header is credential material: never log it, include it in diagnostics, or expose it to ordinary users. The method is documented as sensitive alongside `getAppState()`.
+- Added TypeScript declarations and regression tests for driver and client-facade access. A fresh Node 20/22 CI run is required for this change.
