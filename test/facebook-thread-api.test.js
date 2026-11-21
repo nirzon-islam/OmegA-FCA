@@ -358,3 +358,26 @@ test("createNewGroup sends the observed GraphQL mutation and returns its thread 
   });
   assert.equal(await api.createNewGroup(["111111111111111", "222222222222222"], "OmegA Group"), "333333333333333");
 });
+
+
+test("legacy sendTypingIndicator returns an idempotent stop function", async () => {
+  const calls = [];
+  const api = createFacebookThreadApi({
+    session,
+    webClient: { post: async (url, body) => {
+      calls.push({ url, body: { ...body } });
+      if (url === "https://www.facebook.com/chat/user_info/") {
+        return { payload: { payload: { profiles: {
+          "987654321": { name: "Test User" }
+        } } } };
+      }
+      return { payload: { success: true } };
+    } }
+  });
+  const stopTyping = await api.sendTypingIndicator("987654321");
+  assert.equal(typeof stopTyping, "function");
+  await stopTyping();
+  await stopTyping();
+  const typingCalls = calls.filter(call => call.url === "https://www.facebook.com/ajax/messaging/typ.php");
+  assert.deepEqual(typingCalls.map(call => call.body.typ), [1, 0]);
+});
