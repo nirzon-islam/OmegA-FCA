@@ -272,3 +272,89 @@ test("getMessage resolves a message from normalized thread history and supports 
   assert.throws(() => api.getMessage("bad", "mid.target"), /numeric Facebook ID/);
   assert.throws(() => api.getMessage("987654321", ""), /messageID is invalid/);
 });
+
+
+test("getUserID and getUID resolve Facebook profile names and URLs", async () => {
+  const calls = [];
+  const api = createFacebookThreadApi({
+    session,
+    webClient: { get: async (url, options) => {
+      calls.push({ url, options });
+      return { payload: { payload: { entries: [{
+        uid: "111111111111111",
+        photo: "https://scontent.xx.fbcdn.net/photo.jpg",
+        index_rank: 1, text: "Alice Example", is_verified: false,
+        path: "/alice.example", category: "user", score: 100, type: "user"
+      }] } } };
+    } }
+  });
+  const entries = await api.getUserID("Alice Example");
+  assert.equal(entries[0].userID, "111111111111111");
+  assert.equal(entries[0].name, "Alice Example");
+  const resolved = await api.getUID("https://www.facebook.com/alice.example");
+  assert.equal(resolved, "111111111111111");
+  assert.equal(await api.getUID("https://www.facebook.com/profile.php?id=222222222222222"), "222222222222222");
+  assert.equal(await api.getUID("333333333333333"), "333333333333333");
+  assert.equal(calls.length, 2);
+  assert.equal(calls[0].url, "https://www.facebook.com/ajax/typeahead/search.php");
+  assert.equal(calls[0].options.query.viewer, session.userId);
+  assert.equal(calls[0].options.query.value, "alice example");
+  await assert.rejects(api.getUID("https://evil.example/alice"), /facebook.com/);
+});
+
+test("resolvePhotoUrl extracts only HTTPS Facebook CDN photo URLs", async () => {
+  const api = createFacebookThreadApi({
+    session,
+    webClient: { get: async (url, options) => {
+      assert.equal(url, "https://www.facebook.com/mercury/attachments/photo");
+      assert.equal(options.query.photo_id, "123456789012345");
+      return { payload: { jsmods: { require: [[null, null, null, ["https://scontent.xx.fbcdn.net/photo.jpg"]]] } } };
+    } }
+  });
+  assert.equal(await api.resolvePhotoUrl("123456789012345"), "https://scontent.xx.fbcdn.net/photo.jpg");
+  const bad = createFacebookThreadApi({
+    session,
+    webClient: { get: async () => ({ payload: { jsmods: { require: [[null, null, null, ["https://evil.example/photo.jpg"]]] } } }) }
+  });
+  await assert.rejects(bad.resolvePhotoUrl("123456789012345"), /approved CDN hosts/);
+});
+
+test("getFriendsList normalizes friend metadata", async () => {
+  const api = createFacebookThreadApi({
+    session,
+    webClient: { post: async (url, body, options) => {
+      assert.equal(url, "https://www.facebook.com/chat/user_info_all");
+      assert.equal(options.query.viewer, session.userId);
+      return { payload: { payload: {
+        a: { id: "111111111111111", name: "Alice", firstName: "Alice", gender: 2, is_friend: true, thumbSrc: "https://scontent.xx.fbcdn.net/a.jpg" },
+        b: { id: "222222222222222", name: "Bob", gender: 1, is_friend: true }
+      } } };
+    } }
+  });
+  const friends = await api.getFriendsList();
+  assert.equal(friends.length, 2);
+  assert.equal(friends[0].userID, "111111111111111");
+  assert.equal(friends[0].gender, "male_singular");
+  assert.equal(friends[1].gender, "female_singular");
+});
+
+test("createNewGroup sends the observed GraphQL mutation and returns its thread ID", async () => {
+  const api = createFacebookThreadApi({
+    session,
+    webClient: { post: async (url, form) => {
+      assert.equal(url, "https://www.facebook.com/api/graphql/");
+      assert.equal(form.fb_api_req_friendly_name, "MessengerGroupCreateMutation");
+      const variables = JSON.parse(form.variables);
+      assert.equal(variables.input.actor_id, session.userId);
+      assert.equal(variables.input.entry_point, "jewel_new_group");
+      assert.equal(variables.input.thread_settings.name, "OmegA Group");
+      assert.deepEqual(variables.input.participants, [
+        { fbid: "111111111111111" }, { fbid: "222222222222222" }, { fbid: session.userId }
+      ]);
+      return { payload: { data: { messenger_group_thread_create: {
+        thread: { thread_key: { thread_fbid: "333333333333333" } }
+      } } } };
+    } }
+  });
+  assert.equal(await api.createNewGroup(["111111111111111", "222222222222222"], "OmegA Group"), "333333333333333");
+});
