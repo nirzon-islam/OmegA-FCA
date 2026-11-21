@@ -260,20 +260,20 @@ function createFacebookThreadApi({ session, webClient, clientId = "omega-fca" } 
   function getUID(input, callback) {
     const raw = String(input ?? "").trim();
     if (!raw || raw.length > 2048) throw new TypeError("profile input is invalid");
-    if (/^\\d{5,30}$/.test(raw)) return callbackResult(Promise.resolve(raw), callback);
+    if (/^\d{5,30}$/.test(raw)) return callbackResult(Promise.resolve(raw), callback);
     let username = raw;
-    if (/facebook\\.com/i.test(raw)) {
+    if (/facebook\.com/i.test(raw)) {
       let parsed;
       try { parsed = new URL(/^https?:\\/\\//i.test(raw) ? raw : "https://" + raw); }
       catch { throw new TypeError("profile URL is invalid"); }
-      if (!/(^|\\.)facebook\\.com$/i.test(parsed.hostname)) throw new TypeError("profile URL must belong to facebook.com");
-      if (/^\\/profile\\.php$/i.test(parsed.pathname)) {
+      if (!/(^|\.)facebook\.com$/i.test(parsed.hostname)) throw new TypeError("profile URL must belong to facebook.com");
+      if (/^\\/profile\.php$/i.test(parsed.pathname)) {
         const direct = parsed.searchParams.get("id");
-        if (direct && /^\\d{5,30}$/.test(direct)) return callbackResult(Promise.resolve(direct), callback);
+        if (direct && /^\d{5,30}$/.test(direct)) return callbackResult(Promise.resolve(direct), callback);
       }
       const parts = parsed.pathname.split("/").filter(Boolean);
       const last = parts.at(-1) || "";
-      if (/^\\d{5,30}$/.test(last)) return callbackResult(Promise.resolve(last), callback);
+      if (/^\d{5,30}$/.test(last)) return callbackResult(Promise.resolve(last), callback);
       username = parts[0] === "people" ? (parts[1] || "") : (parts[0] || "");
     }
     if (!username || username.includes("/") || username.length > 128) throw new TypeError("profile username is invalid");
@@ -298,7 +298,7 @@ function createFacebookThreadApi({ session, webClient, clientId = "omega-fca" } 
       if (!value) return "";
       let parsed;
       try { parsed = new URL(String(value)); } catch { throw new Error("Facebook returned an invalid photo URL"); }
-      if (parsed.protocol !== "https:" || !/(^|\\.)(?:fbcdn\\.net|facebook\\.com|fbsbx\\.com)$/i.test(parsed.hostname)) {
+      if (parsed.protocol !== "https:" || !/(^|\.)(?:fbcdn\.net|facebook\.com|fbsbx\.com)$/i.test(parsed.hostname)) {
         throw new Error("Facebook returned a photo URL outside the approved CDN hosts");
       }
       return parsed.toString();
