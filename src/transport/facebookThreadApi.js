@@ -504,11 +504,12 @@ function createFacebookThreadApi({ session, webClient, clientId = "omega-fca" } 
     return callbackResult(operation, callback);
   }
 
-  function sendTypingIndicator(first, second = true, third, fourth) {
+  function sendTypingIndicator(first, second, third, fourth) {
     let threadID;
     let typing;
     let callback;
     let isGroup;
+    let returnStopHandle = false;
     // Support both the native ergonomic signature (threadID, boolean, cb)
     // and legacy FCA's (typ, threadID, cb, isGroup) call convention.
     if ((first === 0 || first === 1 || typeof first === "boolean") &&
@@ -522,9 +523,11 @@ function createFacebookThreadApi({ session, webClient, clientId = "omega-fca" } 
       if (typeof second === "function") {
         typing = true;
         callback = second;
+        returnStopHandle = true;
       } else {
         typing = second === undefined ? true : second;
         callback = third;
+        returnStopHandle = second === undefined;
       }
     }
     if (typeof typing !== "boolean") throw new TypeError("typing must be a boolean or legacy 0/1 value");
@@ -543,7 +546,21 @@ function createFacebookThreadApi({ session, webClient, clientId = "omega-fca" } 
           code: "FCA_FACEBOOK_REQUEST_REJECTED", retryable: false
         });
       }
-      return result.payload;
+      if (!returnStopHandle || !typing) return result.payload;
+      let stopPromise = null;
+      return function endTyping(endCallback) {
+        if (!stopPromise) {
+          stopPromise = web.post(TYPING_URL, { ...body, typ: 0 }).then(stopResult => {
+            if (!stopResult.payload || stopResult.payload.error) {
+              throw createFacebookError("sendTypingIndicator: Facebook rejected the typing stop request", {
+                code: "FCA_FACEBOOK_REQUEST_REJECTED", retryable: false
+              });
+            }
+            return stopResult.payload;
+          });
+        }
+        return callbackResult(stopPromise, endCallback);
+      };
     })();
     return callbackResult(operation, callback);
   }
