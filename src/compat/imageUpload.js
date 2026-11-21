@@ -56,7 +56,7 @@ async function readImageInput(input, options = {}) {
   const detected = detectImageMime(buffer);
   const rawName = typeof input?.path === "string" ? path.basename(input.path) :
     (typeof input?.name === "string" ? path.basename(input.name) : "");
-  const safeName = rawName && !/[\\r\\n]/.test(rawName) ? rawName : "";
+  const safeName = rawName && !/[\r\n]/.test(rawName) ? rawName : "";
   const extension = path.extname(safeName).toLowerCase();
   const fileName = safeName && extension === detected.extension ? safeName : "upload" + detected.extension;
   return Object.freeze({ buffer, mimeType: detected.mimeType, fileName, size: buffer.length });
