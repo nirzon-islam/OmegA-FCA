@@ -7,9 +7,9 @@ concurrency:
 on:
   workflow_dispatch:
   push:
-    branches: [main, public-package]
+    branches: [main, public-package, "prerelease/**"]
   pull_request:
-    branches: [main]
+    branches: [main, "prerelease/**"]
 
 jobs:
   test:
