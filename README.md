@@ -30,6 +30,7 @@ OmegA-FCA is the Facebook integration library maintained under the **OmegA Bot**
 - Sensitive legacy `getCookies()` exposes the current Facebook cookie header for owner-only compatibility paths; never log or send it to ordinary users.
 - Native `editMessage()` and `shareContact()` use correlated Messenger MQTT task requests; both remain subject to live-account acceptance checks.
 - Native user/profile lookup (`getUserID`, `getUID`, `resolvePhotoUrl`), friend-list retrieval, and `createNewGroup` use authenticated Facebook web requests; their private endpoints require live-account verification.
+- GoatBot's `getHumanizer()` compatibility hook is created with the MQTT listener and supports reaction delay, typing indicator, cooldown, per-thread and per-minute limits.
 - Separate official Meta Messenger Page transport (not a personal-account replacement).
 - TypeScript declarations, signed update-manifest verification, optional Ed25519 licensing.
 
