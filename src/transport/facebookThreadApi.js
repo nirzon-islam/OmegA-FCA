@@ -274,11 +274,11 @@ function createFacebookThreadApi({ session, webClient, clientId = "omega-fca" } 
       }
       if (parsed.pathname.toLowerCase() === "/profile.php") {
         const direct = parsed.searchParams.get("id");
-        if (direct && /^\\d{5,30}$/.test(direct)) return callbackResult(Promise.resolve(direct), callback);
+        if (direct && /^\d{5,30}$/.test(direct)) return callbackResult(Promise.resolve(direct), callback);
       }
       const parts = parsed.pathname.split("/").filter(Boolean);
       const last = parts.at(-1) || "";
-      if (/^\\d{5,30}$/.test(last)) return callbackResult(Promise.resolve(last), callback);
+      if (/^\d{5,30}$/.test(last)) return callbackResult(Promise.resolve(last), callback);
       username = parts[0] === "people" ? (parts[1] || "") : (parts[0] || "");
     }
     if (!username || username.includes("/") || username.length > 128) throw new TypeError("profile username is invalid");
