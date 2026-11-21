@@ -128,6 +128,7 @@ function createHumanizer(options = {}) {
     set enabled(value) {
       if (typeof value !== "boolean") throw new TypeError("enabled must be a boolean");
       enabled = value;
+      config.enabled = value;
     }
   };
 }
