@@ -68,4 +68,4 @@ Never commit live cookies, AppState, passwords, 2FA material, Page tokens, or en
 - Fixed login-option forwarding: `createFacebookMqttClient()` now passes the options supplied by `createGoatBotLogin()` into the first-party native driver.
 - Native event filters now honor `selfListen`, `selfListenEvent`, `listenEvents`, `listenTyping`, and `updatePresence`; `autoMarkDelivery` and `autoMarkRead` are opt-in receipt actions.
 - Supported runtime options can be changed through `setOptions()`; unsupported options are rejected explicitly. `userAgent` is forwarded to the native HTTP/MQTT session. Proxy login is explicitly unsupported.
-- Deterministic tests cover event filtering, runtime option updates, and the login adapter forwarding options. CI run #134 is pending for this latest compatibility batch.
+- Deterministic tests cover event filtering, runtime option updates, and the login adapter forwarding options. GitHub Actions run #135 (`44843369568`) passed on Node.js 20 and 22: 304 tests passed, 0 failed; syntax checks, package exports and `npm pack --dry-run` also passed.
