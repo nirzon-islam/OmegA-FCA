@@ -12,7 +12,6 @@ on:
 
 permissions:
   contents: read
-  id-token: write
 
 concurrency:
   group: npm-prerelease-${{ github.event.release.tag_name || inputs.tag }}
@@ -73,6 +72,6 @@ jobs:
           npm pack --dry-run --json
 
       - name: Publish to npm using the next dist-tag
-        run: npm publish --access public --tag next --provenance
+        run: npm publish --access public --tag next
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
