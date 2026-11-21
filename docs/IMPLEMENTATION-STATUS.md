@@ -61,3 +61,11 @@ Never commit live cookies, AppState, passwords, 2FA material, Page tokens, or en
 - README now correctly states that the package supplies its own `ws` implementation by default; injection remains available for tests.
 - GitHub Actions run `44842962868` passed on Node.js 20 and 22 for the exact same source tree as this prerelease head: `npm ci`, all 302 tests (302 passed, 0 failed), syntax checks, package root export smoke test, and `npm pack --dry-run`.
 - This is synthetic CI verification only. No live authorized Facebook account, broker acceptance, recipient-confirmed delivery, or full FCA parity is claimed.
+
+
+## GoatBot login-option compatibility update — 2026-11-21
+
+- Fixed login-option forwarding: `createFacebookMqttClient()` now passes the options supplied by `createGoatBotLogin()` into the first-party native driver.
+- Native event filters now honor `selfListen`, `selfListenEvent`, `listenEvents`, `listenTyping`, and `updatePresence`; `autoMarkDelivery` and `autoMarkRead` are opt-in receipt actions.
+- Supported runtime options can be changed through `setOptions()`; unsupported options are rejected explicitly. `userAgent` is forwarded to the native HTTP/MQTT session. Proxy login is explicitly unsupported.
+- Deterministic tests cover event filtering, runtime option updates, and the login adapter forwarding options. CI run #134 is pending for this latest compatibility batch.
