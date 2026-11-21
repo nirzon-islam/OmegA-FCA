@@ -11,7 +11,7 @@ This matrix separates what the current OmegA-FCA facade exposes from what still 
 
 | GoatBot expectation | Current OmegA-FCA status | Notes |
 |---|---|---|
-| `login({ appState }, options, callback)` | Native AppState path wired | `createGoatBotLogin` maps AppState arrays to `createFacebookMqttClient`; native HTTPS session validation and MQTT setup run before callback success. Real-account acceptance is still pending. |
+| `login({ appState }, options, callback)` | Native AppState path wired | `createGoatBotLogin` maps AppState arrays to `createFacebookMqttClient`; native HTTPS session validation and MQTT setup run before callback success. Login-time `listenEvents`, `listenTyping`, `updatePresence`, `selfListen`, `selfListenEvent`, `autoMarkDelivery`, `autoMarkRead`, `online`, and `userAgent` options are now forwarded to the native driver. Real-account acceptance is still pending. |
 | `getCurrentUserID()` | Native | Returns the authenticated account ID. |
 | `getAppState()` | Native, sensitive | Returns the current cookie/AppState array for owner-only legacy commands such as `getfbstate`; never log or expose it to ordinary users. |
 | `refreshFb_dtsg()` | Native | Refreshes Facebook web request tokens from the authenticated session without re-login; returns token names/timestamp only, never token values. |
@@ -19,8 +19,20 @@ This matrix separates what the current OmegA-FCA facade exposes from what still 
 | `stopListening(callback?)` | Implemented at facade boundary | Detaches the active listener and invokes an optional callback. |
 | `sessionGuard(path, options)` | Native encrypted sidecar, opt-in | Preserves GoatBot’s legacy `account.txt` argument as an activation alias; the actual encrypted snapshot and backup live at `FCA_SESSION_FILE`, never in `account.txt`. The legacy `interval` option is honored; `debounce` is accepted but does not change periodic snapshot behavior. |
 | `stopSessionGuard()` | Native encrypted guard lifecycle | Stops periodic saves, performs a final encrypted save, and closes the guard. |
-| `setOptions(options)` | Pass-through only | Exposed only if supplied by the driver. |
+| `setOptions(options)` | Native runtime event options | Supports `logLevel`, `selfListen`, `selfListenEvent`, `listenEvents`, `listenTyping`, `updatePresence`, `autoMarkDelivery`, and `autoMarkRead`; rejects unknown options instead of silently ignoring them. |
 | `e2ee.isConnected()` | Not implemented | No E2EE implementation in this branch. |
+
+## Legacy listener option behaviour
+
+The first-party native driver receives GoatBot's login-time options and applies event filters before forwarding events:
+- `selfListen` controls messages authored by the authenticated account.
+- `listenEvents` controls non-self thread/group events; `selfListenEvent` independently controls events authored by the authenticated account.
+- `listenTyping` and `updatePresence` control typing and presence events.
+- `autoMarkDelivery` and `autoMarkRead` opt into corresponding receipt actions for incoming message events.
+- `setOptions()` can update the supported runtime filters after login. Unknown options are rejected.
+- `userAgent` is forwarded to the native HTTP and MQTT session setup. Proxy login is explicitly unsupported; it is not silently ignored.
+
+These filters operate on the currently normalized observed delta classes. Complete event-shape parity still requires authorized live-account verification.
 
 ## Encrypted SessionGuard deployment compatibility
 
