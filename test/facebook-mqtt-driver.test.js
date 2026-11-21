@@ -205,3 +205,61 @@ test("SessionGuard rejects malformed encryption keys before network setup", asyn
     sessionGuard: { filePath: path.join(os.tmpdir(), "omega-invalid-key.enc"), key: "not-a-key" }
   }), /32 bytes or exactly 64 hexadecimal/);
 });
+
+
+test("honors GoatBot listener options and filters self, event, typing and presence deltas", async () => {
+  const socket = new FakeWebSocket();
+  const driver = await createFacebookMqttDriver({
+    appState, fetchImpl: async () => htmlResponse(), socketFactory: () => socket,
+    mqtt: { keepAlive: 0 },
+    options: {
+      selfListen: false, selfListenEvent: true, listenEvents: true,
+      listenTyping: true, updatePresence: true
+    }
+  });
+  const received = [];
+  const detach = driver.listen((error, event) => {
+    if (error) throw error;
+    received.push(event);
+  });
+  const threadID = "987654321";
+  const delta = (kind, senderID, messageID) => ({
+    class: kind,
+    messageMetadata: {
+      threadKey: { threadFbId: threadID },
+      messageId: messageID,
+      actorFbId: senderID
+    },
+    body: "synthetic"
+  });
+  socket.emit("message", mqtt.encodePublish({
+    topic: "/t_ms",
+    payload: JSON.stringify({ deltas: [
+      delta("NewMessage", "123456789012345", "self-message"),
+      delta("NewMessage", "111111111111111", "other-message"),
+      delta("ThreadEvent", "123456789012345", "self-event"),
+      delta("ThreadEvent", "111111111111111", "other-event"),
+      delta("TypingNotification", "111111111111111", "typing-event"),
+      delta("PresenceUpdate", "111111111111111", "presence-event")
+    ] }),
+    qos: 1, packetId: 9
+  }));
+  assert.deepEqual(received.map(event => event.type), ["message", "event", "event", "typ", "presence"]);
+  assert.equal(received[0].messageID, "other-message");
+  assert.equal(received[1].senderID, "123456789012345");
+  assert.equal(received[2].senderID, "111111111111111");
+
+  driver.setOptions({ listenTyping: false, updatePresence: false });
+  socket.emit("message", mqtt.encodePublish({
+    topic: "/t_ms",
+    payload: JSON.stringify({ deltas: [
+      delta("TypingNotification", "111111111111111", "typing-disabled"),
+      delta("PresenceUpdate", "111111111111111", "presence-disabled")
+    ] }),
+    qos: 1, packetId: 10
+  }));
+  assert.equal(received.length, 5);
+  assert.throws(() => driver.setOptions({ proxy: "http://127.0.0.1:8080" }), error => error.code === "FCA_OPTION_UNSUPPORTED");
+  detach();
+  await driver.disconnect();
+});
