@@ -47,7 +47,7 @@ OmegA-FCA is the Facebook integration library maintained under the **OmegA Bot**
 | [Architecture](docs/ARCHITECTURE.md) | Project structure and system design |
 | [Implementation status](docs/IMPLEMENTATION-STATUS.md) | Implemented features and remaining work |
 | [GoatBot compatibility](docs/GOATBOT-COMPATIBILITY-MATRIX.md) | Compatibility notes and known gaps |
-| [Eryxen reference audit](docs/ERYXEN-REFERENCE-AUDIT.md) | API parity and security review |
+| [NTKhang architecture study](docs/NTKHANG-REFERENCE-STUDY.md) | Independent architecture and compatibility study |
 | [Deployment](docs/DEPLOYMENT.md) | Setup and test instructions |
 | [E2EE](docs/E2EE.md) | Experimental encrypted messaging notes |
 | [TypeScript](docs/TYPESCRIPT.md) | Types and package exports |
@@ -113,7 +113,7 @@ This is a session foundation only: it does not yet provide the full FCA action A
 
 ## Experimental Messenger MQTT transport
 
-`createFacebookMqttClient()` provides the first-party AppState and optional encrypted-session restore path: it validates the supplied session, opens the native WebSocket/MQTT transport, subscribes and initializes sync, and exposes a GoatBot-style callback listener. Known Messenger delta classes are normalized conservatively; unknown classes remain explicit. A limited set of web/thread and MQTT actions is available, but this is not full FCA parity. The private broker protocol, delta schemas, and action payloads are unofficial and have not been validated against a live Facebook account. See [Facebook MQTT transport notes](docs/FACEBOOK-MQTT-TRANSPORT.md), [implementation status](docs/IMPLEMENTATION-STATUS.md), and the [Eryxen API parity/security audit](docs/ERYXEN-REFERENCE-AUDIT.md).
+`createFacebookMqttClient()` provides the first-party AppState and optional encrypted-session restore path: it validates the supplied session, opens the native WebSocket/MQTT transport, subscribes and initializes sync, and exposes a GoatBot-style callback listener. Known Messenger delta classes are normalized conservatively; unknown classes remain explicit. A limited set of web/thread and MQTT actions is available, but this is not full FCA parity. The private broker protocol, delta schemas, and action payloads are unofficial and have not been validated against a live Facebook account. See [Facebook MQTT transport notes](docs/FACEBOOK-MQTT-TRANSPORT.md), [implementation status](docs/IMPLEMENTATION-STATUS.md), and the [NTKhang architecture study](docs/NTKHANG-REFERENCE-STUDY.md).
 
 ## Realtime frame inspection
 
@@ -226,7 +226,7 @@ The package includes an MIT-licensed, separate Messenger E2EE client for one-to-
 Group Sender Keys/SKDM, encrypted history backup/restore, E2EE calls and key-transparency verification are not implemented. Private Meta endpoint and Noise-handshake live acceptance with an authorized AppState is still required; synthetic tests do not prove live Meta compatibility.
 
 
-## EryXen-compatible convenience APIs
+## FCA convenience APIs
 
 The native FCA facade also exposes media/location helpers and a namespaced client:
 
