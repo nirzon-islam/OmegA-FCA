@@ -6,6 +6,7 @@ const { createSessionGuard } = require("../security/sessionGuard");
 const { createFacebookMqttProtocol } = require("./facebookMqttProtocol");
 const { createNativeRealtimeTransport } = require("./nativeRealtimeTransport");
 const { createFacebookThreadApi } = require("./facebookThreadApi");
+const { createMessengerEditMessageRequest, createMessengerShareContactRequest } = require("./messengerActions");
 
 /**
  * Builds an owner-authorized personal Messenger MQTT driver.
@@ -216,7 +217,8 @@ async function createFacebookMqttDriver({
       shareContact(text, senderID, threadID, callbackOrMessageID, callback) {
         const done = typeof callbackOrMessageID === "function" ? callbackOrMessageID : callback;
         const request = createMessengerShareContactRequest({ text, senderID, threadID });
-        return callbackResult(driver.sendRequest(request), done);
+        const operation = driver.sendAction({ topic: "/ls_req", payload: request }).then(() => ({ success: true }));
+        return callbackResult(operation, done);
       },
       getCurrentUserID: () => session.userId,
       getAppState: () => session.getAppState(),
