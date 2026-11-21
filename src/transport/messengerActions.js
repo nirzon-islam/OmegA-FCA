@@ -96,11 +96,11 @@ function createMessengerShareContactRequest(input = {}) {
   const senderID = String(input.senderID ?? "");
   const threadID = String(input.threadID ?? "");
   const text = String(input.text ?? "");
-  if (!/^\\d{5,30}$/.test(senderID)) throw new TypeError("senderID must be a numeric Facebook ID");
-  if (!/^\\d{5,30}$/.test(threadID)) throw new TypeError("threadID must be a numeric Facebook ID");
+  if (!/^\d{5,30}$/.test(senderID)) throw new TypeError("senderID must be a numeric Facebook ID");
+  if (!/^\d{5,30}$/.test(threadID)) throw new TypeError("threadID must be a numeric Facebook ID");
   if (Buffer.byteLength(text, "utf8") > 20000) throw new RangeError("contact text exceeds 20000 bytes");
   const epochId = input.epochId ?? offlineThreadingId();
-  if (!/^\\d{10,24}$/.test(String(epochId))) throw new TypeError("epochId is invalid");
+  if (!/^\d{10,24}$/.test(String(epochId))) throw new TypeError("epochId is invalid");
   const taskId = input.taskId ?? randomInt(0, 1001);
   if (!Number.isInteger(taskId) || taskId < 0 || taskId > 1000) throw new TypeError("taskId is invalid");
   return Object.freeze({
