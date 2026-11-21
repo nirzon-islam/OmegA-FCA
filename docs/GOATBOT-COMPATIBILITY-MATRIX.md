@@ -14,6 +14,7 @@ This matrix separates what the current OmegA-FCA facade exposes from what still 
 | `login({ appState }, options, callback)` | Native AppState path wired | `createGoatBotLogin` maps AppState arrays to `createFacebookMqttClient`; native HTTPS session validation and MQTT setup run before callback success. Login-time `listenEvents`, `listenTyping`, `updatePresence`, `selfListen`, `selfListenEvent`, `autoMarkDelivery`, `autoMarkRead`, `online`, and `userAgent` options are now forwarded to the native driver. Real-account acceptance is still pending. |
 | `getCurrentUserID()` | Native | Returns the authenticated account ID. |
 | `getAppState()` | Native, sensitive | Returns the current cookie/AppState array for owner-only legacy commands such as `getfbstate`; never log or expose it to ordinary users. |
+| `getCookies()` | Native, sensitive | Returns the Facebook cookie header for legacy commands such as `suspend`; treat it as a credential, never log or expose it to ordinary users. |
 | `refreshFb_dtsg()` | Native | Refreshes Facebook web request tokens from the authenticated session without re-login; returns token names/timestamp only, never token values. |
 | `listenMqtt(callback)` | Native adapter wired | Adapts the native driver's `listen` to error-first `(error, event)` and emits a `ready` event after successful MQTT setup. Live event compatibility remains unverified. |
 | `stopListening(callback?)` | Implemented at facade boundary | Detaches the active listener and invokes an optional callback. |
@@ -66,7 +67,7 @@ The client exposes each method below only when the injected driver provides that
 The source scan of the current `fca-migration-cleanup` branch found additional method calls beyond the core login contract:
 
 - Implemented in the native facade: `getAppState`, `refreshFb_dtsg`, `httpPost`, `sendMessage`, `unsendMessage`, `markAsDelivered`, `getCurrentUserID`, `getThreadList`, `getThreadInfo`, `getThreadHistory`, `getUserInfo`, `addUserToGroup`, `removeUserFromGroup`, `changeNickname`, `setTitle`, `changeThreadColor`, `changeThreadEmoji`, `sendTypingIndicator`, and `setMessageReaction`.
-- Still missing or not verified: `changeGroupImage`, `changeAvatar`, and `shareContact`. `setOptions` now applies the supported native listener filters documented above; full parity with every legacy FCA option remains incomplete.
+- Still missing or not verified: `editMessage`, `changeGroupImage`, `changeAvatar`, and `shareContact`. `setOptions` now applies the supported native listener filters documented above; full parity with every legacy FCA option remains incomplete.
 - This was a partial scan of command files, not the complete 271-file repository inventory; event handlers, dashboard, database, custom scripts, and dynamically accessed methods still need review.
 
 ## Required work before migration
