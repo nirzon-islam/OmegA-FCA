@@ -12,7 +12,26 @@ const { createFacebookThreadApi } = require("./facebookThreadApi");
  * Thread and group methods use the same authenticated Facebook web session
  * and public FCA request conventions; their private endpoints can change.
  */
-async function createFacebookMqttDriver({
+async function extractEditMessageResult(response) {
+  const step = response?.payload?.step;
+  const candidate = step?.[1]?.[2]?.[2]?.[1];
+  const messageID = String(candidate?.[2] || "");
+  const body = String(candidate?.[4] || "");
+  if (!messageID || !body) {
+    const error = new Error("Facebook returned an invalid edit-message response");
+    error.code = "FCA_RESPONSE_SHAPE_INVALID";
+    throw error;
+  }
+  return { body, messageID };
+}
+
+function callbackResult(operation, callback) {
+  if (typeof callback !== "function") return operation;
+  operation.then(value => callback(null, value), error => callback(error));
+  return undefined;
+}
+
+function createFacebookMqttDriver({
   appState, socketFactory, fetchImpl, userAgent, timeoutMs = 20000,
   connectTimeoutMs = 15000, closeTimeoutMs = 3000, protocolSetupTimeoutMs = 15000,
   maxFrameBytes, syncCursorStore, onSyncCursor, requestTimeoutMs, maxPendingRequests,
@@ -179,6 +198,25 @@ async function createFacebookMqttDriver({
           }
           callback(null, event);
         });
+      },
+      editMessage(text, messageID, callback) {
+        const request = createMessengerEditMessageRequest({ text, messageID });
+        const operation = driver.sendRequest(request).then(response => {
+          const result = extractEditMessageResult(response);
+          if (result.body !== text) {
+            const error = new Error("The message is too old or not from the authenticated account");
+            error.code = "FCA_MESSAGE_EDIT_REJECTED";
+            error.result = result;
+            throw error;
+          }
+          return result;
+        });
+        return callbackResult(operation, callback);
+      },
+      shareContact(text, senderID, threadID, callbackOrMessageID, callback) {
+        const done = typeof callbackOrMessageID === "function" ? callbackOrMessageID : callback;
+        const request = createMessengerShareContactRequest({ text, senderID, threadID });
+        return callbackResult(driver.sendRequest(request), done);
       },
       getCurrentUserID: () => session.userId,
       getAppState: () => session.getAppState(),
