@@ -69,3 +69,10 @@ Never commit live cookies, AppState, passwords, 2FA material, Page tokens, or en
 - Native event filters now honor `selfListen`, `selfListenEvent`, `listenEvents`, `listenTyping`, and `updatePresence`; `autoMarkDelivery` and `autoMarkRead` are opt-in receipt actions.
 - Supported runtime options can be changed through `setOptions()`; unsupported options are rejected explicitly. `userAgent` is forwarded to the native HTTP/MQTT session. Proxy login is explicitly unsupported.
 - Deterministic tests cover event filtering, runtime option updates, and the login adapter forwarding options. GitHub Actions run #135 (`44843369568`) passed on Node.js 20 and 22: 304 tests passed, 0 failed; syntax checks, package exports and `npm pack --dry-run` also passed.
+
+
+## Additional thread API coverage — 2026-11-21
+
+- Added native `getMessage(threadID, messageID, callback?)`, implemented through the authenticated thread-history adapter and normalized message format.
+- The lookup currently searches the latest 100 messages returned for that thread; it returns `null` when the target is not in that page. This is not yet an unbounded historical search.
+- Added synthetic tests for found, missing and invalid message IDs. The next CI run must validate this addition before it is considered green.
