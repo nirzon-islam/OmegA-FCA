@@ -52,15 +52,17 @@ The client exposes each method below only when the injected driver provides that
 | `unsendMessage` | `messaging` | Native authenticated unsend endpoint with synthetic success/error tests; live acceptance is unverified. |
 | `markAsDelivered` | `messaging` | Native authenticated delivery-receipt endpoint with synthetic tests; live acceptance is unverified. |
 | `sendTypingIndicator` | `messaging` | Native authenticated typing endpoint; supports the legacy FCA argument order and the simpler thread/state form, with synthetic tests. Live acceptance is unverified. |
+| `getUserID(name)`, `getUID(profile)` | `threads` | Native typeahead user search and Facebook profile URL/numeric-ID resolution; synthetic tests added. `getUserID()` with no argument is not a current-account alias; use `getCurrentUserID()`. |
+| `resolvePhotoUrl(photoID)` | `threads` | Native authenticated Mercury photo URL lookup with HTTPS Facebook CDN host validation. |
 | `getUserInfo`, `getThreadInfo`, `getThreadList`, `getThreadHistory` | `threads` | Native AppState-backed web actions with synthetic tests; live Facebook endpoint behavior is unverified. |
 | `httpPost` | compatibility | Authenticated low-level POST returning response text; restricted to Facebook/Messenger HTTPS hosts and bounded request/response sizes. Supports custom GoatBot GraphQL commands such as friend-request management. |
 | `getMessage` | `threads` | Implemented by looking up the requested ID in the latest 100 normalized thread-history messages; callback and Promise forms are supported. Older messages may require a future cursor-based lookup. |
 | `editMessage` | `messaging` | Native MQTT task builder + correlated response parser; synthetic request/response test added. Live edit acceptance and old-message rejection still require owner testing. |
 | `shareContact` | `messaging` | Native MQTT contact-sharing task builder with correlated response; accepts GoatBot's legacy fourth message-ID argument as an ignored compatibility placeholder. Live acceptance is unverified. |
-| `getFriendsList` | `threads` | Not yet implemented by the first-party native driver; optional pass-through only. |
+| `getFriendsList` | `threads` | Native authenticated `/chat/user_info_all` query with normalized friend metadata; synthetic tests added. Live endpoint acceptance is unverified. |
 | `getUserID` | `threads` | Alias to the authenticated account identity. |
 | `addUserToGroup`, `removeUserFromGroup`, `changeNickname`, `setTitle` | `groups` | Native AppState-backed web actions with synthetic tests; live acceptance is unverified. |
-| `createNewGroup` | `groups` | Not exposed until its request contract is evidenced. |
+| `createNewGroup` | `groups` | Native authenticated GraphQL group-create mutation with participant validation and normalized thread ID; synthetic request/response test added. Live acceptance is unverified. |
 | `setMessageReaction` | `reactions` | Native AppState-backed web action with synthetic tests; live acceptance is unverified. |
 | `changeThreadColor`, `changeThreadEmoji` | `threads` | Native AppState-backed customization endpoints with synthetic tests; live acceptance is unverified. |
 
