@@ -17,6 +17,7 @@ This matrix separates what the current OmegA-FCA facade exposes from what still 
 | `getCookies()` | Native, sensitive | Returns the Facebook cookie header for legacy commands such as `suspend`; treat it as a credential, never log or expose it to ordinary users. |
 | `refreshFb_dtsg()` | Native | Refreshes Facebook web request tokens from the authenticated session without re-login; returns token names/timestamp only, never token values. |
 | `listenMqtt(callback)` | Native adapter wired | Adapts the native driver's `listen` to error-first `(error, event)` and emits a `ready` event after successful MQTT setup. Live event compatibility remains unverified. |
+| `getHumanizer()` | Native compatibility middleware | Returns the native humanizer after `listenMqtt()` starts. Supports `enabled`, `reactDelayMs`, `cooldownMs`, `maxPerMinute`, and `perThread`; shows typing for the exact configured delay before delivering incoming messages. |
 | `stopListening(callback?)` | Implemented at facade boundary | Detaches the active listener and invokes an optional callback. |
 | `sessionGuard(path, options)` | Native encrypted sidecar, opt-in | Preserves GoatBot’s legacy `account.txt` argument as an activation alias; the actual encrypted snapshot and backup live at `FCA_SESSION_FILE`, never in `account.txt`. The legacy `interval` option is honored; `debounce` is accepted but does not change periodic snapshot behavior. |
 | `stopSessionGuard()` | Native encrypted guard lifecycle | Stops periodic saves, performs a final encrypted save, and closes the guard. |
