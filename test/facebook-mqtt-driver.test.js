@@ -316,3 +316,24 @@ test("implements editMessage and shareContact with correlated MQTT requests", as
     await driver.disconnect();
   }
 });
+
+
+test("creates the GoatBot humanizer when listen starts and exposes getHumanizer", async () => {
+  const socket = new FakeWebSocket();
+  const driver = await createFacebookMqttDriver({
+    appState, fetchImpl: async () => htmlResponse(), socketFactory: () => socket,
+    mqtt: { keepAlive: 0 }
+  });
+  try {
+    assert.equal(driver.getHumanizer(), null);
+    const detach = driver.listen(() => {});
+    const humanizer = driver.getHumanizer();
+    assert.ok(humanizer);
+    assert.equal(typeof humanizer.setOptions, "function");
+    humanizer.setOptions({ enabled: false, reactDelayMs: 0 });
+    assert.equal(humanizer.getOptions().enabled, false);
+    detach();
+  } finally {
+    await driver.disconnect();
+  }
+});
