@@ -29,6 +29,7 @@ OmegA-FCA is the Facebook integration library maintained under the **OmegA Bot**
 - Native `getMessage(threadID, messageID)` looks up the target in the latest 100 normalized thread-history messages; older-history cursor lookup is not yet implemented.
 - Sensitive legacy `getCookies()` exposes the current Facebook cookie header for owner-only compatibility paths; never log or send it to ordinary users.
 - Native `editMessage()` and `shareContact()` use correlated Messenger MQTT task requests; both remain subject to live-account acceptance checks.
+- Native user/profile lookup (`getUserID`, `getUID`, `resolvePhotoUrl`), friend-list retrieval, and `createNewGroup` use authenticated Facebook web requests; their private endpoints require live-account verification.
 - Separate official Meta Messenger Page transport (not a personal-account replacement).
 - TypeScript declarations, signed update-manifest verification, optional Ed25519 licensing.
 
