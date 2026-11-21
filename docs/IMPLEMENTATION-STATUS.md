@@ -91,3 +91,12 @@ Never commit live cookies, AppState, passwords, 2FA material, Page tokens, or en
 - Added `shareContact(text, senderID, threadID, callback?)` using the observed `messenger_contact_sharing` task. The legacy fourth string argument used by GoatBot is accepted as a compatibility placeholder.
 - Added client-facade method registration, TypeScript declarations, and deterministic fake-broker tests for both request/response flows.
 - GitHub Actions verification is pending for these latest action additions and the sensitive `getCookies()` method.
+
+
+## User and group lookup coverage — 2026-11-21
+
+- Added authenticated typeahead `getUserID(name)` and `getUID(profile)` resolution for numeric IDs, profile.php IDs, /people URLs, and vanity names.
+- Added authenticated `resolvePhotoUrl(photoID)` with HTTPS Facebook CDN host validation.
+- Added normalized `getFriendsList()` and the observed GraphQL `createNewGroup(participantIDs, title?)` mutation.
+- Added client method registration and TypeScript declarations, plus synthetic request/response tests for each path.
+- These Facebook-private endpoints remain unofficial and need authorized live-account acceptance. CI must validate this batch before it is considered green.
