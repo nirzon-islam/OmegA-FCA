@@ -1,39 +1,44 @@
 # OmegA-FCA prerelease publishing
 
-The repository is prepared for a public npm prerelease. Publishing is intentionally an owner-operated step; CI never publishes and no npm credential is stored in this repository.
+Prereleases are published by the GitHub Actions workflow `.github/workflows/publish-npm-release.yml`. The workflow publishes only prerelease tags to npm's `next` dist-tag; it does not move the stable `latest` tag.
 
 ## Current prerelease candidate
 
 - Package: `@nirzon-islam/omega-fca`
 - Candidate version: `0.1.6-rc.4`
+- Git tag / GitHub Release: `v0.1.6-rc.4`
 - Registry: `https://registry.npmjs.org/`
-- Dist-tag: `next` (configured in `publishConfig`; do not move the stable `latest` tag)
+- Dist-tag: `next`
 
-## Before publishing
+## Required repository secret
 
-Run from the repository root on the verified `main` commit:
+Before running the publish workflow, configure the repository Actions secret:
 
-```sh
-npm ci
-npm test
-npm run test:types
-npm run test:syntax
-npm pack --dry-run --json
-```
+- Name: `NPM_TOKEN`
+- Value: an npm automation/access token with publish permission for `@nirzon-islam/omega-fca`
 
-Review the package file list and ensure no AppState, cookies, session keys, local environment files, or test credentials are included.
+Do not commit the token, put it in workflow source, or paste it into chat or logs. The workflow uses GitHub's OIDC permission for npm provenance as well as `NPM_TOKEN` for registry authentication.
 
-## Owner-operated publish
+## Publish the existing rc.4 release
 
-After the GitHub Actions run for the exact commit is green and the package contents have been reviewed:
+The GitHub Release `v0.1.6-rc.4` already exists. Because the publish workflow was added after that release was created, its `release: published` trigger will not run retroactively.
 
-```sh
-npm publish --access public --tag next
-```
+To publish this existing candidate:
 
-The npm account must have publish permission and complete any required two-factor authentication. Do not put an npm token or OTP in GitHub source, chat, logs, or commits.
+1. Open the repository's **Actions** tab.
+2. Select **Publish npm prerelease**.
+3. Choose **Run workflow**.
+4. Select branch `main`.
+5. Enter tag `v0.1.6-rc.4`.
+6. Start the workflow and wait for the `publish` job to finish successfully.
+
+The workflow checks out the exact tag, installs from the lockfile, runs tests/type/syntax checks, verifies that the package version matches the prerelease tag, reviews the package contents with `npm pack --dry-run`, then publishes with `--tag next`.
+
+For future GitHub prereleases, publishing starts automatically when a prerelease is published.
 
 ## Verify the published artifact
+
+After the workflow succeeds, verify:
 
 ```sh
 npm view @nirzon-islam/omega-fca@next version
@@ -49,4 +54,4 @@ A successful package build and synthetic CI do not prove Facebook login, MQTT ev
 
 ## Candidate scope
 
-This rc.4 preparation updates the package and lockfile version metadata from rc.3 to rc.4. It does not claim new protocol support or completion of the outstanding live Facebook/AppState acceptance gates.
+This rc.4 candidate updates the package and lockfile version metadata. It does not claim new protocol support or completion of the outstanding live Facebook/AppState acceptance gates.
