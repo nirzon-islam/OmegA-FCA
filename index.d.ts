@@ -1,3 +1,5 @@
+import type { EventEmitter } from "node:events";
+
 export type LoginMode = "appstate" | "cookie" | "session";
 export type AuthenticationAttemptState = "idle" | "authenticating" | "challenge_required" | "verifying_challenge" | "authenticated" | "failed" | "closed";
 export interface AuthenticationChallenge { readonly type: string; readonly message: string | null; readonly methods: readonly string[]; }
@@ -71,18 +73,48 @@ export function createFacebookError(message: string, options?: {
   code?: string; status?: number; sessionState?: "checkpoint" | "logged_out" | "error"; retryable?: boolean;
 }): FacebookResponseError;
 export interface ConnectionContext { attempt: number; generation: number; signal: AbortSignal; }
+export interface E2EEStatus {
+  connected: boolean;
+  deviceId: number | null;
+  persistentStorage: boolean;
+  storageEncrypted: boolean;
+}
+export interface E2EELoginOptions {
+  /** Enable encrypted device persistence with an explicit 32-byte key (Buffer/Uint8Array) or 64-character hex string. */
+  e2eeStorageKey?: string | Buffer | Uint8Array;
+  /** Optional encrypted E2EE device-store path. Defaults to ~/.omega-fca/e2ee/<userId>.json when a key is supplied. */
+  e2eeDevicePath?: string;
+  e2eeDeviceListCacheMs?: number;
+  e2eeFrameLog?: string;
+  e2ee?: boolean;
+}
 export interface TransportDriver {
+  connectE2EE?(callback?: (error: Error | null, result?: { userId: string; deviceId: number }) => void): Promise<{ userId: string; deviceId: number }> | void;
+  listenE2EE?(callback: (error: Error | null, event?: unknown) => void): () => void;
+  sendE2EEReaction?(threadID: string | number, messageID: string, reaction: string, callback?: (error: Error | null, result?: unknown) => void): Promise<unknown> | void;
+  editE2EEMessage?(threadID: string | number, messageID: string, newText: string, callback?: (error: Error | null, result?: unknown) => void): Promise<unknown> | void;
+  unsendE2EEMessage?(threadID: string | number, messageID: string, callback?: (error: Error | null, result?: unknown) => void): Promise<unknown> | void;
+  sendE2EETyping?(threadID: string | number, isTyping?: boolean, callback?: (error: Error | null, result?: unknown) => void): Promise<unknown> | void;
+  _connectE2EEAndMerge?(callback?: (error: Error | null, result?: { userId: string; deviceId: number }) => void): Promise<{ userId: string; deviceId: number }> | void;
+  sendE2EEMessage?(threadID: string | number, message: string | { body?: string; attachment?: AttachmentInput }, options?: { replyToMessageID?: string | number } | ((error: Error | null, result?: unknown) => void), callback?: (error: Error | null, result?: unknown) => void): Promise<unknown> | void;
+  sendE2EEAttachment?(threadID: string | number, attachment: AttachmentInput, caption?: string, options?: { replyToMessageID?: string | number } | ((error: Error | null, result?: unknown) => void), callback?: (error: Error | null, result?: unknown) => void): Promise<unknown> | void;
+  downloadE2EEAttachment?(attachment: Record<string, unknown>, callback?: (error: Error | null, buffer?: Buffer) => void): Promise<Buffer> | void;
+  isE2EEThread?(threadID: string | number): boolean; disconnectE2EE?(): boolean;
+  getE2EEStatus?(): E2EEStatus;
   listen(callback: (error: Error | null, event?: unknown) => void): (() => void) | void;
-  disconnect?(): void | Promise<void>; getCurrentUserID?(): string | number | null | Promise<string | number | null>; getAppState?(): Cookie[] | Promise<Cookie[]>; getCookies?(): string | Promise<string>; getHumanizer?(): { enabled: boolean; setOptions(options: Record<string, unknown>): unknown; getOptions?(): Record<string, unknown> } | null; refreshFb_dtsg?(): Promise<Readonly<{ refreshedAt: number; tokenNames: readonly string[] }>>;
+  disconnect?(): void | Promise<void>; getCurrentUserID?(): string | number | null | Promise<string | number | null>; getAppState?(): Cookie[] | Promise<Cookie[]>; saveSession?(): Promise<string>; restoreSessionBackup?(): Promise<{ restored: true; userId: string; cookieCount: number }>; getCookies?(): string | Promise<string>; getHumanizer?(): { enabled: boolean; setOptions(options: Record<string, unknown>): unknown; getOptions?(): Record<string, unknown> } | null; refreshFb_dtsg?(): Promise<Readonly<{ refreshedAt: number; tokenNames: readonly string[] }>>;
   changeAvatar?(image: Uint8Array | Blob | AsyncIterable<Uint8Array>, caption?: string | number | ((error: Error | null, result?: Record<string, unknown>) => void), timestamp?: number | ((error: Error | null, result?: Record<string, unknown>) => void), callback?: (error: Error | null, result?: Record<string, unknown>) => void): Promise<Record<string, unknown>> | void;
   changeGroupImage?(image: Uint8Array | Blob | AsyncIterable<Uint8Array>, threadID: string | number, callback?: (error: Error | null, result?: Record<string, unknown>) => void): Promise<Record<string, unknown>> | void;
-  sendMessage?(...args: unknown[]): unknown; editMessage?(text: string, messageID: string, callback?: (error: Error | null, result?: { body: string; messageID: string }) => void): Promise<{ body: string; messageID: string }> | void; shareContact?(text: string | null | undefined, senderID: string | number, threadID: string | number, callbackOrMessageID?: string | ((error: Error | null, result?: unknown) => void), callback?: (error: Error | null, result?: unknown) => void): Promise<unknown> | void; httpPost?(url: string, form: Record<string, unknown>, callback?: (error: Error | null, result?: string) => void): Promise<string> | void; getUserInfo?(...args: unknown[]): unknown;
+  sendMessage?(...args: unknown[]): unknown; sendBroadcast?(message: string | Record<string, unknown>, threadIDs: string | number | Array<string | number>, options?: { delay?: number; parallel?: number; onEach?: (error: Error | null, result: unknown, threadID: string) => void } | ((error: Error | null, result?: { total: number; sent: Array<{ threadID: string; result: unknown }>; failed: Array<{ threadID: string; error: Error }> }) => void), callback?: (error: Error | null, result?: { total: number; sent: Array<{ threadID: string; result: unknown }>; failed: Array<{ threadID: string; error: Error }> }) => void): Promise<{ total: number; sent: Array<{ threadID: string; result: unknown }>; failed: Array<{ threadID: string; error: Error }> }> | void;  uploadAttachment?(input: AttachmentInput | AttachmentInput[]): Promise<UploadedAttachment[]>; downloadAttachment?(url: string, options?: { maxBytes?: number; timeoutMs?: number }): Promise<DownloadedAttachment>; forwardAttachment?(attachmentID: string | number, recipients: string | number | Array<string | number>, callback?: (error?: Error | null) => void): Promise<{ success: true; attachmentID: string; recipients: string[] }> | void; editMessage?(text: string, messageID: string, callback?: (error: Error | null, result?: { body: string; messageID: string }) => void): Promise<{ body: string; messageID: string }> | void; shareContact?(text: string | null | undefined, senderID: string | number, threadID: string | number, callbackOrMessageID?: string | ((error: Error | null, result?: unknown) => void), callback?: (error: Error | null, result?: unknown) => void): Promise<unknown> | void; httpGet?(url: string, query?: Record<string, unknown>, callback?: (error: Error | null, result?: string) => void): Promise<string> | void; httpPost?(url: string, form: Record<string, unknown>, callback?: (error: Error | null, result?: string) => void): Promise<string> | void; httpPostFormData?(url: string, formData: FormData, callback?: (error: Error | null, result?: unknown) => void): Promise<unknown> | void; getUserInfo?(...args: unknown[]): unknown;
   getThreadInfo?(...args: unknown[]): unknown; getThreadList?(...args: unknown[]): unknown;
-  markAsRead?(...args: unknown[]): unknown; markAsDelivered?(threadID: string | number, messageID: string | number, callback?: (error?: Error | null) => void): Promise<unknown> | void; setMessageReaction?(...args: unknown[]): unknown;
-  sendTypingIndicator?(...args: unknown[]): unknown; unsendMessage?(...args: unknown[]): unknown;
-  changeNickname?(...args: unknown[]): unknown; changeThreadColor?(color: string, threadID: string | number, callback?: (error?: Error | null) => void): Promise<unknown> | void; changeThreadEmoji?(emoji: string, threadID: string | number, callback?: (error?: Error | null) => void): Promise<unknown> | void; setTitle?(title: string, threadID: string | number, callback?: (error?: Error | null, result?: unknown) => void): Promise<unknown> | void; addUserToGroup?(...args: unknown[]): unknown;
+  markAsRead?(threadID: string | number, read?: boolean | ((error: Error | null, result?: unknown) => void), callback?: (error: Error | null, result?: unknown) => void): Promise<unknown> | void; markAsReadAll?(callback?: (error: Error | null, result?: unknown) => void): Promise<unknown> | void; markAsSeen?(timestamp?: number | ((error: Error | null, result?: unknown) => void), callback?: (error: Error | null, result?: unknown) => void): Promise<unknown> | void; deleteMessage?(messageIDs: string | Array<string>, callback?: (error: Error | null, result?: unknown) => void): Promise<unknown> | void; deleteThread?(threadIDs: string | number | Array<string | number>, callback?: (error: Error | null, result?: unknown) => void): Promise<unknown> | void; muteThread?(threadID: string | number, muteSeconds: number, callback?: (error: Error | null, result?: unknown) => void): Promise<unknown> | void; changeArchivedStatus?(threadIDs: string | number | Array<string | number>, archive: boolean, callback?: (error: Error | null, result?: unknown) => void): Promise<unknown> | void; markAsDelivered?(threadID: string | number, messageID: string, callback?: (error?: Error | null) => void): Promise<unknown> | void; setMessageReaction?(...args: unknown[]): unknown;   setPostReaction?(postID: string | number, type: string | number | ((error: Error | null, result?: unknown) => void), callback?: (error: Error | null, result?: unknown) => void): Promise<unknown> | void;
+  reactToPost?(postID: string | number, type: string | number, callback?: (error: Error | null, result?: unknown) => void): Promise<unknown> | void;
+  reactToComment?(commentID: string | number, type: string | number, callback?: (error: Error | null, result?: unknown) => void): Promise<unknown> | void;
+  handleFriendRequest?(userID: string | number, accept: boolean, callback?: (error: Error | null, result?: unknown) => void): Promise<unknown> | void;
+  sendTypingIndicator?(...args: unknown[]): unknown; unsendMessage?(messageID: string, callback?: (error: Error | null, result?: unknown) => void): Promise<unknown> | void;
+  changeNickname?(...args: unknown[]): unknown; changeBlockedStatus?(userID: string | number, block: boolean, callback?: (error?: Error | null) => void): Promise<unknown> | void; changeBio?(bio: string, publish?: boolean | ((error?: Error | null) => void), callback?: (error?: Error | null) => void): Promise<unknown> | void; unfriend?(userID: string | number, callback?: (error?: Error | null) => void): Promise<unknown> | void; getEmojiUrl?(character: string, size?: 32 | 64 | 128, pixelRatio?: "1.0" | "1.5"): string; changeAdminStatus?(threadID: string | number, adminIDs: string | number | Array<string | number>, adminStatus: boolean, callback?: (error?: Error | null) => void): Promise<unknown> | void; createPoll?(title: string, threadID: string | number, options?: Record<string, boolean> | ((error?: Error | null) => void), callback?: (error?: Error | null) => void): Promise<unknown> | void; handleMessageRequest?(threadIDs: string | number | Array<string | number>, accept: boolean, callback?: (error?: Error | null) => void): Promise<unknown> | void; searchForThread?(name: string, callback?: (error: Error | null, result?: Array<Record<string, unknown>>) => void): Promise<Array<Record<string, unknown>>> | void; getThreadPictures?(threadID: string | number, offset?: number, limit?: number, callback?: (error: Error | null, result?: Array<Record<string, unknown>>) => void): Promise<Array<Record<string, unknown>>> | void; changeThreadColor?(color: string, threadID: string | number, callback?: (error?: Error | null) => void): Promise<unknown> | void; changeThreadEmoji?(emoji: string, threadID: string | number, callback?: (error?: Error | null) => void): Promise<unknown> | void; setTitle?(title: string, threadID: string | number, callback?: (error?: Error | null, result?: unknown) => void): Promise<unknown> | void; addUserToGroup?(...args: unknown[]): unknown;
   removeUserFromGroup?(...args: unknown[]): unknown; createNewGroup?(...args: unknown[]): unknown;
-  getThreadHistory?(...args: unknown[]): unknown; getMessage?(...args: unknown[]): unknown;
+  sharePost?(postID: string | number, message?: string, callback?: (error: Error | null, result?: Record<string, unknown>) => void): Promise<Record<string, unknown>> | void; sendFriendRequest?(userID: string | number, callback?: (error: Error | null, result?: Record<string, unknown>) => void): Promise<Record<string, unknown>> | void; followUser?(userID: string | number, callback?: (error: Error | null, result?: boolean) => void): Promise<boolean> | void; unfollowUser?(userID: string | number, callback?: (error: Error | null, result?: boolean) => void): Promise<boolean> | void; postComment?(message: string, postID: string | number, replyCommentID?: string | number | ((error: Error | null, result?: Record<string, unknown>) => void), callback?: (error: Error | null, result?: Record<string, unknown>) => void): Promise<Record<string, unknown>> | void; pinMessage?(messageID: string, threadID: string | number, callback?: (error: Error | null, result?: unknown) => void): Promise<unknown> | void; unpinMessage?(messageID: string, threadID: string | number, callback?: (error: Error | null, result?: unknown) => void): Promise<unknown> | void; getThreadHistory?(...args: unknown[]): unknown; getMessage?(...args: unknown[]): unknown;
   getFriendsList?(...args: unknown[]): unknown; getUserID?(...args: unknown[]): unknown; getUID?(...args: unknown[]): unknown; resolvePhotoUrl?(...args: unknown[]): unknown;
   sessionGuard?(...args: unknown[]): unknown; stopSessionGuard?(): unknown;
   setOptions?(options: Record<string, unknown>): unknown;
@@ -101,17 +133,51 @@ export interface LicenseOptions {
   checkIntervalMs?: number; refresh?: () => string | Promise<string>;
 }
 export interface ClientApi {
-  getCurrentUserID(): string | null; getCookies?(): string; getHumanizer?(): { enabled: boolean; setOptions(options: Record<string, unknown>): unknown; getOptions?(): Record<string, unknown> } | null; getAppState?(): Cookie[]; getUserID?(): string | null; getUserID?(name: string, callback?: (error: Error | null, result?: Array<Record<string, unknown>>) => void): Promise<Array<Record<string, unknown>>> | void; getUID?(input: string | number, callback?: (error: Error | null, result?: string) => void): Promise<string> | void; resolvePhotoUrl?(photoID: string | number, callback?: (error: Error | null, result?: string) => void): Promise<string> | void; getFriendsList?(callback?: (error: Error | null, result?: Array<Record<string, unknown>>) => void): Promise<Array<Record<string, unknown>>> | void; createNewGroup?(participantIDs: Array<string | number>, groupTitle?: string | ((error: Error | null, result?: string) => void) | null, callback?: (error: Error | null, result?: string) => void): Promise<string> | void; getConnectionState(): ConnectionSnapshot; getLicense(): VerifiedLicense | null;
-  getCapabilities(): Readonly<{ methods: readonly string[]; events: boolean; sessionGuard: boolean; e2ee: false }>;
+  connectE2EE?(callback?: (error: Error | null, result?: { userId: string; deviceId: number }) => void): Promise<{ userId: string; deviceId: number }> | void;
+  listenE2EE?(callback: (error: Error | null, event?: unknown) => void): () => void;
+  sendE2EEReaction?(threadID: string | number, messageID: string, reaction: string, callback?: (error: Error | null, result?: unknown) => void): Promise<unknown> | void;
+  editE2EEMessage?(threadID: string | number, messageID: string, newText: string, callback?: (error: Error | null, result?: unknown) => void): Promise<unknown> | void;
+  unsendE2EEMessage?(threadID: string | number, messageID: string, callback?: (error: Error | null, result?: unknown) => void): Promise<unknown> | void;
+  sendE2EETyping?(threadID: string | number, isTyping?: boolean, callback?: (error: Error | null, result?: unknown) => void): Promise<unknown> | void;
+  _connectE2EEAndMerge?(callback?: (error: Error | null, result?: { userId: string; deviceId: number }) => void): Promise<{ userId: string; deviceId: number }> | void;
+  sendE2EEMessage?(threadID: string | number, message: string | { body?: string; attachment?: AttachmentInput }, options?: { replyToMessageID?: string | number } | ((error: Error | null, result?: unknown) => void), callback?: (error: Error | null, result?: unknown) => void): Promise<unknown> | void;
+  sendE2EEAttachment?(threadID: string | number, attachment: AttachmentInput, caption?: string, options?: { replyToMessageID?: string | number } | ((error: Error | null, result?: unknown) => void), callback?: (error: Error | null, result?: unknown) => void): Promise<unknown> | void;
+  downloadE2EEAttachment?(attachment: Record<string, unknown>, callback?: (error: Error | null, buffer?: Buffer) => void): Promise<Buffer> | void;
+  isE2EEThread?(threadID: string | number): boolean;
+  getE2EEStatus?(): E2EEStatus;
+  sendFriendRequest?(userID: string | number, callback?: (error: Error | null, result?: Record<string, unknown>) => void): Promise<Record<string, unknown>> | void; followUser?(userID: string | number, callback?: (error: Error | null, result?: boolean) => void): Promise<boolean> | void; unfollowUser?(userID: string | number, callback?: (error: Error | null, result?: boolean) => void): Promise<boolean> | void; postComment?(message: string, postID: string | number, replyCommentID?: string | number | ((error: Error | null, result?: Record<string, unknown>) => void), callback?: (error: Error | null, result?: Record<string, unknown>) => void): Promise<Record<string, unknown>> | void; pinMessage?(messageID: string, threadID: string | number, callback?: (error: Error | null, result?: unknown) => void): Promise<unknown> | void; unpinMessage?(messageID: string, threadID: string | number, callback?: (error: Error | null, result?: unknown) => void): Promise<unknown> | void; getCurrentUserID(): string | null; getCookies?(): string; getHumanizer?(): { enabled: boolean; setOptions(options: Record<string, unknown>): unknown; getOptions?(): Record<string, unknown> } | null; getAppState?(): Cookie[]; saveSession?(): Promise<string>; restoreSessionBackup?(): Promise<{ restored: true; userId: string; cookieCount: number }>; getUserID?(): string | null; getUserID?(name: string, callback?: (error: Error | null, result?: Array<Record<string, unknown>>) => void): Promise<Array<Record<string, unknown>>> | void; getUID?(input: string | number, callback?: (error: Error | null, result?: string) => void): Promise<string> | void; resolvePhotoUrl?(photoID: string | number, callback?: (error: Error | null, result?: string) => void): Promise<string> | void; getFriendsList?(callback?: (error: Error | null, result?: Array<Record<string, unknown>>) => void): Promise<Array<Record<string, unknown>>> | void; createNewGroup?(participantIDs: Array<string | number>, groupTitle?: string | ((error: Error | null, result?: string) => void) | null, callback?: (error: Error | null, result?: string) => void): Promise<string> | void; getConnectionState(): ConnectionSnapshot; getLicense(): VerifiedLicense | null;
+  getCapabilities(): Readonly<{ methods: readonly string[]; events: boolean; sessionGuard: boolean; e2ee: boolean }>;
+  getAvatarUser?(userID: string | number, callback?: (error: Error | null, avatarUrl?: string | null) => void): Promise<string | null> | void;
+  getProfileInfo?(userID: string | number, callback?: (error: Error | null, result?: Record<string, unknown>) => void): Promise<Record<string, unknown>> | void;
+  getPublicData?(userID: string | number, callback?: (error: Error | null, result?: Record<string, unknown>) => void): Promise<Record<string, unknown>> | void;
+  logout?(callback?: (error?: Error | null) => void): Promise<void> | void;
+  createGroup?(groupTitle: string | null, participantIDs: Array<string | number>, callback?: (error: Error | null, threadID?: string) => void): Promise<string> | void;
+  e2ee?: Readonly<{ connect?: (...args: any[]) => any; disconnect?: () => boolean; isConnected(): boolean; getStatus(): E2EEStatus; isThread?: (threadID: string | number) => boolean; listen?: (callback: (error: Error | null, event?: unknown) => void) => () => void; sendMessage?: (...args: any[]) => any; sendAttachment?: (...args: any[]) => any; downloadAttachment?: (...args: any[]) => any; sendReaction?: (...args: any[]) => any; editMessage?: (...args: any[]) => any; unsendMessage?: (...args: any[]) => any; sendTyping?: (...args: any[]) => any }>;
   listen(callback: (event: unknown) => void): () => void;
   listenMqtt(callback: (error: Error | null, event?: unknown) => void): () => void;
   stopListening(callback?: () => void): boolean;
   changeAvatar?: (image: Uint8Array | Blob | AsyncIterable<Uint8Array>, caption?: string | number | ((error: Error | null, result?: Record<string, unknown>) => void), timestamp?: number | ((error: Error | null, result?: Record<string, unknown>) => void), callback?: (error: Error | null, result?: Record<string, unknown>) => void) => Promise<Record<string, unknown>> | void;
   changeGroupImage?: (image: Uint8Array | Blob | AsyncIterable<Uint8Array>, threadID: string | number, callback?: (error: Error | null, result?: Record<string, unknown>) => void) => Promise<Record<string, unknown>> | void;
-  sendRequest?: (payload: Record<string, unknown>, options?: { timeoutMs?: number }) => Promise<unknown>; sendMessage?: { (input: { threadID: string | number; message: string | { body?: string; sticker?: string | number }; replyToMessageID?: string | number }, options?: { timeoutMs?: number }): Promise<unknown>; (message: string | { body?: string; sticker?: string | number }, threadID: string | number, callback: (error: Error | null, result?: unknown) => void, replyToMessageID?: string | number): void; }; getUserInfo?: (...args: any[]) => any;
-  getThreadInfo?: (...args: any[]) => any; getThreadList?: (...args: any[]) => any;
-  markAsRead?: (...args: any[]) => any; setMessageReaction?: (...args: any[]) => any;
-  sendTypingIndicator?: (...args: any[]) => any; unsendMessage?: (...args: any[]) => any;
+  sendRequest?: (payload: Record<string, unknown>, options?: { timeoutMs?: number }) => Promise<unknown>; uploadAttachment?: (input: AttachmentInput | AttachmentInput[]) => Promise<UploadedAttachment[]>; downloadAttachment?: (url: string, options?: { maxBytes?: number; timeoutMs?: number }) => Promise<DownloadedAttachment>; forwardAttachment?: (attachmentID: string | number, recipients: string | number | Array<string | number>, callback?: (error?: Error | null) => void) => Promise<{ success: true; attachmentID: string; recipients: string[] }> | void; sendMessage?: { (input: { threadID: string | number; message: string | { body?: string; sticker?: string | number; emoji?: string; emojiSize?: number | "small" | "medium" | "large"; location?: { latitude: number; longitude: number; current?: boolean; live?: boolean }; attachment?: AttachmentInput | AttachmentInput[]; url?: string; mentions?: Array<{ tag: string; id?: string | number; fromIndex?: number }> }; replyToMessageID?: string | number }, options?: { timeoutMs?: number; e2ee?: boolean | "required" | "disabled" }): Promise<unknown>; (message: string | { body?: string; sticker?: string | number; emoji?: string; emojiSize?: number | "small" | "medium" | "large"; location?: { latitude: number; longitude: number; current?: boolean; live?: boolean }; attachment?: AttachmentInput | AttachmentInput[]; url?: string; mentions?: Array<{ tag: string; id?: string | number; fromIndex?: number }> }, threadID: string | number, callback?: (error: Error | null, result?: unknown) => void, replyToMessageID?: string | number): Promise<unknown> | void; (message: string | { body?: string; sticker?: string | number; attachment?: AttachmentInput | AttachmentInput[]; url?: string }, threadID: string | number, replyToMessageID: string | number): Promise<unknown>; }; sendImage?(image: AttachmentInput, threadID: string | number, caption?: string | ((error: Error | null, result?: unknown) => void), callback?: (error: Error | null, result?: unknown) => void): Promise<unknown> | void;
+  sendVideo?(video: AttachmentInput, threadID: string | number, caption?: string | ((error: Error | null, result?: unknown) => void), callback?: (error: Error | null, result?: unknown) => void): Promise<unknown> | void;
+  sendAudio?(audio: AttachmentInput, threadID: string | number, caption?: string | ((error: Error | null, result?: unknown) => void), callback?: (error: Error | null, result?: unknown) => void): Promise<unknown> | void;
+  sendFile?(file: AttachmentInput, threadID: string | number, caption?: string | ((error: Error | null, result?: unknown) => void), callback?: (error: Error | null, result?: unknown) => void): Promise<unknown> | void;
+  sendGif?(gif: AttachmentInput, threadID: string | number, caption?: string | ((error: Error | null, result?: unknown) => void), callback?: (error: Error | null, result?: unknown) => void): Promise<unknown> | void;
+  shareLink?(url: string, threadID: string | number, caption?: string | ((error: Error | null, result?: unknown) => void), callback?: (error: Error | null, result?: unknown) => void): Promise<unknown> | void;
+  sendLocation?(latitude: number | { latitude: number; longitude: number; current?: boolean; live?: boolean }, longitude: number | string | number, threadID?: string | number | ((error: Error | null, result?: unknown) => void), callback?: (error: Error | null, result?: unknown) => void): Promise<unknown> | void;
+  getUserInfo?: (...args: any[]) => any;
+  getThreadInfo?: (...args: any[]) => any; getThreadList?: (...args: any[]) => any;   setPostReaction?(postID: string | number, type: string | number | ((error: Error | null, result?: unknown) => void), callback?: (error: Error | null, result?: unknown) => void): Promise<unknown> | void;
+  reactToPost?(postID: string | number, type: string | number, callback?: (error: Error | null, result?: unknown) => void): Promise<unknown> | void;
+  reactToComment?(commentID: string | number, type: string | number, callback?: (error: Error | null, result?: unknown) => void): Promise<unknown> | void;
+  handleFriendRequest?(userID: string | number, accept: boolean, callback?: (error: Error | null, result?: unknown) => void): Promise<unknown> | void;
+  editMessage?(text: string, messageID: string, callback?: (error: Error | null, result?: { body: string; messageID: string }) => void): Promise<{ body: string; messageID: string }> | void;
+  unsendMessage?(messageID: string, callback?: (error: Error | null, result?: unknown) => void): Promise<unknown> | void;
+  markAsRead?(threadID: string | number, read?: boolean | ((error: Error | null, result?: unknown) => void), callback?: (error: Error | null, result?: unknown) => void): Promise<unknown> | void;
+  markAsReadAll?(callback?: (error: Error | null, result?: unknown) => void): Promise<unknown> | void;
+  markAsSeen?(timestamp?: number | ((error: Error | null, result?: unknown) => void), callback?: (error: Error | null, result?: unknown) => void): Promise<unknown> | void;
+  markAsDelivered?(threadID: string | number, messageID: string, callback?: (error: Error | null, result?: unknown) => void): Promise<unknown> | void;
+  setMessageReaction?: (...args: any[]) => any;
+  sendTypingIndicator?: (...args: any[]) => any;
   changeNickname?: (...args: any[]) => any; addUserToGroup?: (...args: any[]) => any;
   removeUserFromGroup?: (...args: any[]) => any; createNewGroup?: (...args: any[]) => any;
   getThreadHistory?: (...args: any[]) => any; getMessage?: (...args: any[]) => any;
@@ -370,6 +436,26 @@ export interface MessengerSyncParseResult { events: ReadonlyArray<Record<string,
 /** Parses known Messenger sync delta envelopes conservatively. */
 export function parseMessengerSyncPayload(input: unknown): MessengerSyncParseResult;
 export function normalizeMessengerDelta(delta: unknown): Record<string, unknown> | null;
+/** Normalizes a Messenger attachment into legacy FCA type/url/id fields. */
+export function normalizeMessengerAttachment(attachment: unknown): Record<string, unknown> | null;
+
+export type AttachmentInput = string | Buffer | Uint8Array | Blob | AsyncIterable<Uint8Array>;
+export interface UploadedAttachment {
+  attachmentID: string; id: string; idKey: "image_id" | "video_id" | "audio_id" | "file_id" | "gif_id";
+  type: "image" | "video" | "audio" | "file" | "gif"; fileName: string; mimeType: string; size: number;
+  attachmentUrl: string | null; metadata: Record<string, unknown>;
+}
+export interface DownloadedAttachment {
+  buffer: Buffer; size: number; mimeType: string; fileName: string | null; url: string;
+}
+export const MAX_IMAGE_UPLOAD_BYTES: number;
+export function readImageInput(input: AttachmentInput, options?: { maxBytes?: number }): Promise<Readonly<{ buffer: Buffer; mimeType: string; fileName: string; size: number }>>;
+export function readAttachmentInput(input: AttachmentInput, options?: { maxBytes?: number }): Promise<Readonly<{ buffer: Buffer; mimeType: string; fileName: string; size: number; kind: "image" | "video" | "audio" | "file" }>>;
+export function downloadAttachment(url: string, options?: { fetchImpl?: (input: string | URL, init?: RequestInit) => Promise<Response>; maxBytes?: number; timeoutMs?: number }): Promise<DownloadedAttachment>;
+export function safeDownloadUrl(url: string): URL;
+export const MAX_ATTACHMENT_UPLOAD_BYTES: number;
+export const MAX_ATTACHMENT_DOWNLOAD_BYTES: number;
+export const MAX_ATTACHMENT_COUNT: number;
 
 export interface MqttRequestTracker { allocateId(): number; track(requestId: string | number, timeoutMs?: number): Promise<unknown>; resolve(response: unknown): boolean; rejectAll(reason?: unknown): void; readonly pendingCount: number; }
 export function createMqttRequestTracker(options?: { timeoutMs?: number; maxPending?: number; initialRequestId?: number }): MqttRequestTracker;
@@ -378,13 +464,14 @@ export const MESSENGER_MQTT_APP_ID: string;
 export const SEND_MESSAGE_VERSION_ID: string;
 export function offlineThreadingId(now?: number, random?: number): string;
 export function createMessengerSendMessageRequest(input: { threadID: string | number; message: string | { body?: string; sticker?: string | number }; replyToMessageID?: string | number; timestamp?: number; otid?: string; epochId?: string; requestId?: number }): Readonly<{ app_id: string; payload: string; request_id: number | null; type: 3 }>;
+export function createMessengerPinMessageRequest(input: { threadID: string | number; messageID: string; pin?: boolean; timestamp?: number; taskId?: number; epochId?: string | number; requestId?: number }): Readonly<{ app_id: string; payload: string; request_id: number; type: 3 }>;
 
 export interface MessengerSyncCursorStore { load(): MessengerSyncCursor | null; save(cursor: MessengerSyncCursor): MessengerSyncCursor; clear(): void; readonly current: MessengerSyncCursor | null; }
 export function createMessengerSyncCursorStore(options: { filePath: string; key: string | Buffer | Uint8Array; userId: string | number }): MessengerSyncCursorStore;
 
-export interface FacebookMqttDriverOptions extends Omit<PersonalSessionOptions, "appState"> { appState?: Cookie[]; sessionGuard?: NativeDriverSessionGuardOptions; socketFactory(options: { url: string; protocols?: string | string[]; headers?: Record<string, string>; signal: AbortSignal }): unknown | Promise<unknown>; connectTimeoutMs?: number; closeTimeoutMs?: number; protocolSetupTimeoutMs?: number; maxFrameBytes?: number; syncCursorStore?: MessengerSyncCursorStore; onSyncCursor?: (cursor: MessengerSyncCursor) => void; requestTimeoutMs?: number; maxPendingRequests?: number; mqtt?: Record<string, unknown>; }
+export interface FacebookMqttDriverOptions extends Omit<PersonalSessionOptions, "appState"> { appState?: Cookie[]; options?: E2EELoginOptions & Record<string, unknown>; e2eeStorageKey?: string | Buffer | Uint8Array; e2eeDevicePath?: string; e2eeDeviceListCacheMs?: number; e2eeFrameLog?: string; e2ee?: boolean; sessionGuard?: NativeDriverSessionGuardOptions; socketFactory(options: { url: string; protocols?: string | string[]; headers?: Record<string, string>; signal: AbortSignal }): unknown | Promise<unknown>; connectTimeoutMs?: number; closeTimeoutMs?: number; protocolSetupTimeoutMs?: number; maxFrameBytes?: number; syncCursorStore?: MessengerSyncCursorStore; onSyncCursor?: (cursor: MessengerSyncCursor) => void; requestTimeoutMs?: number; maxPendingRequests?: number; mqtt?: Record<string, unknown>; }
 export interface NativeDriverSessionGuardOptions extends Omit<SessionGuardOptions, "getSession"> { intervalMs?: number; }
-export function createFacebookMqttDriver(options: FacebookMqttDriverOptions): Promise<TransportDriver & { getCurrentUserID(): string; getAppState(): Cookie[]; getCookies(): string; refreshFb_dtsg(): Promise<Readonly<{ refreshedAt: number; tokenNames: readonly string[] }>>; getSessionState(): "active"; sendRequest(payload: Record<string, unknown>, options?: { timeoutMs?: number }): Promise<unknown>; sendMessage(input: { threadID: string | number; message: string | { body?: string; sticker?: string | number }; replyToMessageID?: string | number }, options?: { timeoutMs?: number }): Promise<unknown>; sessionGuard(requestedPath?: string, options?: { interval?: number; debounce?: number }): Readonly<{ filePath: string; backupPath: string; saveNow(): Promise<string> }>; stopSessionGuard(): Promise<boolean>; disconnect(): Promise<void>; }>;
+export function createFacebookMqttDriver(options: FacebookMqttDriverOptions): Promise<TransportDriver & { getCurrentUserID(): string; getAppState(): Cookie[]; getCookies(): string; refreshFb_dtsg(): Promise<Readonly<{ refreshedAt: number; tokenNames: readonly string[] }>>; getSessionState(): "active"; sendRequest(payload: Record<string, unknown>, options?: { timeoutMs?: number }): Promise<unknown>; sendMessage(input: { threadID: string | number; message: string | { body?: string; sticker?: string | number; emoji?: string; emojiSize?: number | "small" | "medium" | "large"; location?: { latitude: number; longitude: number; current?: boolean; live?: boolean }; attachment?: AttachmentInput | AttachmentInput[]; url?: string; mentions?: Array<{ tag: string; id?: string | number; fromIndex?: number }> }; replyToMessageID?: string | number }, options?: { timeoutMs?: number }): Promise<unknown>; uploadAttachment(input: AttachmentInput | AttachmentInput[]): Promise<UploadedAttachment[]>; downloadAttachment(url: string, options?: { maxBytes?: number; timeoutMs?: number }): Promise<DownloadedAttachment>; forwardAttachment(attachmentID: string | number, recipients: string | number | Array<string | number>, callback?: (error?: Error | null) => void): Promise<{ success: true; attachmentID: string; recipients: string[] }> | void; sessionGuard(requestedPath?: string, options?: { interval?: number; debounce?: number }): Readonly<{ filePath: string; backupPath: string; saveNow(): Promise<string> }>; stopSessionGuard(): Promise<boolean>; disconnect(): Promise<void>; }>;
 export interface MessengerSyncCursor { syncToken: string | null; lastSeqId: string | number | null; }
 
 /** Creates the native AppState/SessionGuard personal Messenger client; caller supplies WebSocket implementation. */
@@ -417,6 +504,7 @@ export function createSessionGuard(options: SessionGuardOptions): SessionGuard;
 
 /** Personal-account thread and group actions following public FCA web request conventions. */
 export interface FacebookThreadApi {
+  httpGet(url: string, query?: Record<string, unknown>, callback?: (error: Error | null, result?: string) => void): Promise<string> | void;
   httpPost(url: string, form: Record<string, unknown>, callback?: (error: Error | null, result?: string) => void): Promise<string> | void;
   getThreadList(limit: number, timestamp?: number | null, tags?: string[] | ((error: Error | null, result?: unknown[]) => void), callback?: (error: Error | null, result?: unknown[]) => void): Promise<unknown[]> | void;
   getThreadInfo(threadID: string | number, callback?: (error: Error | null, result?: unknown) => void): Promise<unknown> | void;
@@ -426,6 +514,10 @@ export interface FacebookThreadApi {
   removeUserFromGroup(userID: string | number, threadID: string | number, callback?: (error?: Error | null) => void): Promise<unknown> | void;
   changeNickname(nickname: string, threadID: string | number, participantID: string | number, callback?: (error?: Error | null) => void): Promise<unknown> | void;
   setMessageReaction(reaction: string, messageID: string, callback?: (error?: Error | null) => void): Promise<unknown> | void;
+    setPostReaction(postID: string | number, type: string | number | ((error: Error | null, result: unknown) => void), callback: (error: Error | null, result: unknown) => void): Promise<unknown> | void;
+  reactToPost(postID: string | number, type: string | number, callback: (error: Error | null, result: unknown) => void): Promise<unknown> | void;
+  reactToComment(commentID: string | number, type: string | number, callback: (error: Error | null, result: unknown) => void): Promise<unknown> | void;
+  handleFriendRequest(userID: string | number, accept: boolean, callback: (error: Error | null, result: unknown) => void): Promise<unknown> | void;
   markAsRead(threadID: string | number, read?: boolean | ((error?: Error | null) => void), callback?: (error?: Error | null) => void): Promise<unknown> | void;
   markAsDelivered(threadID: string | number, messageID: string | number, callback?: (error?: Error | null) => void): Promise<unknown> | void;
   unsendMessage(messageID: string, callback?: (error: Error | null, result?: unknown) => void): Promise<unknown> | void;
@@ -437,3 +529,36 @@ export interface FacebookThreadApi {
 }
 export const FACEBOOK_THREAD_DOC_IDS: Readonly<{ threadList: string; threadInfo: string; threadHistory: string; reaction: string }>;
 export function createFacebookThreadApi(options: { session: PersonalSession; webClient?: FacebookWebClient }): FacebookThreadApi;
+
+/** Creates a domain-grouped facade over the methods available on an FCA API object. */
+export function createFcaClient(api: object): Readonly<{
+  messages: Readonly<Record<string, (...args: any[]) => any>>;
+  threads: Readonly<Record<string, (...args: any[]) => any>>;
+  users: Readonly<Record<string, (...args: any[]) => any>>;
+  account: Readonly<Record<string, (...args: any[]) => any>>;
+}>;
+
+export interface MessengerBotClient {
+  login(credentials: { mode: "appstate"; appState: Cookie[] } | { mode: "session" }, options?: Record<string, unknown>): Promise<ClientApi>;
+  logout(): Promise<void>;
+}
+export interface MessengerBot extends EventEmitter {
+  readonly api: ClientApi;
+  readonly client: MessengerBotClient;
+  readonly commandPrefix: string;
+  command(names: string | string[], handler: (context: MessengerBotContext) => unknown | Promise<unknown>): this;
+  hears(pattern: string | RegExp, handler: (context: MessengerBotContext) => unknown | Promise<unknown>): this;
+  launch(options?: { stopOnSignals?: boolean }): this;
+  stop(): Promise<void>;
+  on(event: string, listener: (...args: any[]) => void): this;
+}
+export const MessengerBot: { new(client: MessengerBotClient, api: ClientApi, options?: { commandPrefix?: string; stopOnSignals?: boolean }): MessengerBot; };
+export interface MessengerBotContext {
+  readonly event: unknown; readonly api: ClientApi; readonly threadID: string | number;
+  readonly senderID?: string | number; readonly body: string; readonly message: string;
+  readonly args: readonly string[]; readonly match: RegExpExecArray | string | null;
+  replyAsync(message: string | Record<string, unknown>, callback?: (error: Error | null, result?: unknown) => void): Promise<unknown> | void;
+  reply(message: string | Record<string, unknown>, callback?: (error: Error | null, result?: unknown) => void): Promise<unknown> | void;
+  send(message: string | Record<string, unknown>, callback?: (error: Error | null, result?: unknown) => void): Promise<unknown> | void;
+}
+export function createMessengerBot(credentials: { appState: Cookie[] } | { mode: "appstate"; appState: Cookie[] } | { mode: "session" }, options?: Record<string, unknown>): Promise<MessengerBot>;

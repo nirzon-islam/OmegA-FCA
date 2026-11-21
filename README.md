@@ -167,3 +167,81 @@ The browser runs locally; it is not remotely visible to ChatGPT. The default rep
 ### Session bootstrap redirect handling
 
 The personal-session bootstrap follows up to five same-site HTTPS redirects on Facebook/Messenger hosts, preserving rotated cookies between hops. Login and checkpoint redirects remain authentication failures, and redirects to unrelated hosts are rejected.
+
+
+## Messenger E2EE (experimental)
+
+The package includes an MIT-licensed, separate Messenger E2EE client for one-to-one encrypted text and media, with a Noise WebSocket transport, device/prekey management, per-device sessions, and encrypted media transfer. Connect with `api.connectE2EE()`, then use `api.sendE2EEMessage()` or `api.sendMessage(input, { e2ee: "required" })`. Persistent device keys are encrypted with AES-256-GCM; configure a 32-byte `e2eeStorageKey` (or reuse the configured SessionGuard key). See [docs/E2EE.md](docs/E2EE.md) and [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
+
+Group Sender Keys/SKDM, encrypted history backup/restore, E2EE calls and key-transparency verification are not implemented. Private Meta endpoint and Noise-handshake live acceptance with an authorized AppState is still required; synthetic tests do not prove live Meta compatibility.
+
+
+## EryXen-compatible convenience APIs
+
+The native FCA facade also exposes media/location helpers and a namespaced client:
+
+```js
+const { createFcaClient, createMessengerBot } = require("@nirzon-islam/omega-fca");
+
+const client = createFcaClient(api);
+await client.messages.send("Hello!", threadID);
+await client.threads.getInfo(threadID);
+await client.users.getInfo(userID);
+await client.account.refreshDtsg();
+```
+
+A small command/keyword bot wrapper is available when you want a higher-level event-driven interface:
+
+```js
+const bot = await createMessengerBot(
+  { appState: JSON.parse(require("node:fs").readFileSync("./account.txt", "utf8")) },
+  { commandPrefix: "/" }
+);
+
+bot.command("ping", async ctx => ctx.replyAsync("pong"));
+bot.hears(/hello/i, async ctx => ctx.replyAsync("Hi!"));
+bot.on("messageCreate", event => console.log(event.body));
+bot.launch();
+```
+
+`createMessengerBot` uses the same owner-supplied AppState/session login and FCA transport. It does not bypass Facebook checkpoints or provide credential login.
+
+
+Custom API extensions can be registered without mutating the frozen FCA facade:
+
+```js
+api.addExternalModule({
+  async replyToOwner(message) {
+    return this.sendMessage(message, OWNER_THREAD_ID);
+  }
+});
+```
+
+The registered functions are bound to the FCA API object and cannot replace built-in methods.
+
+
+## TypeScript
+
+The package ships CommonJS runtime exports and declarations from `index.d.ts`. Node.js 20 or newer is required. In TypeScript projects, install Node.js type definitions so the public `Buffer` and Node runtime types resolve:
+
+```sh
+npm install @nirzon-islam/omega-fca
+npm install --save-dev @types/node
+```
+
+Example using the typed bot wrapper:
+
+```ts
+import { createMessengerBot, type Cookie, type MessengerBotContext } from "@nirzon-islam/omega-fca";
+
+const appState: Cookie[] = loadYourAuthorizedAppState();
+const bot = await createMessengerBot({ mode: "appstate", appState });
+
+bot.command("ping", async (ctx: MessengerBotContext) => {
+  await ctx.replyAsync("pong");
+});
+
+bot.launch();
+```
+
+See [TypeScript API and package exports](docs/TYPESCRIPT.md) for the declaration contract and compatibility notes. The declarations describe the implemented API surface; they do not imply live Facebook endpoint acceptance or complete FCA parity.

@@ -35,6 +35,9 @@ function parseJsonPayload(bytes) {
 function createFacebookMqttProtocol(options = {}) {
   const userId = safeId(options.userId, "userId");
   const keepAliveSeconds = options.keepAlive ?? 10;
+  if (!Number.isInteger(keepAliveSeconds) || keepAliveSeconds < 0 || keepAliveSeconds > 65535) {
+    throw new TypeError("keepAlive must be an integer between 0 and 65535 seconds");
+  }
   const clientId = options.clientId ?? "mqttwsclient";
   if (typeof clientId !== "string" || !/^[A-Za-z0-9_-]{8,128}$/.test(clientId)) {
     throw new TypeError("clientId must be 8-128 safe characters");
@@ -75,6 +78,51 @@ function createFacebookMqttProtocol(options = {}) {
   const cursorStore = options.syncCursorStore || null;
   let packetId = randomInt(1, 65536);
   const requestTracker = createMqttRequestTracker({ timeoutMs: options.requestTimeoutMs ?? 15000, maxPending: options.maxPendingRequests ?? 256 });
+  let heartbeatState = null;
+
+  function stopHeartbeat() {
+    if (!heartbeatState) return;
+    const current = heartbeatState;
+    heartbeatState = null;
+    clearInterval(current.timer);
+    if (typeof current.socket.removeListener === "function") {
+      current.socket.removeListener("close", current.onClose);
+    } else if (typeof current.socket.removeEventListener === "function") {
+      current.socket.removeEventListener("close", current.onClose);
+    }
+  }
+
+  function startHeartbeat(socket) {
+    stopHeartbeat();
+    if (keepAliveSeconds === 0) return;
+    const intervalMs = Math.max(1, Math.floor(keepAliveSeconds * 500));
+    const current = { socket, awaitingPingResponse: false, timer: null, onClose: null };
+    current.onClose = () => {
+      if (heartbeatState === current) stopHeartbeat();
+    };
+    current.timer = setInterval(() => {
+      if (heartbeatState !== current) return;
+      if (socket.readyState !== undefined && socket.readyState !== 1) {
+        stopHeartbeat();
+        return;
+      }
+      if (current.awaitingPingResponse) {
+        stopHeartbeat();
+        try { socket.close?.(4000, "MQTT PINGRESP timeout"); } catch {}
+        return;
+      }
+      current.awaitingPingResponse = true;
+      try { socket.send(mqtt.encodePingReq()); }
+      catch {
+        stopHeartbeat();
+        try { socket.close?.(); } catch {}
+      }
+    }, intervalMs);
+    if (typeof current.timer.unref === "function") current.timer.unref();
+    if (typeof socket.once === "function") socket.once("close", current.onClose);
+    else if (typeof socket.addEventListener === "function") socket.addEventListener("close", current.onClose, { once: true });
+    heartbeatState = current;
+  }
   const nextPacketId = () => { packetId = packetId >= 65535 ? 1 : packetId + 1; return packetId; };
 
   function decodePacket(frame) {
@@ -130,23 +178,14 @@ function createFacebookMqttProtocol(options = {}) {
         // state and client availability immediately after queue initialization.
         socket.send(mqtt.encodePublish({ topic: "/foreground_state", payload: JSON.stringify({ foreground: options.online !== false }), qos: 1, packetId: nextPacketId() }));
         socket.send(mqtt.encodePublish({ topic: "/set_client_settings", payload: JSON.stringify({ make_user_available_when_in_foreground: true }), qos: 1, packetId: nextPacketId() }));
-        // MQTT keepalive is negotiated in seconds in CONNECT. Send PINGREQ
-        // at half that interval so the broker timeout is never approached.
-        const keepAliveMs = keepAliveSeconds * 500;
-        if (keepAliveMs > 0) {
-          const pingTimer = setInterval(() => {
-            if (socket.readyState === undefined || socket.readyState === 1) {
-              try { socket.send(mqtt.encodePingReq()); } catch {}
-            }
-          }, keepAliveMs);
-          if (typeof pingTimer.unref === "function") pingTimer.unref();
-          const stopPing = () => clearInterval(pingTimer);
-          if (typeof socket.once === "function") socket.once("close", stopPing);
-          else if (typeof socket.addEventListener === "function") socket.addEventListener("close", stopPing, { once: true });
-        }
+        // Send PINGREQ at half the negotiated interval. If the broker fails
+        // to answer before the next interval, close the socket so the
+        // supervisor can reconnect instead of leaving a dead session online.
+        startHeartbeat(socket);
       },
       decodeFrame(frame, context = {}) {
         const packet = decodePacket(frame);
+        if (packet.type === "pingresp" && heartbeatState) heartbeatState.awaitingPingResponse = false;
         if (packet.type === "publish") {
           if (packet.qos === 1 && context.socket) context.socket.send(mqtt.encodePacketId("puback", packet.packetId));
           const payload = parseJsonPayload(packet.payload);
@@ -190,18 +229,26 @@ function createFacebookMqttProtocol(options = {}) {
       async request(socket, payload, requestOptions = {}) {
         if (!socket || typeof socket.send !== "function") throw new TypeError("A connected MQTT socket is required");
         if (!payload || typeof payload !== "object" || Array.isArray(payload)) throw new TypeError("MQTT request payload must be an object");
+        const timeoutMs = requestOptions.timeoutMs ?? options.requestTimeoutMs ?? 15000;
+        if (!Number.isInteger(timeoutMs) || timeoutMs < 1 || timeoutMs > 120000) {
+          throw new TypeError("request timeout is invalid");
+        }
+        if (requestTracker.pendingCount >= (options.maxPendingRequests ?? 256)) {
+          throw Object.assign(new Error("MQTT pending request limit reached"), { code: "FCA_MQTT_PENDING_LIMIT" });
+        }
         const requestId = requestTracker.allocateId();
         const envelope = { ...payload, request_id: requestId };
-        const responsePromise = requestTracker.track(requestId, requestOptions.timeoutMs ?? options.requestTimeoutMs ?? 15000);
+        const responsePromise = requestTracker.track(requestId, timeoutMs);
         try {
           socket.send(mqtt.encodePublish({ topic: "/ls_req", payload: JSON.stringify(envelope), qos: 1, packetId: nextPacketId() }));
         } catch (error) {
-          requestTracker.rejectAll(error);
-          throw error;
+          // A single failed publish must not cancel unrelated in-flight
+          // message/edit requests sharing this MQTT connection.
+          requestTracker.reject(requestId, error);
         }
         return responsePromise;
       },
-      closeRequests(reason) { requestTracker.rejectAll(reason); },
+      closeRequests(reason) { stopHeartbeat(); requestTracker.rejectAll(reason); },
       getPendingRequestCount() { return requestTracker.pendingCount; }
     })
   });

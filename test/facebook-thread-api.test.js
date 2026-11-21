@@ -381,3 +381,244 @@ test("legacy sendTypingIndicator returns an idempotent stop function", async () 
   const typingCalls = calls.filter(call => call.url === "https://www.facebook.com/ajax/messaging/typ.php");
   assert.deepEqual(typingCalls.map(call => call.body.typ), [1, 0]);
 });
+
+
+test("httpGet performs authenticated query requests and preserves response text", async () => {
+  let captured;
+  const raw = '{"payload":{"entries":[]}}';
+  const api = createFacebookThreadApi({
+    session,
+    webClient: { get: async (url, options) => {
+      captured = { url, options };
+      return { raw, payload: {} };
+    } }
+  });
+  const result = await api.httpGet("https://www.facebook.com/ajax/typeahead/search.php", { value: "alice" });
+  assert.equal(result, raw);
+  assert.equal(captured.url, "https://www.facebook.com/ajax/typeahead/search.php");
+  assert.deepEqual(captured.options.query, { value: "alice" });
+});
+
+test("httpGet supports callbacks and rejects invalid query values", async () => {
+  const api = createFacebookThreadApi({
+    session,
+    webClient: { get: async () => ({ raw: "ok", payload: {} }) }
+  });
+  assert.throws(() => api.httpGet("https://www.facebook.com/", "not-an-object"), /query must be an object/);
+  let value;
+  api.httpGet("https://www.facebook.com/", (error, result) => {
+    assert.equal(error, null);
+    value = result;
+  });
+  await new Promise(resolve => setImmediate(resolve));
+  assert.equal(value, "ok");
+});
+
+
+test("setMessageReaction and markAsRead reject Facebook-declared action failures", async () => {
+  const api = createFacebookThreadApi({
+    session,
+    webClient: { post: async () => ({ payload: { error: 1545012 } }) }
+  });
+  await assert.rejects(api.setMessageReaction("👍", "mid.failure"), error =>
+    error.code === "FCA_FACEBOOK_REQUEST_REJECTED" && error.retryable === false);
+  await assert.rejects(api.markAsRead("123456789012345"), error =>
+    error.code === "FCA_FACEBOOK_REQUEST_REJECTED" && error.retryable === false);
+});
+
+test("markAsRead forwards Facebook failures through its legacy callback", async () => {
+  const api = createFacebookThreadApi({
+    session,
+    webClient: { post: async () => ({ payload: { error: 1 } }) }
+  });
+  let callbackError;
+  api.markAsRead("123456789012345", error => { callbackError = error; });
+  await new Promise(resolve => setImmediate(resolve));
+  assert.equal(callbackError?.code, "FCA_FACEBOOK_REQUEST_REJECTED");
+});
+
+test("getThreadList paginates large legacy limits in bounded batches", async () => {
+  const calls = [];
+  const firstPage = Array.from({ length: 100 }, (_, index) => ({
+    ...thread,
+    thread_key: { other_user_id: String(987654321 + index) },
+    updated_time_precise: String(1700000000000 - index * 1000)
+  }));
+  const nextThread = {
+    ...thread,
+    thread_key: { other_user_id: "999999999" },
+    updated_time_precise: "1699999899000"
+  };
+  const api = createFacebookThreadApi({ session, webClient: { post: async (url, body) => {
+    const params = JSON.parse(body.queries).o0.query_params;
+    calls.push(params);
+    return { payload: batch({ viewer: { message_threads: { nodes: params.before == null ? firstPage : [firstPage.at(-1), nextThread] } } }) };
+  } } });
+  const result = await api.getThreadList(101, null, "INBOX");
+  assert.equal(result.length, 101);
+  assert.equal(calls.length, 2);
+  assert.equal(calls[0].limit, 100);
+  assert.equal(calls[1].limit, 2);
+  assert.equal(calls[1].tags[0], "INBOX");
+});
+
+test("getThreadHistory paginates legacy requests above one GraphQL page", async () => {
+  const calls = [];
+  const firstPage = Array.from({ length: 100 }, (_, index) => ({
+    __typename: "UserMessage",
+    message_id: "mid." + index,
+    message_sender: { id: "987654321" },
+    timestamp_precise: String(1700000000000 - index * 1000),
+    message: { text: "message " + index, ranges: [] },
+    blob_attachments: []
+  }));
+  const nextMessage = {
+    __typename: "UserMessage",
+    message_id: "mid.100",
+    message_sender: { id: "987654321" },
+    timestamp_precise: "1699999899000",
+    message: { text: "message 100", ranges: [] },
+    blob_attachments: []
+  };
+  const api = createFacebookThreadApi({ session, webClient: { post: async (url, body) => {
+    const params = JSON.parse(body.queries).o0.query_params;
+    calls.push(params);
+    const nodes = params.before == null ? firstPage : [firstPage.at(-1), nextMessage];
+    return { payload: batch({ message_thread: { thread_type: "ONE_TO_ONE", messages: { nodes } } }) };
+  } } });
+  const result = await api.getThreadHistory("123456789012345", 101);
+  assert.equal(result.length, 101);
+  assert.equal(result[100].messageID, "mid.100");
+  assert.equal(calls.length, 2);
+  assert.equal(calls[0].message_limit, 100);
+  assert.equal(calls[1].message_limit, 2);
+});
+
+test("post/comment reactions and friend-request decisions use validated FCA requests", async () => {
+  const calls = [];
+  const feedback = {
+    viewer_feedback_reaction_info: { reaction: "LIKE" },
+    supported_reactions: [{ reaction: "LIKE" }],
+    top_reactions: { edges: [{ reaction: "LIKE", count: 1 }] },
+    reaction_count: 1
+  };
+  const api = createFacebookThreadApi({ session, webClient: { post: async (url, body) => {
+    calls.push({ url, body });
+    if (url === "https://www.facebook.com/api/graphql/") {
+      return { payload: { data: { feedback_react: { feedback } } } };
+    }
+    return { payload: { success: true } };
+  } } });
+  await api.setPostReaction("987654321", "like");
+  await api.reactToPost("987654321", "love");
+  await api.reactToComment("987654321", "haha");
+  await api.handleFriendRequest("987654321", true);
+  assert.equal(calls.length, 4);
+  const first = JSON.parse(calls[0].body.variables);
+  assert.equal(calls[0].body.doc_id, "4769042373179384");
+  assert.equal(first.input.feedback_id, Buffer.from("feedback:987654321").toString("base64"));
+  assert.equal(first.input.feedback_reaction, 1);
+  assert.equal(JSON.parse(calls[1].body.variables).input.feedback_reaction, 16);
+  assert.equal(JSON.parse(calls[2].body.variables).input.feedback_reaction, 4);
+  assert.equal(calls[3].url, "https://www.facebook.com/requests/friends/ajax/");
+  assert.equal(calls[3].body.action, "confirm");
+  assert.throws(() => api.setPostReaction("987654321", "unknown"), /invalid reaction type/);
+  assert.throws(() => api.handleFriendRequest("987654321", "yes"), /accept must be a boolean/);
+});
+
+
+
+test("markAsReadAll and markAsSeen send validated receipt requests", async () => {
+  const calls = [];
+  const api = createFacebookThreadApi({
+    session,
+    webClient: { post: async (url, body) => {
+      calls.push({ url, body });
+      return { payload: { success: true } };
+    } }
+  });
+  assert.deepEqual(await api.markAsReadAll(), { success: true });
+  assert.deepEqual(await api.markAsSeen(1700000000123), { success: true });
+  assert.deepEqual(calls, [
+    { url: "https://www.facebook.com/ajax/mercury/mark_folder_as_read.php", body: { folder: "inbox" } },
+    { url: "https://www.facebook.com/ajax/mercury/mark_seen.php", body: { seen_timestamp: 1700000000123 } }
+  ]);
+  assert.throws(() => api.markAsSeen(-1), /non-negative integer/);
+  assert.throws(() => api.markAsSeen("not-a-timestamp"), /non-negative integer/);
+});
+
+test("read-all, seen and unsend receipt failures reach legacy callbacks", async () => {
+  const api = createFacebookThreadApi({
+    session,
+    webClient: { post: async () => ({ payload: { error: 1 } }) }
+  });
+  for (const invoke of [
+    callback => api.markAsReadAll(callback),
+    callback => api.markAsSeen(1700000000123, callback),
+    callback => api.unsendMessage("mid.callback", callback)
+  ]) {
+    const error = await new Promise(resolve => invoke(resolve));
+    assert.equal(error?.code, "FCA_FACEBOOK_REQUEST_REJECTED");
+    assert.equal(error?.retryable, false);
+  }
+});
+
+test("friend request, follow/unfollow and postComment use validated Comet mutations", async () => {
+  const calls = [];
+  const api = createFacebookThreadApi({ session, webClient: { post: async (url, body) => {
+    calls.push({ url, body });
+    if (body.fb_api_req_friendly_name === "FriendingCometFriendRequestSendMutation") {
+      return { payload: { data: { friend_request_send: { friend_requestees: [{
+        id: "987654321", friendship_status: "OUTGOING_REQUEST", profile_action: { title: { text: "Requested" } }
+      }] } } } };
+    }
+    if (body.fb_api_req_friendly_name === "useCometUFICreateCommentMutation") {
+      return { payload: { data: { comment_create: {
+        feedback_comment_edge: { node: { id: "comment.1", feedback: { url: "https://facebook.com/post/1" } } },
+        feedback: { total_comment_count: 3 }
+      } } } };
+    }
+    return { payload: { data: { success: true } } };
+  } } });
+  const request = await api.sendFriendRequest("987654321");
+  assert.equal(request.success, true);
+  assert.equal(request.friendshipStatus, "OUTGOING_REQUEST");
+  assert.equal(await api.followUser("987654321"), true);
+  assert.equal(await api.unfollowUser("987654321"), true);
+  const comment = await api.postComment("Nice post!", "post.1");
+  assert.deepEqual(comment, { id: "comment.1", url: "https://facebook.com/post/1", count: 3 });
+  assert.equal(calls[0].body.doc_id, "24614631718227645");
+  assert.equal(calls[1].body.doc_id, "25472099855769847");
+  assert.equal(calls[2].body.fb_api_req_friendly_name, "CometUserUnfollowMutation");
+  assert.equal(calls[3].body.doc_id, "6993516810709754");
+  const commentVariables = JSON.parse(calls[3].body.variables);
+  assert.equal(commentVariables.input.feedback_id, Buffer.from("feedback:post.1").toString("base64"));
+  assert.throws(() => api.postComment("", "post.1"), /non-empty string/);
+  assert.throws(() => api.followUser("bad"), /numeric Facebook ID/);
+});
+
+test("sharePost sends a validated Comet reshare mutation and normalizes its result", async () => {
+  let captured;
+  const api = createFacebookThreadApi({ session, webClient: { post: async (url, body) => {
+    captured = { url, body };
+    return { payload: { data: { story_share: { story: {
+      id: "shared.story.1", url: "https://facebook.com/story/shared.story.1"
+    } } } } };
+  } } });
+  const result = await api.sharePost("post.123", "Sharing this");
+  assert.deepEqual(result, {
+    success: true, postID: "post.123", shareID: "shared.story.1",
+    url: "https://facebook.com/story/shared.story.1"
+  });
+  assert.equal(captured.url, "https://www.facebook.com/api/graphql/");
+  assert.equal(captured.body.doc_id, "4833173726776940");
+  assert.equal(captured.body.fb_api_req_friendly_name, "CometFeedToFeedReshareMutation");
+  const variables = JSON.parse(captured.body.variables);
+  assert.equal(variables.input.story_id, Buffer.from("S:_I123456789012345:post.123").toString("base64"));
+  assert.deepEqual(variables.input.message, { text: "Sharing this" });
+  const malformedApi = createFacebookThreadApi({ session, webClient: { post: async () => ({ payload: { data: {} } }) } });
+  await assert.rejects(malformedApi.sharePost("post.123"), error =>
+    error.code === "FCA_RESPONSE_SHAPE_INVALID" && error.retryable === false);
+  assert.throws(() => api.sharePost(""), /postID/);
+  assert.throws(() => api.sharePost("post.123", 42), /message must be a string/);
+});

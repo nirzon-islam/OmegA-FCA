@@ -23,20 +23,20 @@ Status labels:
 | GoatBot session compatibility | getCookies | Sensitive cookie-header accessor required by the current `suspend` command; implemented natively and must remain owner-only in command exposure. |
 | Session recovery | sessionGuard, saveSession, restoreSessionBackup, stopSessionGuard | Encrypted AES-256-GCM sidecar, verified backup recovery, periodic/final save and account-bound restore are implemented and synthetic-tested; legacy account.txt is never overwritten |
 | Realtime | MQTT connect, listenMqtt, ready, error, auto-reconnect, event subscriptions | Native WebSocket/MQTT driver, supervisor and callback facade are implemented; live broker and event parity remain unverified |
-| Messages | sendMessage, editMessage, unsendMessage, deleteMessage, getMessage, broadcast | sendMessage is experimental; unsendMessage is implemented with synthetic web-action tests; delete/broadcast are missing or not verified; `editMessage` and `shareContact` now have native MQTT request builders with synthetic response tests; `getMessage` is implemented as a lookup in the latest 100 normalized thread-history messages |
-| Attachments and media | uploadAttachment, forwardAttachment, sendImage, sendVideo, sendAudio, sendFile, sendGif, sendLocation, shareLink, shareContact | Full upload/download and attachment event parity are missing; do not return dummy success |
-| Reactions and receipts | setMessageReaction, markAsRead, markAsReadAll, markAsDelivered, markAsSeen, typing | setMessageReaction, markAsRead, markAsDelivered and sendTypingIndicator have first-party synthetic-tested paths; markAsReadAll/markAsSeen need audit |
-| Threads | getThreadList, getThreadInfo, getThreadHistory, getMessage, createGroup, deleteThread, muteThread, archive, request handling, search | list/info/history, latest-100 `getMessage`, typeahead `getUserID`, `getFriendsList`, `getUID`, `resolvePhotoUrl`, and selected group operations now have synthetic-tested adapters; createNewGroup is withheld pending evidenced request contract; other thread operations need audit |
-| Thread customization | setTitle, changeThreadColor, changeThreadEmoji, changeNickname, changeGroupImage, changeAdminStatus, polls, pin/unpin | title/color/emoji/nickname and add/remove member paths have synthetic-tested adapters; image/admin/poll/pin operations are missing or unverified |
+| Messages | sendMessage, editMessage, unsendMessage, deleteMessage, getMessage, broadcast | sendMessage is experimental; unsendMessage is implemented with synthetic web-action tests; `deleteMessage` (delete-for-me) is implemented with a separate authenticated endpoint; `deleteThread` supports one or multiple IDs; `editMessage` and `shareContact` have native MQTT request builders with synthetic response tests; `getMessage` is implemented as a lookup in the latest 100 normalized thread-history messages; `sendBroadcast` remains a higher-level helper not yet implemented |
+| Attachments and media | uploadAttachment, forwardAttachment, sendImage, sendVideo, sendAudio, sendFile, sendGif, sendLocation, shareLink, shareContact | `changeGroupImage` and `changeAvatar` perform bounded JPEG/PNG/GIF/WebP multipart uploads with MIME sniffing and response validation; generic message attachments, downloads, forwarding and attachment event parity remain missing; do not return dummy success |
+| Reactions and receipts | setMessageReaction, markAsRead, markAsReadAll, markAsDelivered, markAsSeen, typing | setMessageReaction, markAsRead, markAsDelivered and sendTypingIndicator have first-party synthetic-tested paths; markAsReadAll and markAsSeen now have authenticated web-action implementations with callback/Promise support and synthetic tests |
+| Threads | getThreadList, getThreadInfo, getThreadHistory, getMessage, createGroup, deleteThread, muteThread, archive, request handling, search | list/info/history, latest-100 `getMessage`, typeahead `getUserID`, `getFriendsList`, `getUID`, `resolvePhotoUrl`, `createNewGroup`, and selected group operations now have synthetic-tested adapters; deleteThread, muteThread and changeArchivedStatus now have authenticated web-action implementations with synthetic tests; changeAdminStatus, createPoll, handleMessageRequest, searchForThread and getThreadPictures now have first-party implementations with synthetic tests |
+| Thread customization | setTitle, changeThreadColor, changeThreadEmoji, changeNickname, changeGroupImage, changeAdminStatus, polls, pin/unpin | title/color/emoji/nickname and add/remove member paths have synthetic-tested adapters; group-image upload plus MQTT change action is implemented with synthetic tests; admin/poll/pin operations remain missing or unverified |
 | Users and social | getUserInfo, getUID, getFriendsList, avatar/profile/public data, friend/block/follow actions, post/comment/share/reactions | getUserInfo is implemented with synthetic tests; other methods are missing or require an evidence-backed contract |
-| HTTP helpers | httpGet, httpPost, multipart form data | bounded authenticated Facebook/Messenger HTTPS web client and httpPost facade exist; GET/multipart upload parity needs audit |
+| HTTP helpers | httpGet, httpPost, multipart form data | bounded authenticated Facebook/Messenger HTTPS web client exposes Promise/callback `httpGet` and `httpPost`; multipart upload is used by profile/group image changes. Generic multipart/attachment compatibility remains incomplete |
 | Higher-level helpers | namespaced client, MessengerBot, sendBroadcast, humanizer | not part of the minimum FCA compatibility layer yet; assess after flat API and event parity |
 
 ## Implementation order
 
 1. Keep the Node 20/22 CI matrix green and retain deterministic tests for MQTT CONNECT/CONNACK, SUBACK, keepalive cadence, cursor recovery, listener teardown and reconnect.
-2. Complete a repository-wide GoatBot call-site inventory (commands, events, dashboard, database, custom scripts and dynamic calls); classify every method and event shape as required, optional, or unused.
-3. Implement only methods whose transport and request/response contract can be evidenced. For unknown private GraphQL document IDs or action payloads, keep the method explicitly unsupported rather than fabricate success.
+2. **Complete.** The full scan of all 271 GoatBot JavaScript files and 28 Eta templates is recorded in [GOATBOT-CALLSITE-INVENTORY.md](GOATBOT-CALLSITE-INVENTORY.md), including method-to-file mapping, event types, login options, dynamic E2EE hook and security findings.
+3. Resolve the concrete call-site mismatches in the inventory: thread-list limit/tags, thread-history limit, attachment-bearing sends, legacy reply objects, read-receipt event naming and sendMessage positional reply arguments. Implement only evidence-backed request contracts; never fabricate success.
 4. Complete event normalization and legacy callback signatures, including messages, replies, unsends, reactions, typing, read/delivery receipts, thread updates and presence where supported by observed frames.
 5. Complete attachments with bounded streaming, MIME/size validation, safe temporary-file handling and tests before exposing send/upload methods.
 6. Complete API declarations, README examples, compatibility matrix and package smoke tests from the same public surface.
@@ -46,7 +46,7 @@ Status labels:
 
 Do not merge to stable, publish the `latest` tag, or migrate production GoatBot until:
 - Node 20 and 22 CI pass on the exact release commit;
-- repository-wide GoatBot API/event inventory is complete;
+- the completed 271-file GoatBot API/event inventory is maintained in `GOATBOT-CALLSITE-INVENTORY.md`;
 - all required methods have real implementations or explicit documented unsupported status;
 - owner-operated live-account checks pass for the supported feature set;
 - no credentials, AppState, TOTP seeds, cookies, page tokens or encryption keys appear in fixtures, logs, commits or CI artifacts.
@@ -62,8 +62,22 @@ The personal-account transport is unofficial and not a Meta-supported API. Faceb
 
 ## GoatBot listener options verified in the native compatibility layer
 
-The current implementation forwards login-time options from the callback adapter and applies the following event behaviours: `selfListen`, `selfListenEvent`, `listenEvents`, `listenTyping`, `updatePresence`, `autoMarkDelivery`, and `autoMarkRead`. `setOptions()` updates those supported runtime flags and rejects unknown options. The native driver also forwards `userAgent`; proxy support remains explicitly unsupported. Synthetic tests cover the event filters and runtime updates. This is not complete parity with every Eryxen/FCA configuration option.
+The current implementation forwards login-time options from the callback adapter and applies the following event behaviours: `selfListen`, `selfListenEvent`, `listenEvents`, `listenTyping`, `updatePresence`, `autoMarkDelivery`, and `autoMarkRead`. `setOptions()` updates those supported runtime flags and rejects unknown options. The native driver also forwards `userAgent`; proxy support remains explicitly unsupported. Synthetic tests cover the event filters and runtime updates. This is not complete parity with every Eryxen/FCA configuration option. The full GoatBot option comparison and the unconsumed `forceLogin` / `autoReconnect` settings are documented in `GOATBOT-CALLSITE-INVENTORY.md`.
 
+
+## GoatBot call-site audit hand-off
+
+The repository-wide call-site inventory is complete for the reviewed GoatBot tree. It surfaced additional compatibility blockers that are not visible from a method-name-only API comparison:
+
+- GoatBot startup auto-sync passes `getThreadList(9999999, null, "INBOX")`, but the native method currently accepts a 1–100 limit and an array of tags.
+- One command requests 1,000 thread-history messages, while the native method caps each call at 100.
+- Attachment-bearing `sendMessage` payloads are rejected by the current MQTT send builder.
+- The native normalizer does not build the legacy nested `event.messageReply` object and does not normalize raw attachments to the legacy `type` / `url` shape.
+- The normalizer emits read receipts as `read`; GoatBot dispatches `read_receipt`.
+- GoatBot conditionally calls the private `_connectE2EEAndMerge()` hook; FCA-2 reports E2EE as unsupported and does not expose the hook.
+- The reviewed GoatBot dependency remains pinned to `0.1.6-rc.2`, while FCA-2 main is `0.1.6-rc.3`.
+
+These findings complete audit item #1, not the implementation or live-acceptance gates. See [GOATBOT-CALLSITE-INVENTORY.md](GOATBOT-CALLSITE-INVENTORY.md) for the full method-to-file mapping and security notes.
 
 ## Exact public Eryxen API checklist
 
@@ -90,3 +104,102 @@ The public checklist is a comparison target, not proof that every method is safe
 - `getFriendsList()` normalizes the authenticated `/chat/user_info_all` response.
 - `createNewGroup(participantIDs, title?)` uses the observed Messenger GraphQL mutation, validates participant IDs, and returns the created thread ID.
 - These private Facebook endpoints are unofficial and still need authorized live-account acceptance; synthetic tests verify request construction and response normalization.
+
+
+## Remaining FCA API implementation update (2026-11-21)
+
+The following previously missing flat FCA methods have now been implemented in the first-party facebookThreadApi and exposed through the authenticated client facade. They support Promise use and the legacy error-first callback form:
+
+| Method | Request contract | Semantics |
+|---|---|---|
+| `markAsReadAll(callback?)` | `POST /ajax/mercury/mark_folder_as_read.php`, `folder=inbox` | Marks the inbox folder read |
+| `markAsSeen(timestamp?, callback?)` | `POST /ajax/mercury/mark_seen.php`, `seen_timestamp` | Updates the account's seen watermark |
+| `deleteMessage(messageIDs, callback?)` | `POST /ajax/mercury/delete_messages.php`, `client=mercury`, indexed `message_ids[n]` | Deletes one or more messages from this account's view; distinct from unsend |
+| `deleteThread(threadIDs, callback?)` | `POST /ajax/mercury/delete_thread.php`, `client=mercury`, indexed `ids[n]` | Removes one or more threads from the inbox |
+| `muteThread(threadID, seconds, callback?)` | `POST /ajax/mercury/change_mute_thread.php`, `thread_fbid`, `mute_settings` | -1 permanent, 0 unmute, positive duration in seconds |
+| `changeArchivedStatus(threadIDs, archive, callback?)` | `POST /ajax/mercury/change_archived_status.php`, `ids[threadID]` | Archives or unarchives one or more threads |
+
+Each action validates IDs and input bounds and rejects Facebook-declared errors rather than returning a synthetic success. Regression tests cover the endpoint, payload, callback form, validation and rejection paths.
+
+Still not claimed as complete: deleteMessage/thread mutation endpoints need authorized live-account acceptance; changeAdminStatus, createPoll, searchForThread, getThreadPictures, handleMessageRequest, broadcast, namespaced client, MessengerBot and E2EE remain separate implementation gaps. No EryXen runtime code or dependencies were copied into FCA-2.
+
+
+### Additional thread/group actions (2026-11-21)
+
+The native adapter now also implements `changeAdminStatus`, `createPoll`, `handleMessageRequest`, `searchForThread` and `getThreadPictures`. Each has argument validation, Facebook error checks, callback/Promise compatibility, TypeScript declarations, and synthetic regression coverage. The poll endpoint is legacy/private and may change; live acceptance remains required. `getThreadPictures` validates photo IDs returned by Facebook before issuing detail requests.
+
+
+### Account/profile and utility methods (2026-11-21)
+
+The native adapter also now implements `changeBlockedStatus`, `changeBio`, `unfriend` and `getEmojiUrl`. The first three use authenticated Facebook web actions/GraphQL and reject Facebook-declared failures; `getEmojiUrl` computes the Facebook emoji asset URL locally. Their declarations and synthetic regression tests are included. The legacy bio GraphQL document ID and all account mutation endpoints require authorized live-account acceptance before being treated as stable.
+
+The current new-method test batch passes 346/346 tests on Node.js 20 and Node.js 22; syntax checks, package-root export smoke tests and publishable-package checks also pass on both versions (CI run 44867338258).
+
+
+### Multi-thread broadcast helper (2026-11-21)
+
+`sendBroadcast(message, threadIDs, options?, callback?)` is now available through the native driver and client facade. It validates unique numeric thread IDs, bounds recipient count, delay and parallelism, processes recipients in bounded parallel batches, calls `onEach(error, result, threadID)` per recipient, and returns `{ total, sent, failed, results }` so partial failures are visible. It reuses the native text/attachment send paths rather than inventing a second transport. Unit tests cover partial failures, pacing configuration, validation and callback overloads.
+
+
+### E2EE compatibility update (2026-11-21)
+
+The previously missing `_connectE2EEAndMerge()` compatibility hook now exists as an alias for `connectE2EE()`. The native driver also exposes `sendE2EEMessage`, `sendE2EEAttachment`, `downloadE2EEAttachment`, `isE2EEThread`, and `getE2EEStatus`; E2EE message events are merged into the normal listener. The MIT-licensed one-to-one implementation is ported from `bhhoang/fbapi-unofficial` with its copyright/license notice preserved in `THIRD_PARTY_NOTICES.md`. Persistent identity/prekey/session data is AES-256-GCM encrypted at rest using an explicit 32-byte storage key. This does not implement group Sender Keys/SKDM, Labyrinth backup/restore, E2EE calls or key transparency. Private Meta ICDC/Noise endpoints still require authorized live-account acceptance.
+
+## Primary reference correction — current `@eryxenx/fca` API (2026-11-21)
+
+The primary comparison target for this project is the current public npm package `@eryxenx/fca` (npm latest observed as 1.3.5 on 2026-11-21), not only the older `fca-eryxenx` 4.0.3 quick reference. The npm README is the API checklist; the separate `fca-eryxenx` repository is useful historical source context and must not be mistaken for the current package's complete implementation.
+
+The current public API checklist includes:
+
+- **Message sending:** `sendMessage`, `sendBroadcast`, `sendGif`, `sendLocation`, `sendImage`, `sendVideo`, `sendAudio`, `sendFile`, `shareLink`, `shareContact`.
+- **Message actions:** `editMessage`, `unsendMessage`, `deleteMessage`, `setMessageReaction`, `getMessage`, `forwardAttachment`, `uploadAttachment`, `pinMessage`, `unpinMessage`.
+- **Receipts and typing:** `markAsRead`, `markAsReadAll`, `markAsDelivered`, `markAsSeen`, `sendTypingIndicator`.
+- **Threads/groups:** `getThreadInfo`, `getThreadList`, `getThreadHistory`, `createGroup`, `deleteThread`, `muteThread`, `changeArchivedStatus`, `handleMessageRequest`, `searchForThread`, `getThreadPictures`, `setTitle`, `changeThreadColor`, `changeThreadEmoji`, `changeNickname`, `changeGroupImage`, `changeAdminStatus`, `addUserToGroup`, `removeUserFromGroup`, `createPoll`.
+- **Users/account:** `getUserInfo`, `getUserID`, `getUID`, `getFriendsList`, `getAvatarUser`, `getProfileInfo`, `getPublicData`, `sendFriendRequest`, `handleFriendRequest`, `changeBlockedStatus`, `followUser`, `unfollowUser`, `unfriend`, `getCurrentUserID`, `getAppState`, `setOptions`, `logout`, `refreshFb_dtsg`, `addExternalModule`.
+- **Social/HTTP:** `reactToPost`, `reactToComment`, `postComment`, `sharePost`, `httpGet`, `httpPost`, `httpPostFormData`, `uploadImageToImgbb`.
+- **Higher-level APIs:** `createFcaClient` namespaced facade and `createMessengerBot` high-level bot class.
+- **E2EE:** automatic startup integration and the `api.e2ee` namespace, including connection status and message/media actions.
+
+### Newly implemented in FCA-2 during this audit continuation
+
+- Bounded pagination for `getThreadList` (up to 10,000 results) and `getThreadHistory` (up to 1,000 messages), rather than rejecting legacy requests above one 100-item GraphQL page.
+- Legacy `sendMessage(message, threadID, replyMessageID)` overload now preserves the third-argument reply ID when the callback is omitted; TypeScript declarations updated.
+- Native MQTT task payloads now support Messenger location metadata and large-emoji sizing, based on the documented reference payload shape.
+- Client convenience methods added for `sendImage`, `sendVideo`, `sendAudio`, `sendFile`, `sendGif`, `sendLocation`, and `shareLink`. Local file paths are accepted as bounded attachment inputs; HTTP(S) GIF/image strings and share links use the explicit URL-share path.
+
+These additions are source-level implementations and deterministic tests; Facebook live acceptance remains a separate gate. Remaining methods in the checklist must be implemented or explicitly marked unsupported one at a time. Do not claim complete parity while any item remains missing, experimental, or live-unverified.
+
+
+
+### Higher-level API compatibility update
+
+- `createFcaClient(api)` is now implemented as a frozen, domain-grouped facade. It exposes only methods actually available on the supplied API object.
+- `createMessengerBot(credentials, options)` and the `MessengerBot` class are now implemented with command, hears, messageCreate event, launch and stop lifecycle support. This is a thin high-level wrapper over the first-party FCA client, not a separate Messenger transport.
+- `api.logout(callback?)` is exposed on the returned FCA API.
+- `api.createGroup(title, participantIDs, callback?)` adapts the documented EryXen argument order to the native `createNewGroup(participantIDs, title, callback?)`.
+- `api.e2ee` namespace now exposes only the implemented connect/disconnect/status/thread/message/media operations. It does not claim E2EE edit, reaction or unsend support unless those methods are separately added.
+
+
+### Encrypted session compatibility update
+
+- `saveSession()` now writes the active AppState to the encrypted SessionGuard snapshot.
+- `restoreSessionBackup()` reads the encrypted backup, verifies the stored account ID, applies the restored cookies to the active session, refreshes Facebook web tokens, and re-saves the restored session. A failed refresh rolls the active cookie jar back.
+- Session backup restore never writes to GoatBot's plaintext `account.txt`; the encrypted sidecar and its backup remain separate.
+
+
+### Additional FCA utility compatibility update
+
+- `httpPostFormData(url, formData, callback?)` is now exposed through the native authenticated Facebook/Messenger web client. It retains the existing HTTPS host allowlist, request bounds, session cookie scope, and response normalization.
+- `addExternalModule(module)` now supports validated, non-conflicting custom methods on the frozen FCA facade. Extension functions are bound to the FCA API and cannot replace built-in methods.
+
+
+### User profile helper compatibility update
+
+- `getProfileInfo(userID, callback?)` and `getPublicData(userID, callback?)` now expose the normalized native `getUserInfo` result.
+- `getAvatarUser(userID, callback?)` returns the normalized profile thumbnail URL (or `null` when unavailable).
+- These are compatibility adapters over the authenticated user-info response; they do not claim extra profile fields beyond those returned by Facebook.
+
+
+## Current method-level audit supersedes the earlier summary table
+
+The earlier area-level inventory above is historical context and contains stale status descriptions. For the current public `@eryxenx/fca@1.3.5` API surface, method-by-method implementation status, definite missing methods, option parity and E2EE gaps, use [ERYXEN-API-PARITY-MATRIX.md](ERYXEN-API-PARITY-MATRIX.md). That matrix was checked against the current npm README and the current OmegA-FCA source tree on 2026-11-21. Do not use the old area-level table alone to decide implementation completeness.

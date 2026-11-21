@@ -7,17 +7,24 @@ const { validateTransportDriver } = require("../transport/contract");
 const { classifySessionState } = require("../security/sessionState");
 
 const METHOD_FEATURES = Object.freeze({
-  sendMessage: "messaging", editMessage: "messaging", shareContact: "messaging", sendRequest: "messaging", unsendMessage: "messaging", markAsRead: "messaging", sendTypingIndicator: "messaging",
-  getUserInfo: "threads", getThreadInfo: "threads", getThreadList: "threads", getThreadHistory: "threads", getMessage: "threads", getFriendsList: "threads", getUserID: "threads", getUID: "threads", resolvePhotoUrl: "threads", createNewGroup: "groups",
-  addUserToGroup: "groups", removeUserFromGroup: "groups", createNewGroup: "groups", changeNickname: "groups",
-  setMessageReaction: "reactions"
+  sendRequest: "messaging", sendMessage: "messaging", sendBroadcast: "messaging", connectE2EE: "e2ee", _connectE2EEAndMerge: "e2ee", disconnectE2EE: "e2ee", listenE2EE: "e2ee", sendE2EEMessage: "e2ee", sendE2EEReaction: "e2ee", editE2EEMessage: "e2ee", unsendE2EEMessage: "e2ee", sendE2EETyping: "e2ee", sendE2EEAttachment: "e2ee", downloadE2EEAttachment: "e2ee", isE2EEThread: "e2ee", getE2EEStatus: "e2ee", editMessage: "messaging",
+  shareContact: "messaging", uploadAttachment: "messaging", downloadAttachment: "messaging", forwardAttachment: "messaging", unsendMessage: "messaging", markAsRead: "messaging",
+  markAsDelivered: "messaging", markAsReadAll: "messaging", markAsSeen: "messaging", deleteMessage: "messaging", deleteThread: "threads", muteThread: "threads", changeArchivedStatus: "threads", sendTypingIndicator: "messaging",
+  getUserInfo: "threads", getThreadInfo: "threads", getThreadList: "threads",
+  getThreadHistory: "threads", getMessage: "threads", getFriendsList: "threads", getThreadPictures: "threads", searchForThread: "threads", handleMessageRequest: "threads", changeAdminStatus: "groups", createPoll: "groups",
+  getUserID: "threads", getUID: "threads", resolvePhotoUrl: "threads",
+  createNewGroup: "groups", addUserToGroup: "groups", removeUserFromGroup: "groups",
+  changeNickname: "groups", changeAdminStatus: "groups", createPoll: "groups", changeGroupImage: "groups", changeAvatar: "groups", changeBlockedStatus: "users", changeBio: "users", unfriend: "users",
+  changeThreadColor: "groups", changeThreadEmoji: "groups", setTitle: "groups",
+  pinMessage: "groups", unpinMessage: "groups", sendFriendRequest: "users", followUser: "users", unfollowUser: "users", postComment: "users", sharePost: "posts",
+  setMessageReaction: "reactions", setPostReaction: "reactions", reactToPost: "reactions", reactToComment: "reactions", handleFriendRequest: "users"
 });
 
 const DRIVER_METHODS = [
-  "sendRequest", "sendMessage", "editMessage", "shareContact", "httpPost", "getUserInfo", "getThreadInfo", "getThreadList", "getCurrentUserID", "getAppState", "getCookies", "getHumanizer", "refreshFb_dtsg", "setOptions",
-  "markAsRead", "markAsDelivered", "setMessageReaction", "sendTypingIndicator", "unsendMessage",
-  "changeNickname", "changeGroupImage", "changeAvatar", "changeThreadColor", "changeThreadEmoji", "setTitle", "addUserToGroup", "removeUserFromGroup", "createNewGroup",
-  "getThreadHistory", "getMessage", "getFriendsList", "getUserID", "getUID", "resolvePhotoUrl", "createNewGroup"
+  "sendRequest", "sendMessage", "sendBroadcast", "connectE2EE", "_connectE2EEAndMerge", "disconnectE2EE", "listenE2EE", "sendE2EEMessage", "sendE2EEReaction", "editE2EEMessage", "unsendE2EEMessage", "sendE2EETyping", "sendE2EEAttachment", "downloadE2EEAttachment", "isE2EEThread", "getE2EEStatus", "editMessage", "shareContact", "uploadAttachment", "downloadAttachment", "forwardAttachment", "httpGet", "httpPost", "httpPostFormData", "getUserInfo", "getThreadInfo", "getThreadList", "getCurrentUserID", "getAppState", "getCookies", "getHumanizer", "refreshFb_dtsg", "saveSession", "restoreSessionBackup", "setOptions",
+  "markAsRead", "markAsReadAll", "markAsSeen", "markAsDelivered", "setPostReaction", "reactToPost", "reactToComment", "handleFriendRequest", "deleteMessage", "deleteThread", "muteThread", "changeArchivedStatus", "setMessageReaction", "sendTypingIndicator", "unsendMessage",
+  "changeNickname", "changeAdminStatus", "createPoll", "handleMessageRequest", "searchForThread", "getThreadPictures", "changeBlockedStatus", "changeBio", "unfriend", "getEmojiUrl", "changeGroupImage", "changeAvatar", "changeThreadColor", "changeThreadEmoji", "setTitle", "addUserToGroup", "removeUserFromGroup", "createNewGroup",
+  "getThreadHistory", "getMessage", "getFriendsList", "getUserID", "getUID", "resolvePhotoUrl", "pinMessage", "unpinMessage", "sendFriendRequest", "followUser", "unfollowUser", "postComment", "sharePost"
 ];
 
 function createClient({ authenticate, options = {}, reconnect = {}, license = {}, requireLicense = false, onLicenseError = () => {} } = {}) {
@@ -194,7 +201,12 @@ function createClient({ authenticate, options = {}, reconnect = {}, license = {}
         if (typeof threadID === "string" || typeof threadID === "number") {
           input = { threadID, message };
           done = typeof callback === "function" ? callback : null;
-          if (replyToMessageID != null) input.replyToMessageID = replyToMessageID;
+          // Some legacy FCA call sites pass the reply ID as argument three,
+          // omitting the optional callback. Preserve that overload.
+          const replyID = replyToMessageID != null
+            ? replyToMessageID
+            : (typeof callback === "string" || typeof callback === "number" ? callback : null);
+          if (replyID != null) input.replyToMessageID = replyID;
         } else {
           input = message;
           done = typeof threadID === "function" ? threadID : null;
@@ -206,6 +218,63 @@ function createClient({ authenticate, options = {}, reconnect = {}, license = {}
           return undefined;
         }
         return operation;
+      };
+    }
+    if (typeof driver.sendMessage === "function") {
+      const sendCompatibilityPayload = (message, threadID, callback) => {
+        const operation = Promise.resolve().then(() => facade.sendMessage({ threadID, message }));
+        if (typeof callback === "function") {
+          operation.then(value => callback(null, value), error => callback(error));
+          return undefined;
+        }
+        return operation;
+      };
+      const mediaPayload = (attachment, caption) => ({
+        body: caption == null ? "" : String(caption),
+        attachment
+      });
+      const parseCaptionCallback = (caption, callback) =>
+        typeof caption === "function" ? { caption: "", callback: caption } : { caption: caption ?? "", callback };
+
+      facade.sendImage = (image, threadID, caption, callback) => {
+        const parsed = parseCaptionCallback(caption, callback);
+        const message = typeof image === "string" && (image.startsWith("https://") || image.startsWith("http://"))
+          ? { body: String(parsed.caption), url: image }
+          : mediaPayload(image, parsed.caption);
+        return sendCompatibilityPayload(message, threadID, parsed.callback);
+      };
+      facade.sendVideo = (video, threadID, caption, callback) => {
+        const parsed = parseCaptionCallback(caption, callback);
+        return sendCompatibilityPayload(mediaPayload(video, parsed.caption), threadID, parsed.callback);
+      };
+      facade.sendAudio = (audio, threadID, caption, callback) => {
+        const parsed = parseCaptionCallback(caption, callback);
+        return sendCompatibilityPayload(mediaPayload(audio, parsed.caption), threadID, parsed.callback);
+      };
+      facade.sendFile = (file, threadID, caption, callback) => {
+        const parsed = parseCaptionCallback(caption, callback);
+        return sendCompatibilityPayload(mediaPayload(file, parsed.caption), threadID, parsed.callback);
+      };
+      facade.sendGif = (gif, threadID, caption, callback) => {
+        const parsed = parseCaptionCallback(caption, callback);
+        const message = typeof gif === "string" && (gif.startsWith("https://") || gif.startsWith("http://"))
+          ? { body: String(parsed.caption), url: gif }
+          : mediaPayload(gif, parsed.caption);
+        return sendCompatibilityPayload(message, threadID, parsed.callback);
+      };
+      facade.shareLink = (url, threadID, caption, callback) => {
+        const parsed = parseCaptionCallback(caption, callback);
+        if (typeof url !== "string" || !(url.startsWith("https://") || url.startsWith("http://"))) throw new TypeError("shareLink URL must use HTTP or HTTPS");
+        return sendCompatibilityPayload({ body: String(parsed.caption), url }, threadID, parsed.callback);
+      };
+      facade.sendLocation = (latitude, longitude, threadID, callback) => {
+        if (latitude && typeof latitude === "object") {
+          const location = latitude;
+          const target = longitude;
+          const done = typeof threadID === "function" ? threadID : callback;
+          return sendCompatibilityPayload({ location }, target, done);
+        }
+        return sendCompatibilityPayload({ location: { latitude, longitude } }, threadID, callback);
       };
     }
     if (typeof driver.getUserID !== "function") {
@@ -267,11 +336,71 @@ function createClient({ authenticate, options = {}, reconnect = {}, license = {}
       methods: Object.freeze(DRIVER_METHODS.filter(method => typeof driver[method] === "function")),
       events: typeof driver.listen === "function",
       sessionGuard: typeof driver.sessionGuard === "function",
-      e2ee: false
+      e2ee: typeof driver.connectE2EE === "function" && typeof driver.sendE2EEMessage === "function"
     });
+    if (typeof driver.createNewGroup === "function") {
+      facade.createGroup = (groupTitle, participantIDs, callback) =>
+        facade.createNewGroup(participantIDs, groupTitle, callback);
+    }
+    if (typeof facade.getUserInfo === "function") {
+      facade.getProfileInfo = (userID, callback) => facade.getUserInfo(userID, callback);
+      facade.getPublicData = (userID, callback) => facade.getUserInfo(userID, callback);
+      facade.getAvatarUser = (userID, callback) => {
+        const operation = Promise.resolve().then(() => facade.getUserInfo(userID)).then(profiles => {
+          const profile = profiles && (profiles[String(userID)] || Object.values(profiles)[0]);
+          return profile?.thumbSrc ?? null;
+        });
+        if (typeof callback === "function") {
+          operation.then(value => callback(null, value), error => callback(error));
+          return undefined;
+        }
+        return operation;
+      };
+    }
+    if (typeof driver.getE2EEStatus === "function") {
+      facade.e2ee = Object.freeze({
+        connect: typeof facade.connectE2EE === "function" ? facade.connectE2EE : undefined,
+        disconnect: typeof facade.disconnectE2EE === "function" ? facade.disconnectE2EE : undefined,
+        isConnected: () => Boolean(driver.getE2EEStatus().connected),
+        getStatus: () => driver.getE2EEStatus(),
+        isThread: typeof facade.isE2EEThread === "function" ? facade.isE2EEThread : undefined,
+        sendMessage: typeof facade.sendE2EEMessage === "function" ? facade.sendE2EEMessage : undefined,
+        sendAttachment: typeof facade.sendE2EEAttachment === "function" ? facade.sendE2EEAttachment : undefined,
+        downloadAttachment: typeof facade.downloadE2EEAttachment === "function" ? facade.downloadE2EEAttachment : undefined,
+        listen: typeof facade.listenE2EE === "function" ? facade.listenE2EE : undefined,
+        sendReaction: typeof facade.sendE2EEReaction === "function" ? facade.sendE2EEReaction : undefined,
+        editMessage: typeof facade.editE2EEMessage === "function" ? facade.editE2EEMessage : undefined,
+        unsendMessage: typeof facade.unsendE2EEMessage === "function" ? facade.unsendE2EEMessage : undefined,
+        sendTyping: typeof facade.sendE2EETyping === "function" ? facade.sendE2EETyping : undefined
+      });
+    }
+    const externalMethods = new Map();
+    facade.addExternalModule = module => {
+      if (!module || typeof module !== "object" || Array.isArray(module)) {
+        throw new TypeError("addExternalModule requires an object of named functions");
+      }
+      const names = [];
+      for (const [name, method] of Object.entries(module)) {
+        if (!/^[A-Za-z_$][A-Za-z0-9_$]{0,63}$/.test(name) ||
+            ["__proto__", "prototype", "constructor", "addExternalModule"].includes(name) ||
+            Object.prototype.hasOwnProperty.call(facade, name) ||
+            DRIVER_METHODS.includes(name) || externalMethods.has(name) || typeof method !== "function") {
+          throw new TypeError("External FCA module contains an invalid, duplicate, or reserved method: " + name);
+        }
+        externalMethods.set(name, method.bind(facade));
+        names.push(name);
+      }
+      return Object.freeze(names);
+    };
+    facade.logout = callback => logout(callback);
     facade.getConnectionState = () => supervisor.snapshot();
     facade.getLicense = () => verifiedLicense;
-    api = Object.freeze(facade);
+    api = new Proxy(Object.freeze(facade), {
+      get(target, property, receiver) {
+        if (typeof property === "string" && externalMethods.has(property)) return externalMethods.get(property);
+        return Reflect.get(target, property, receiver);
+      }
+    });
     startLicenseMonitor();
     return api;
   }
@@ -291,12 +420,10 @@ function createClient({ authenticate, options = {}, reconnect = {}, license = {}
     return loginPromise;
   }
 
-  return Object.freeze({
-    login,
-    logout() {
-      if (logoutPromise) return logoutPromise;
-      stopLicenseMonitor();
-      const pendingLogin = loginPromise;
+  function logout(callback) {
+    stopLicenseMonitor();
+    const pendingLogin = loginPromise;
+    if (!logoutPromise) {
       logoutPromise = (async () => {
         // If logout races authentication, wait for that attempt to settle and
         // then dispose any session it managed to establish.
@@ -312,8 +439,18 @@ function createClient({ authenticate, options = {}, reconnect = {}, license = {}
       })().finally(() => {
         logoutPromise = null;
       });
-      return logoutPromise;
-    },
+    }
+    const operation = logoutPromise;
+    if (typeof callback === "function") {
+      operation.then(() => callback(null), error => callback(error));
+      return undefined;
+    }
+    return operation;
+  }
+
+  return Object.freeze({
+    login,
+    logout,
     getConnectionState: () => supervisor ? supervisor.snapshot() : Object.freeze({ state: "idle", connected: false, generation: 0 }),
     getLicense: () => verifiedLicense
   });

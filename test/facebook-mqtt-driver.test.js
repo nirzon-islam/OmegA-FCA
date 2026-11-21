@@ -3,6 +3,7 @@
 const test = require("node:test");
 const assert = require("node:assert/strict");
 const { EventEmitter } = require("node:events");
+const { Readable } = require("node:stream");
 const fs = require("node:fs");
 const os = require("node:os");
 const path = require("node:path");
@@ -16,7 +17,7 @@ const appState = [
 ];
 
 function htmlResponse() {
-  const html = '<html><script>{"USER_ID":"123456789012345"}</script></html>';
+  const html = '<html><input type="hidden" name="fb_dtsg" value="fresh-token"><script>{"USER_ID":"123456789012345"}</script></html>';
   return {
     status: 200, ok: true,
     headers: { get: name => name.toLowerCase() === "content-length" ? String(Buffer.byteLength(html)) : name.toLowerCase() === "content-type" ? "text/html" : null, getSetCookie: () => [] },
@@ -199,7 +200,29 @@ test("SessionGuard refuses to use the GoatBot account.txt path for encrypted out
     appState,
     socketFactory: () => new FakeWebSocket(),
     sessionGuard: { filePath: path.resolve(process.cwd(), "account.txt"), key: "e".repeat(64) }
-  }), /separate from GoatBot account.txt/);
+  }), /separate from account\.txt, appstate\.json, and config\.json/);
+});
+
+test("SessionGuard protects account, AppState, and config files as both primary and backup paths", async () => {
+  const directory = fs.mkdtempSync(path.join(os.tmpdir(), "omega-driver-protected-session-paths-"));
+  const safeFile = path.join(directory, "session.enc");
+  const protectedNames = ["account.txt", "appstate.json", "config.json"];
+  try {
+    for (const name of protectedNames) {
+      const protectedPath = path.resolve(process.cwd(), name);
+      await assert.rejects(createFacebookMqttDriver({
+        appState, socketFactory: () => new FakeWebSocket(),
+        sessionGuard: { filePath: protectedPath, key: "f".repeat(64) }
+      }), /separate from account\.txt, appstate\.json, and config\.json/);
+      await assert.rejects(createFacebookMqttDriver({
+        appState, socketFactory: () => new FakeWebSocket(),
+        sessionGuard: { filePath: safeFile, backupPath: protectedPath, key: "f".repeat(64) }
+      }), /separate from account\.txt, appstate\.json, and config\.json/);
+    }
+    assert.equal(fs.existsSync(safeFile), false);
+  } finally {
+    fs.rmSync(directory, { recursive: true, force: true });
+  }
 });
 
 test("SessionGuard rejects malformed encryption keys before network setup", async () => {
@@ -286,10 +309,16 @@ test("implements editMessage and shareContact with correlated MQTT requests", as
     const task = envelope.tasks[0];
     const taskPayload = JSON.parse(task.payload);
     let response;
-    if (task.queue_name === "edit_message") {
-      assert.equal(taskPayload.message_id, "mid-edit");
+    if (task.queue_name.startsWith("pin_msg_v2_") || task.queue_name.startsWith("unpin_msg_v2_")) {
+      assert.equal(taskPayload.thread_key, "222222222222222");
+      assert.equal(taskPayload.message_id, "mid-pin");
+      assert.ok(["430", "431"].includes(task.label));
+      response = { request_id: request.request_id, payload: { success: true } };
+    } else if (task.queue_name === "edit_message") {
+      assert.ok(["mid-edit", "mid-old"].includes(taskPayload.message_id));
       assert.equal(taskPayload.text, "edited text");
-      const candidate = [null, null, "mid-edit", null, "edited text"];
+      const candidate = [null, null, taskPayload.message_id, null,
+        taskPayload.message_id === "mid-old" ? "original text" : "edited text"];
       response = {
         request_id: request.request_id,
         payload: { step: [null, [null, null, [null, null, [null, candidate]]]] }
@@ -311,8 +340,12 @@ test("implements editMessage and shareContact with correlated MQTT requests", as
   try {
     const edited = await driver.editMessage("edited text", "mid-edit");
     assert.deepEqual(edited, { body: "edited text", messageID: "mid-edit" });
+    await assert.rejects(driver.editMessage("edited text", "mid-old"), error =>
+      error.code === "FCA_MESSAGE_EDIT_REJECTED");
     const shared = await driver.shareContact("contact", "111111111111111", "222222222222222", "legacy-message-id");
     assert.equal(shared.success, true);
+    assert.equal((await driver.pinMessage("mid-pin", "222222222222222")).success, true);
+    assert.equal((await driver.unpinMessage("mid-pin", "222222222222222")).success, true);
   } finally {
     await driver.disconnect();
   }
@@ -334,6 +367,177 @@ test("creates the GoatBot humanizer when listen starts and exposes getHumanizer"
     humanizer.setOptions({ enabled: false, reactDelayMs: 0 });
     assert.equal(humanizer.getOptions().enabled, false);
     detach();
+  } finally {
+    await driver.disconnect();
+  }
+});
+
+
+test("uploads, sends, downloads and forwards Messenger attachments through bounded native helpers", async () => {
+  const socket = new FakeWebSocket();
+  const seen = [];
+  const png = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0x00]);
+  const jsonResponse = value => new Response("for (;;);" + JSON.stringify(value), {
+    status: 200, headers: { "content-type": "application/json" }
+  });
+  const fetchImpl = async (input, init = {}) => {
+    const url = new URL(String(input));
+    if (url.hostname === "www.facebook.com" && url.pathname === "/") return htmlResponse();
+    if (url.hostname === "upload.facebook.com" && url.pathname.endsWith("/upload.php")) {
+      const fields = Array.from(init.body.entries()).map(([name]) => name);
+      seen.push({ kind: "upload", fields });
+      const uploaded = fields.filter(name => name.startsWith("upload_")).map((_, index) => index === 0 ? { image_id: "987654321", filetype: "image/png" } : { file_id: "876543210", filetype: "application/pdf" });
+      return jsonResponse({ payload: { metadata: uploaded } });
+    }
+    if (url.hostname === "www.facebook.com" && url.pathname === "/messaging/send/") {
+      const form = new URLSearchParams(init.body);
+      seen.push({ kind: "send", imageID: form.get("image_ids[0]"), fileID: form.get("file_ids[0]"), body: form.get("body"), reply: form.get("replied_to_message_id") });
+      return jsonResponse({ payload: { actions: [{ thread_fbid: "123456789012345", message_id: "mid-attachment", timestamp: 1700000000000 }] } });
+    }
+    if (url.hostname === "www.facebook.com" && url.pathname === "/mercury/attachments/forward/") {
+      const form = new URLSearchParams(init.body);
+      seen.push({ kind: "forward", id: form.get("attachment_id"), recipients: [...form.entries()].filter(([key]) => key.startsWith("recipient_map[")) });
+      return jsonResponse({ payload: { success: true } });
+    }
+    if (url.hostname === "scontent.xx.fbcdn.net") return new Response(Buffer.from("media-bytes"), { status: 200, headers: { "content-type": "image/png" } });
+    throw new Error("Unexpected test URL: " + url.href);
+  };
+  const driver = await createFacebookMqttDriver({
+    appState, fetchImpl, socketFactory: () => socket, mqtt: { keepAlive: 0 }
+  });
+  try {
+    const sent = await driver.sendMessage({
+      threadID: "123456789012345",
+      message: { body: "photo caption", attachment: [png, Readable.from([Buffer.from("%PDF-1.7 "), Buffer.from("stream test")])] },
+      replyToMessageID: "mid-reply"
+    });
+    assert.equal(sent.messageID, "mid-attachment");
+    assert.equal(sent.attachments[0].attachmentID, "987654321");
+    assert.equal(sent.attachments[1].attachmentID, "876543210");
+    assert.equal(sent.attachments[1].type, "file");
+    assert.deepEqual(seen.find(item => item.kind === "upload").fields.slice(0, 4), ["voice_clip", "upload_0", "upload_1", "av"]);
+    assert.deepEqual(seen.find(item => item.kind === "send"), {
+      kind: "send", imageID: "987654321", fileID: "876543210", body: "photo caption", reply: "mid-reply"
+    });
+
+    const uploaded = await driver.uploadAttachment(png);
+    assert.equal(uploaded[0].type, "image");
+    assert.equal(uploaded[0].attachmentID, "987654321");
+
+    const downloaded = await driver.downloadAttachment("https://scontent.xx.fbcdn.net/photo.png");
+    assert.equal(downloaded.buffer.toString(), "media-bytes");
+    assert.equal(downloaded.mimeType, "image/png");
+
+    const forwarded = await driver.forwardAttachment("987654321", ["111111111111111", "222222222222222"]);
+    assert.equal(forwarded.success, true);
+    assert.equal(seen.find(item => item.kind === "forward").id, "987654321");
+    assert.equal(seen.find(item => item.kind === "forward").recipients.length, 2);
+  } finally {
+    await driver.disconnect();
+  }
+});
+
+test("native driver exposes encrypted saveSession and account-bound restoreSessionBackup", async () => {
+  const directory = fs.mkdtempSync(path.join(os.tmpdir(), "omega-driver-backup-"));
+  const filePath = path.join(directory, "session.enc");
+  const backupPath = filePath + ".bak";
+  const key = "f".repeat(64);
+  let driver;
+  try {
+    driver = await createFacebookMqttDriver({
+      appState, fetchImpl: async () => htmlResponse(),
+      socketFactory: () => new FakeWebSocket(), mqtt: { keepAlive: 0 },
+      sessionGuard: { filePath, key, intervalMs: 60_000 }
+    });
+    await driver.saveSession();
+    const store = require("../src/security/sessionStore");
+    store.saveSession(backupPath, {
+      version: 1, userId: "123456789012345",
+      appState: [
+        { key: "c_user", value: "123456789012345", domain: ".facebook.com", path: "/", secure: true, httpOnly: true },
+        { key: "xs", value: "backup-session", domain: ".facebook.com", path: "/", secure: true, httpOnly: true }
+      ],
+      savedAt: Date.now()
+    }, key);
+    const restored = await driver.restoreSessionBackup();
+    assert.equal(restored.restored, true);
+    assert.equal(restored.userId, "123456789012345");
+    assert.match(driver.getCookies(), /xs=backup-session/);
+    const saved = store.loadSession(filePath, key);
+    assert.equal(saved.appState.find(cookie => cookie.key === "xs").value, "backup-session");
+  } finally {
+    if (driver) await driver.disconnect();
+    fs.rmSync(directory, { recursive: true, force: true });
+  }
+});
+
+test("native driver exposes callback-compatible saveSession and bounded multipart HTTP", async () => {
+  const directory = fs.mkdtempSync(path.join(os.tmpdir(), "omega-driver-multipart-"));
+  const filePath = path.join(directory, "session.enc");
+  let driver;
+  try {
+    driver = await createFacebookMqttDriver({
+      appState,
+      fetchImpl: async url => {
+        if (String(url).includes("/ajax/mercury/upload.php")) {
+          const raw = JSON.stringify({ payload: { success: true } });
+          return {
+            status: 200, ok: true,
+            headers: { get: name => name.toLowerCase() === "content-type" ? "application/json" : name.toLowerCase() === "content-length" ? String(Buffer.byteLength(raw)) : null },
+            text: async () => raw
+          };
+        }
+        return htmlResponse();
+      },
+      socketFactory: () => new FakeWebSocket(), mqtt: { keepAlive: 0 },
+      sessionGuard: { filePath, key: "1".repeat(64), intervalMs: 60_000 }
+    });
+    const savedPath = await new Promise((resolve, reject) => {
+      driver.saveSession((error, value) => error ? reject(error) : resolve(value));
+    });
+    assert.equal(savedPath, filePath);
+    const response = await driver.httpPostFormData(
+      "https://www.facebook.com/ajax/mercury/upload.php",
+      new FormData()
+    );
+    assert.equal(response.status, 200);
+    await assert.rejects(driver.httpPostFormData("https://example.com/upload", new FormData()), /HTTPS Facebook\/Messenger/);
+  } finally {
+    if (driver) await driver.disconnect();
+    fs.rmSync(directory, { recursive: true, force: true });
+  }
+});
+
+
+
+test("sendMessage reports explicit Messenger rejection instead of returning it as success", async () => {
+  const socket = new FakeWebSocket();
+  const driver = await createFacebookMqttDriver({
+    appState, fetchImpl: async () => htmlResponse(), socketFactory: () => socket,
+    mqtt: { keepAlive: 0 }
+  });
+  const originalSend = socket.send.bind(socket);
+  let rejectNext = true;
+  socket.send = frame => {
+    originalSend(frame);
+    const packet = mqtt.decodePacket(Buffer.from(frame));
+    if (packet.type !== "publish" || packet.topic !== "/ls_req") return;
+    const request = JSON.parse(packet.payload.toString("utf8"));
+    const response = rejectNext
+      ? { request_id: request.request_id, payload: { error: 1545012 } }
+      : { request_id: request.request_id, payload: { accepted: true } };
+    rejectNext = false;
+    setImmediate(() => socket.emit("message", mqtt.encodePublish({
+      topic: "/ls_resp", payload: JSON.stringify(response), qos: 1, packetId: 92
+    })));
+  };
+  try {
+    await assert.rejects(
+      driver.sendMessage({ threadID: "987654321", message: "not sent" }),
+      error => error.code === "FCA_FACEBOOK_REQUEST_REJECTED" && error.retryable === false
+    );
+    const accepted = await driver.sendMessage({ threadID: "987654321", message: "sent" });
+    assert.deepEqual(accepted.payload, { accepted: true });
   } finally {
     await driver.disconnect();
   }

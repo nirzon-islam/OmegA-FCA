@@ -31,7 +31,7 @@ test("normalizes reply, reaction, unsend, typing, read and presence delta classe
   assert.equal(normalizeMessengerDelta({ class: "MessageReaction", reaction: "❤️" }).type, "message_reaction");
   assert.equal(normalizeMessengerDelta({ class: "MessageUnsend" }).type, "message_unsend");
   assert.equal(normalizeMessengerDelta({ class: "Typing" }).type, "typ");
-  assert.equal(normalizeMessengerDelta({ class: "ReadReceipt" }).type, "read");
+  assert.equal(normalizeMessengerDelta({ class: "ReadReceipt" }).type, "read_receipt");
   assert.equal(normalizeMessengerDelta({ class: "PresenceUpdate" }).type, "presence");
   assert.equal(normalizeMessengerDelta({ class: "FutureDelta" }).type, "unknown_delta");
 });
@@ -82,4 +82,99 @@ test("Messenger MQTT /t_ms frames emit normalized events and cursor updates", ()
   assert.equal(result.events[0].type, "message");
   assert.equal(result.events[1].type, "sync_cursor");
   assert.equal(result.events[1].cursor.lastSeqId, 9);
+});
+
+
+test("builds the legacy messageReply object and normalizes quoted attachments", () => {
+  const result = normalizeMessengerDelta({
+    class: "NewMessage",
+    messageMetadata: {
+      messageId: "reply-1", actorFbId: "sender-1",
+      threadKey: { threadFbId: "group-1" },
+      replySourceMessageId: "quoted-1"
+    },
+    body: "reply body",
+    attachments: [{ attachment_id: "new-file", mime_type: "image/jpeg", image: { url: "https://cdn.example/new.jpg" } }],
+    replyMessage: {
+      messageId: "quoted-1", actorFbId: "quoted-sender",
+      body: "quoted body", timestamp: 1700000000000,
+      attachments: [{ attachment_id: "photo-1", mime_type: "image/jpeg", image: { url: "https://cdn.example/quoted.jpg" } }]
+    }
+  });
+  assert.equal(result.type, "message_reply");
+  assert.equal(result.messageReply.messageID, "quoted-1");
+  assert.equal(result.messageReply.senderID, "quoted-sender");
+  assert.equal(result.messageReply.body, "quoted body");
+  assert.equal(result.messageReply.attachments[0].type, "photo");
+  assert.equal(result.messageReply.attachments[0].url, "https://cdn.example/quoted.jpg");
+  assert.equal(result.attachments[0].ID, "new-file");
+  assert.equal(result.attachments[0].type, "photo");
+});
+
+test("reply deltas without quoted content still expose a stable legacy reply object", () => {
+  const result = normalizeMessengerDelta({
+    class: "NewMessage",
+    messageMetadata: {
+      messageId: "reply-2", replySourceMessageId: "quoted-2",
+      threadKey: { otherUserFbId: "user-1" }
+    },
+    body: "reply"
+  });
+  assert.equal(result.type, "message_reply");
+  assert.equal(result.messageReply.messageID, "quoted-2");
+  assert.equal(result.messageReply.senderID, null);
+  assert.deepEqual(result.messageReply.attachments, []);
+});
+
+test("maps read receipts and common thread log events to GoatBot legacy names", () => {
+  const read = normalizeMessengerDelta({
+    class: "ReadReceipt", messageMetadata: {
+      actorFbId: "reader-1", threadKey: { threadFbId: "group-1" },
+      watermarkTimestamp: 1700000000000
+    }
+  });
+  assert.equal(read.type, "read_receipt");
+  assert.equal(read.reader, "reader-1");
+  assert.equal(read.userID, "reader-1");
+  assert.equal(read.threadID, "group-1");
+  const renamed = normalizeMessengerDelta({
+    class: "ThreadName", messageMetadata: { threadKey: { threadFbId: "group-1" } },
+    name: "New group name", actorFbId: "admin-1"
+  });
+  assert.equal(renamed.type, "event");
+  assert.equal(renamed.logMessageType, "log:thread-name");
+  assert.equal(renamed.author, "admin-1");
+});
+
+test("normalizes participant events and rejects malformed attachment entries safely", () => {
+  const added = normalizeMessengerDelta({
+    class: "ParticipantAdded", participantIds: ["100", 200],
+    messageMetadata: { threadKey: { threadFbId: "group-1" } }
+  });
+  assert.equal(added.logMessageType, "log:subscribe");
+  assert.deepEqual(added.participantIDs, ["100", "200"]);
+  const message = normalizeMessengerDelta({
+    class: "NewMessage", attachments: [null, "bad", { url: "https://cdn.example/a.pdf", filename: "a.pdf" }]
+  });
+  assert.deepEqual(message.attachments.map(item => item.type), ["file"]);
+  assert.equal(message.attachments[0].url, "https://cdn.example/a.pdf");
+});
+
+
+test("preserves read-receipt watermark metadata and message identifiers", () => {
+  const result = normalizeMessengerDelta({
+    class: "ReadReceipt",
+    messageMetadata: {
+      actorFbId: "reader-2",
+      messageId: "last-read-message",
+      threadKey: { threadFbId: "group-2" },
+      watermarkTimestamp: 1700000000123
+    }
+  });
+  assert.equal(result.type, "read_receipt");
+  assert.equal(result.reader, "reader-2");
+  assert.equal(result.userID, "reader-2");
+  assert.equal(result.threadID, "group-2");
+  assert.equal(result.messageID, "last-read-message");
+  assert.equal(result.watermarkTimestamp, 1700000000123);
 });

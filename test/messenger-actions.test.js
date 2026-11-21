@@ -2,7 +2,7 @@
 
 const test = require("node:test");
 const assert = require("node:assert/strict");
-const { createMessengerSendMessageRequest, offlineThreadingId } = require("../src/transport/messengerActions");
+const { createMessengerSendMessageRequest, createMessengerPinMessageRequest, offlineThreadingId } = require("../src/transport/messengerActions");
 
 test("builds Messenger MQTT text, reply and read-watermark tasks", () => {
   const request = createMessengerSendMessageRequest({
@@ -37,4 +37,62 @@ test("offline IDs are numeric and input validation is strict", () => {
   assert.match(offlineThreadingId(1700000000000, 1234), /^\d+$/);
   assert.throws(() => createMessengerSendMessageRequest({ threadID: "bad", message: "x" }), /numeric Facebook ID/);
   assert.throws(() => createMessengerSendMessageRequest({ threadID: "123456789", message: "x".repeat(20001) }), /exceeds/);
+});
+
+test("builds Messenger location and emoji-size task payloads", () => {
+  const locationRequest = createMessengerSendMessageRequest({
+    threadID: "123456789",
+    message: { location: { latitude: 23.8, longitude: 90.4, current: true, live: false } },
+    timestamp: 1700000000000,
+    otid: "1700000000000123",
+    epochId: "1700000000000456"
+  });
+  const location = JSON.parse(JSON.parse(locationRequest.payload).tasks[0].payload);
+  assert.deepEqual(location.location_data, {
+    coordinates: { latitude: 23.8, longitude: 90.4 },
+    is_current_location: true,
+    is_live_location: false
+  });
+
+  const emojiRequest = createMessengerSendMessageRequest({
+    threadID: "123456789",
+    message: { emoji: "👍", emojiSize: "large" },
+    timestamp: 1700000000000,
+    otid: "1700000000000123",
+    epochId: "1700000000000456"
+  });
+  const emoji = JSON.parse(JSON.parse(emojiRequest.payload).tasks[0].payload);
+  assert.equal(emoji.text, "👍");
+  assert.equal(emoji.hot_emoji_size, 3);
+  assert.throws(() => createMessengerSendMessageRequest({
+    threadID: "123456789", message: { location: { latitude: 91, longitude: 0 } }
+  }), /out of range/);
+});
+
+
+test("builds validated Lightspeed pin and unpin tasks", () => {
+  const pin = createMessengerPinMessageRequest({
+    threadID: "123456789", messageID: "mid.123", pin: true,
+    timestamp: 1700000000000, epochId: "1700000000000123", taskId: 7, requestId: 8
+  });
+  assert.equal(pin.app_id, "2220391788200892");
+  assert.equal(pin.type, 3);
+  assert.equal(pin.request_id, 8);
+  const pinPayload = JSON.parse(pin.payload);
+  assert.equal(pinPayload.epoch_id, "1700000000000123");
+  assert.equal(pinPayload.tasks[0].label, "430");
+  assert.equal(pinPayload.tasks[0].queue_name, "pin_msg_v2_123456789");
+  assert.deepEqual(JSON.parse(pinPayload.tasks[0].payload), {
+    thread_key: "123456789", message_id: "mid.123", timestamp_ms: 1700000000000
+  });
+
+  const unpin = createMessengerPinMessageRequest({
+    threadID: "123456789", messageID: "mid.123", pin: false,
+    timestamp: 1700000000000, epochId: "1700000000000123", taskId: 9, requestId: 10
+  });
+  const unpinPayload = JSON.parse(unpin.payload);
+  assert.equal(unpinPayload.tasks[0].label, "431");
+  assert.equal(unpinPayload.tasks[0].queue_name, "unpin_msg_v2_123456789");
+  assert.throws(() => createMessengerPinMessageRequest({ threadID: "bad", messageID: "x" }), /numeric Facebook ID/);
+  assert.throws(() => createMessengerPinMessageRequest({ threadID: "123456789", messageID: "" }), /messageID/);
 });

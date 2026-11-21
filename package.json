@@ -13,7 +13,8 @@
     "prepublishOnly": "npm test && npm run test:syntax",
     "test:appstate": "node examples/appstate-session-check.js",
     "test:messenger-mqtt": "node examples/messenger-mqtt-smoke.js",
-    "capture:browser": "node tools/browser-capture.js"
+    "capture:browser": "node tools/browser-capture.js",
+    "test:types": "node --test test/types.test.js"
   },
   "license": "MIT",
   "keywords": [
@@ -40,14 +41,22 @@
     "docs/ARCHITECTURE.md",
     "docs/GOATBOT-COMPATIBILITY-MATRIX.md",
     "docs/GOATBOT-INTEGRATION-AUDIT.md",
+    "docs/GOATBOT-CALLSITE-INVENTORY.md",
     "docs/REFERENCE-AUDIT.md",
     "docs/ERYXEN-REFERENCE-AUDIT.md",
+    "docs/ERYXEN-API-PARITY-MATRIX.md",
     "docs/NTKHANG-REFERENCE-STUDY.md",
     "docs/SAFE-DIAGNOSTICS.md",
     "docs/REALTIME-FRAME-EVIDENCE.md",
     "docs/NESTED-REALTIME-PAYLOAD.md",
     "tools/",
-    "docs/BROWSER-CAPTURE.md"
+    "docs/BROWSER-CAPTURE.md",
+    "docs/GOATBOT-EVENT-COMPATIBILITY.md",
+    "docs/GOATBOT-ATTACHMENT-COMPATIBILITY.md",
+    "THIRD_PARTY_NOTICES.md",
+    "docs/E2EE.md",
+    "docs/TYPESCRIPT.md",
+    "docs/PRERELEASE-PUBLISHING.md"
   ],
   "exports": {
     ".": {
@@ -62,6 +71,7 @@
   },
   "publishConfig": {
     "registry": "https://registry.npmjs.org/",
-    "access": "public"
+    "access": "public",
+    "tag": "next"
   }
 }

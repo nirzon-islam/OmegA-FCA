@@ -40,6 +40,34 @@ function createMessengerSendMessageRequest(input = {}) {
     sync_group: 1, text: message?.sticker ? null : body, initiating_source: 1, skip_url_preview_gen: 0
   };
   if (message?.sticker) taskPayload.sticker_id = String(message.sticker);
+  if (message?.emoji != null) {
+    if (typeof message.emoji !== "string" || !message.emoji || message.emoji.length > 32) {
+      throw new TypeError("emoji must be a non-empty string up to 32 characters");
+    }
+    const sizes = { small: 1, medium: 2, large: 3 };
+    const rawSize = message.emojiSize ?? "small";
+    const size = typeof rawSize === "number" ? rawSize : sizes[rawSize];
+    if (!Number.isInteger(size) || size < 1 || size > 3) throw new TypeError("emojiSize must be 1, 2, 3, small, medium, or large");
+    taskPayload.text = message.emoji;
+    taskPayload.hot_emoji_size = size;
+  }
+  if (message?.location != null) {
+    const location = message.location;
+    if (!location || typeof location !== "object" || Array.isArray(location)) throw new TypeError("location must be an object");
+    const latitude = Number(location.latitude);
+    const longitude = Number(location.longitude);
+    if (!Number.isFinite(latitude) || latitude < -90 || latitude > 90 ||
+        !Number.isFinite(longitude) || longitude < -180 || longitude > 180) {
+      throw new TypeError("location latitude/longitude are out of range");
+    }
+    if (location.current !== undefined && typeof location.current !== "boolean") throw new TypeError("location.current must be a boolean");
+    if (location.live !== undefined && typeof location.live !== "boolean") throw new TypeError("location.live must be a boolean");
+    taskPayload.location_data = {
+      coordinates: { latitude, longitude },
+      is_current_location: Boolean(location.current),
+      is_live_location: Boolean(location.live)
+    };
+  }
   if (input.replyToMessageID != null) {
     const replyTo = String(input.replyToMessageID);
     if (!replyTo || replyTo.length > 256) throw new TypeError("replyToMessageID is invalid");
@@ -122,6 +150,43 @@ function createMessengerShareContactRequest(input = {}) {
 }
 
 
+const PIN_MESSAGE_VERSION_ID = "25095469420099952";
+
+/**
+ * Builds the observed Messenger Lightspeed pin/unpin task.
+ * The task shape is community-observed and requires live account acceptance.
+ */
+function createMessengerPinMessageRequest(input = {}) {
+  const threadID = String(input.threadID ?? "");
+  const messageID = String(input.messageID ?? "");
+  const pin = input.pin !== false;
+  if (!/^\d{5,30}$/.test(threadID)) throw new TypeError("threadID must be a numeric Facebook ID");
+  if (!messageID || messageID.length > 256) throw new TypeError("messageID is invalid");
+  const timestamp = input.timestamp ?? Date.now();
+  if (!Number.isSafeInteger(timestamp) || timestamp < 1) throw new TypeError("timestamp is invalid");
+  const taskId = input.taskId ?? randomInt(1, 65536);
+  if (!Number.isInteger(taskId) || taskId < 1 || taskId > 65535) throw new TypeError("taskId is invalid");
+  const epochId = input.epochId ?? offlineThreadingId(timestamp);
+  if (!/^\d{10,24}$/.test(String(epochId))) throw new TypeError("epochId is invalid");
+  return Object.freeze({
+    app_id: MESSENGER_MQTT_APP_ID,
+    payload: JSON.stringify({
+      data_trace_id: null,
+      epoch_id: String(epochId),
+      tasks: [{
+        failure_count: null,
+        label: pin ? "430" : "431",
+        payload: JSON.stringify({ thread_key: threadID, message_id: messageID, timestamp_ms: timestamp }),
+        queue_name: (pin ? "pin_msg_v2_" : "unpin_msg_v2_") + threadID,
+        task_id: taskId
+      }],
+      version_id: PIN_MESSAGE_VERSION_ID
+    }),
+    request_id: input.requestId ?? randomInt(1, 1000000),
+    type: 3
+  });
+}
+
 const CHANGE_GROUP_IMAGE_VERSION_ID = "8798795233522156";
 
 function createMessengerChangeGroupImageRequest(input = {}) {
@@ -150,4 +215,4 @@ function createMessengerChangeGroupImageRequest(input = {}) {
   });
 }
 
-module.exports = { MESSENGER_MQTT_APP_ID, SEND_MESSAGE_VERSION_ID, offlineThreadingId, createMessengerSendMessageRequest, createMessengerEditMessageRequest, createMessengerShareContactRequest, createMessengerChangeGroupImageRequest };
+module.exports = { MESSENGER_MQTT_APP_ID, SEND_MESSAGE_VERSION_ID, offlineThreadingId, createMessengerSendMessageRequest, createMessengerEditMessageRequest, createMessengerShareContactRequest, createMessengerChangeGroupImageRequest, createMessengerPinMessageRequest };

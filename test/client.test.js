@@ -226,3 +226,203 @@ test("client does not expose arbitrary provider error codes or messages", async 
     }
   );
 });
+
+
+test("client facade forwards native httpGet Promise and callback signatures", async () => {
+  const calls = [];
+  const client = createClient({
+    requireLicense: false,
+    authenticate: async () => ({
+      getCurrentUserID: () => "123456",
+      httpGet(url, query, callback) {
+        if (typeof query === "function") {
+          callback = query;
+          query = undefined;
+        }
+        calls.push({ url, query });
+        if (typeof callback === "function") {
+          callback(null, "callback response");
+          return undefined;
+        }
+        return Promise.resolve("promise response");
+      },
+      listen: () => () => {},
+      disconnect: async () => {}
+    })
+  });
+  const api = await client.login({ mode: "appstate", appState: [
+    { key: "c_user", value: "123456", domain: "facebook.com" },
+    { key: "xs", value: "synthetic-session-value", domain: "facebook.com" }
+  ] });
+
+  assert.equal(await api.httpGet("https://www.facebook.com/", { __a: 1 }), "promise response");
+  assert.deepEqual(calls[0], { url: "https://www.facebook.com/", query: { __a: 1 } });
+
+  const callbackResult = await new Promise((resolve, reject) => {
+    const returned = api.httpGet("https://www.facebook.com/", (error, value) => {
+      if (error) reject(error);
+      else resolve(value);
+    });
+    assert.equal(returned, undefined);
+  });
+  assert.equal(callbackResult, "callback response");
+  assert.deepEqual(calls[1], { url: "https://www.facebook.com/", query: undefined });
+  await client.logout();
+});
+
+test("legacy sendMessage accepts a reply ID in the third argument when callback is omitted", async () => {
+  let captured;
+  const client = createClient({
+    requireLicense: false,
+    authenticate: async () => ({
+      getCurrentUserID: () => "123456",
+      sendMessage: async input => { captured = input; return { messageID: "m2" }; },
+      listen: () => () => {},
+      disconnect: async () => {}
+    })
+  });
+  const api = await client.login({ mode: "appstate", appState: [
+    { key: "c_user", value: "123456", domain: "facebook.com" },
+    { key: "xs", value: "synthetic-session-value", domain: "facebook.com" }
+  ] });
+  await api.sendMessage("reply body", "987654321", "mid.reply-target");
+  assert.deepEqual(captured, {
+    threadID: "987654321",
+    message: "reply body",
+    replyToMessageID: "mid.reply-target"
+  });
+  await client.logout();
+});
+
+test("client exposes legacy media, link and location send helpers", async () => {
+  const sent = [];
+  const client = createClient({
+    requireLicense: false,
+    authenticate: async () => ({
+      getCurrentUserID: () => "123456",
+      sendMessage: async input => { sent.push(input); return { messageID: "m" + sent.length }; },
+      listen: () => () => {},
+      disconnect: async () => {}
+    })
+  });
+  const api = await client.login({ mode: "appstate", appState: [
+    { key: "c_user", value: "123456", domain: "facebook.com" },
+    { key: "xs", value: "synthetic-session-value", domain: "facebook.com" }
+  ] });
+  await api.sendLocation(23.8, 90.4, "987654321");
+  await api.sendImage(Buffer.from("image"), "987654321", "caption");
+  await api.sendGif("https://media.example.test/clip.gif", "987654321", "gif caption");
+  await api.shareLink("https://example.test/page", "987654321", "link caption");
+  assert.deepEqual(sent[0].message, { location: { latitude: 23.8, longitude: 90.4 } });
+  assert.deepEqual(sent[1].message, { body: "caption", attachment: Buffer.from("image") });
+  assert.deepEqual(sent[2].message, { body: "gif caption", url: "https://media.example.test/clip.gif" });
+  assert.deepEqual(sent[3].message, { body: "link caption", url: "https://example.test/page" });
+  await client.logout();
+});
+
+test("FCA API exposes logout with Promise and callback forms", async () => {
+  let disconnected = 0;
+  const client = createClient({
+    requireLicense: false,
+    authenticate: async () => ({
+      getCurrentUserID: () => "123456",
+      listen: () => () => {},
+      disconnect: async () => { disconnected++; }
+    })
+  });
+  const api = await client.login({ mode: "appstate", appState: [
+    { key: "c_user", value: "123456", domain: "facebook.com" },
+    { key: "xs", value: "synthetic-session-value", domain: "facebook.com" }
+  ] });
+  assert.equal(typeof api.logout, "function");
+  await new Promise((resolve, reject) => {
+    const returned = api.logout(error => error ? reject(error) : resolve());
+    assert.equal(returned, undefined);
+  });
+  assert.equal(disconnected, 1);
+  assert.equal(client.getConnectionState().state, "idle");
+});
+
+test("FCA API exposes E2EE namespace and legacy group creation alias", async () => {
+  const calls = [];
+  let connected = false;
+  const client = createClient({
+    requireLicense: false,
+    authenticate: async () => ({
+      getCurrentUserID: () => "123456",
+      getE2EEStatus: () => ({ connected, deviceId: 1, persistentStorage: false, storageEncrypted: false }),
+      connectE2EE: async () => { connected = true; return { userId: "123456", deviceId: 1 }; },
+      disconnectE2EE: () => { connected = false; return true; },
+      isE2EEThread: id => id === "987654321",
+      sendE2EEMessage: async (...args) => { calls.push(["send", ...args]); return "encrypted"; },
+      createNewGroup: async (...args) => { calls.push(["group", ...args]); return "555555555"; },
+      listen: () => () => {},
+      disconnect: async () => {}
+    })
+  });
+  const api = await client.login({ mode: "appstate", appState: [
+    { key: "c_user", value: "123456", domain: "facebook.com" },
+    { key: "xs", value: "synthetic-session-value", domain: "facebook.com" }
+  ] });
+  assert.equal(api.e2ee.isConnected(), false);
+  await api.e2ee.connect();
+  assert.equal(api.e2ee.isConnected(), true);
+  assert.equal(api.e2ee.isThread("987654321"), true);
+  assert.equal(await api.e2ee.sendMessage("987654321", "secret"), "encrypted");
+  assert.equal(await api.createGroup("Test Group", ["111111111", "222222222"]), "555555555");
+  assert.deepEqual(calls[0], ["send", "987654321", "secret"]);
+  assert.deepEqual(calls[1], ["group", ["111111111", "222222222"], "Test Group", undefined]);
+  assert.equal(api.e2ee.disconnect(), true);
+  assert.equal(api.e2ee.isConnected(), false);
+  await client.logout();
+});
+
+test("addExternalModule safely registers non-conflicting bound API extensions", async () => {
+  const client = createClient({
+    requireLicense: false,
+    authenticate: async () => ({
+      getCurrentUserID: () => "123456",
+      listen: () => () => {},
+      disconnect: async () => {}
+    })
+  });
+  const api = await client.login({ mode: "appstate", appState: [
+    { key: "c_user", value: "123456", domain: "facebook.com" },
+    { key: "xs", value: "synthetic-session-value", domain: "facebook.com" }
+  ] });
+  assert.deepEqual(api.addExternalModule({
+    customIdentity() { return this.getCurrentUserID(); },
+    customValue() { return 42; }
+  }), ["customIdentity", "customValue"]);
+  assert.equal(api.customIdentity(), "123456");
+  assert.equal(api.customValue(), 42);
+  assert.throws(() => api.addExternalModule({ sendMessage() {} }), /invalid, duplicate, or reserved/);
+  assert.throws(() => api.addExternalModule({ bad: "not a function" }), /invalid, duplicate, or reserved/);
+  await client.logout();
+});
+
+test("FCA facade exposes profile, public-data and avatar compatibility helpers", async () => {
+  const client = createClient({
+    requireLicense: false,
+    authenticate: async () => ({
+      getCurrentUserID: () => "123456",
+      getUserInfo: async ids => Object.fromEntries((Array.isArray(ids) ? ids : [ids]).map(id => [
+        String(id), { name: "Example User", thumbSrc: "https://scontent.xx.fbcdn.net/avatar.jpg" }
+      ])),
+      listen: () => () => {},
+      disconnect: async () => {}
+    })
+  });
+  const api = await client.login({ mode: "appstate", appState: [
+    { key: "c_user", value: "123456", domain: "facebook.com" },
+    { key: "xs", value: "synthetic-session-value", domain: "facebook.com" }
+  ] });
+  assert.equal((await api.getProfileInfo("987654321"))["987654321"].name, "Example User");
+  assert.equal((await api.getPublicData("987654321"))["987654321"].name, "Example User");
+  assert.equal(await api.getAvatarUser("987654321"), "https://scontent.xx.fbcdn.net/avatar.jpg");
+  await new Promise((resolve, reject) => {
+    api.getAvatarUser("987654321", (error, value) => error ? reject(error) : resolve(value));
+  });
+  await client.logout();
+});
+

@@ -1,15 +1,20 @@
 "use strict";
 
 const path = require("node:path");
+const fs = require("node:fs");
+const os = require("node:os");
 const { createPersonalSession } = require("../auth/personalSession");
 const { createSessionGuard } = require("../security/sessionGuard");
 const { createFacebookMqttProtocol } = require("./facebookMqttProtocol");
 const { createNativeRealtimeTransport } = require("./nativeRealtimeTransport");
 const { createFacebookThreadApi } = require("./facebookThreadApi");
 const { createFacebookWebClient } = require("../auth/facebookWebClient");
-const { readImageInput } = require("../compat/imageUpload");
-const { createMessengerEditMessageRequest, createMessengerShareContactRequest, createMessengerChangeGroupImageRequest } = require("./messengerActions");
+const { readImageInput, readAttachmentInput, downloadAttachment: downloadAttachmentFile, MAX_ATTACHMENT_COUNT } = require("../compat/imageUpload");
+const { offlineThreadingId, createMessengerEditMessageRequest, createMessengerShareContactRequest, createMessengerChangeGroupImageRequest, createMessengerPinMessageRequest } = require("./messengerActions");
 const { createHumanizer } = require("../compat/humanizer");
+const { createBroadcastSender } = require("../compat/broadcast");
+const { E2EEClient } = require("../e2ee/client");
+const { createE2EEHttpAdapter } = require("../e2ee/httpAdapter");
 
 /**
  * Builds an owner-authorized personal Messenger MQTT driver.
@@ -33,6 +38,20 @@ function callbackResult(operation, callback) {
   if (typeof callback !== "function") return operation;
   operation.then(value => callback(null, value), error => callback(error));
   return undefined;
+}
+
+function assertMessengerAccepted(response, action) {
+  const payload = response?.payload?.payload ?? response?.payload;
+  const facebookError = response?.error ?? payload?.error;
+  const errors = payload?.errors;
+  if (facebookError != null || (Array.isArray(errors) && errors.length > 0)) {
+    const error = new Error("Facebook rejected the Messenger " + action + " request");
+    error.code = "FCA_FACEBOOK_REQUEST_REJECTED";
+    error.retryable = false;
+    error.facebookError = facebookError ?? errors;
+    throw error;
+  }
+  return response;
 }
 
 async function createFacebookMqttDriver({
@@ -82,11 +101,13 @@ async function createFacebookMqttDriver({
         ? /^[a-f0-9]{64}$/i.test(sessionGuardOptions.key)
         : sessionGuardOptions.key.byteLength === 32;
       if (!keyIsValid) throw new TypeError("Session encryption key must be 32 bytes or exactly 64 hexadecimal characters");
-      const accountFile = path.resolve(process.cwd(), "account.txt");
+      const protectedFiles = new Set(
+        ["account.txt", "appstate.json", "config.json"].map(name => path.resolve(process.cwd(), name))
+      );
       const encryptedFile = path.resolve(sessionGuardOptions.filePath);
       const backupFile = path.resolve(sessionGuardOptions.backupPath || encryptedFile + ".bak");
-      if (encryptedFile === accountFile || backupFile === accountFile) {
-        throw new TypeError("Encrypted SessionGuard files must be separate from GoatBot account.txt");
+      if (protectedFiles.has(encryptedFile) || protectedFiles.has(backupFile)) {
+        throw new TypeError("Encrypted SessionGuard files must be separate from account.txt, appstate.json, and config.json");
       }
       guard = createSessionGuard({
         filePath: sessionGuardOptions.filePath,
@@ -153,6 +174,159 @@ async function createFacebookMqttDriver({
       guard.start(sessionGuardOptions.intervalMs === undefined ? 60_000 : sessionGuardOptions.intervalMs);
     }
     const threadApi = createFacebookThreadApi({ session, clientId: protocolConfig.session.clientId, webClient });
+    let e2eeClient = null;
+    const e2eeListeners = new Set();
+    const e2eeStorageKey = loginOptions.e2eeStorageKey ?? sessionGuardOptions?.key ?? null;
+    if (e2eeStorageKey != null) {
+      if (typeof e2eeStorageKey === "string" ? !/^[a-f0-9]{64}$/i.test(e2eeStorageKey)
+        : (!(Buffer.isBuffer(e2eeStorageKey) || e2eeStorageKey instanceof Uint8Array) || e2eeStorageKey.byteLength !== 32)) {
+        throw new TypeError("e2eeStorageKey must be 32 bytes or exactly 64 hexadecimal characters");
+      }
+    }
+    const e2eeDevicePath = loginOptions.e2eeDevicePath
+      ? path.resolve(loginOptions.e2eeDevicePath)
+      : e2eeStorageKey
+        ? path.join(os.homedir(), ".omega-fca", "e2ee", session.userId + ".json")
+        : "";
+    if (loginOptions.e2eeDevicePath && !e2eeStorageKey) {
+      const error = new Error("Persistent E2EE device storage requires e2eeStorageKey (32 bytes or 64 hex characters)");
+      error.code = "FCA_E2EE_STORAGE_KEY_REQUIRED";
+      throw error;
+    }
+    if (e2eeDevicePath) {
+      const protectedPaths = [
+        path.resolve(process.cwd(), "account.txt"),
+        path.resolve(process.cwd(), "appstate.json"),
+        sessionGuardOptions?.filePath ? path.resolve(sessionGuardOptions.filePath) : null,
+        sessionGuardOptions?.backupPath ? path.resolve(sessionGuardOptions.backupPath) : null
+      ].filter(Boolean);
+      if (protectedPaths.includes(path.resolve(e2eeDevicePath))) {
+        const error = new Error("E2EE device storage must not overwrite account.txt, appstate.json, or SessionGuard files");
+        error.code = "FCA_E2EE_STORAGE_PATH_CONFLICT";
+        throw error;
+      }
+    }
+    function dispatchE2EEEvent(error, event) {
+      if (event && typeof event === "object") {
+        event.isE2EE = true;
+        event.isEncrypted = true;
+      }
+      for (const listener of e2eeListeners) {
+        if (event && typeof event === "object") {
+          const senderID = event.senderID == null ? null : String(event.senderID);
+          const isSelf = senderID !== null && senderID === session.userId;
+          if ((event.type === "message" || event.type === "message_reply") && isSelf && !runtimeOptions.selfListen) continue;
+          if (event.type !== "message" && event.type !== "message_reply" && !runtimeOptions.listenEvents) continue;
+        }
+        try { listener(error || null, event); } catch {}
+      }
+    }
+    function getE2EEClient() {
+      if (e2eeClient) return e2eeClient;
+      const tokens = session.getTokens();
+      const ctx = {
+        userID: session.userId,
+        fb_dtsg: tokens.fbDtsg,
+        ttstamp: tokens.jazoest,
+        lsd: tokens.lsd,
+        clientRevision: tokens.spinR,
+        jar: {
+          getCookies(url) {
+            const header = session.getCookieHeader(url);
+            return header ? header.split(/;\s*/).filter(Boolean) : [];
+          }
+        },
+        globalOptions: {
+          ...runtimeOptions,
+          e2eeDevicePath,
+          e2eeStorageKey,
+          e2eeDeviceListCacheMs: loginOptions.e2eeDeviceListCacheMs,
+          e2eeFrameLog: loginOptions.e2eeFrameLog
+        },
+        globalCallback: dispatchE2EEEvent
+      };
+      const defaultFuncs = {
+        async post(url, _jar, form) {
+          const response = await webClient.post(url, form);
+          return response.payload;
+        }
+      };
+      const httpAdapter = createE2EEHttpAdapter({ session, fetchImpl, userAgent: effectiveUserAgent });
+      e2eeClient = new E2EEClient(ctx, defaultFuncs, { httpRequest: httpAdapter.request });
+      return e2eeClient;
+    }
+    async function connectE2EE() {
+      return getE2EEClient().connect();
+    }
+    function callE2EE(method, args, callbackIndex = args.length) {
+      return new Promise((resolve, reject) => {
+        const values = args.slice();
+        values.splice(callbackIndex, 0, (error, result) => error ? reject(error) : resolve(result));
+        getE2EEClient()[method](...values);
+      });
+    }
+    async function sendE2EEMessage(threadID, message, options = {}) {
+      const threadInfo = await threadApi.getThreadInfo(threadID);
+      if (!threadInfo || threadInfo.isGroup !== false) {
+        const error = new Error("This E2EE implementation currently supports verified one-to-one threads only; group Sender Keys are not implemented");
+        error.code = threadInfo?.isGroup === true ? "FCA_E2EE_GROUP_UNSUPPORTED" : "FCA_E2EE_THREAD_TYPE_UNKNOWN";
+        error.retryable = false;
+        throw error;
+      }
+      const value = typeof message === "string" ? { body: message } : message;
+      if (!value || typeof value !== "object" || Array.isArray(value)) {
+        throw new TypeError("E2EE message must be a string or message object");
+      }
+      if (value.url != null) throw new TypeError("E2EE URL-share messages are not supported; send a text message or encrypted attachment");
+      const reply = options.replyToMessageID != null
+        ? { quotedId: String(options.replyToMessageID) }
+        : null;
+      if (value.attachment != null) {
+        const file = await readAttachmentInput(value.attachment);
+        const mime = file.mimeType.toLowerCase();
+        const kind = mime === "image/gif" ? "gif" : mime.startsWith("image/") ? "image" :
+          mime.startsWith("video/") ? "video" : mime.startsWith("audio/") ? "audio" : "document";
+        const serverMediaType = kind === "document" ? "document" : kind;
+        return callE2EE("sendAttachment", [String(threadID), {
+          buffer: file.buffer, kind, serverMediaType, mimetype: file.mimeType,
+          filename: file.fileName, caption: String(value.body || "")
+        }, reply], 2);
+      }
+      return callE2EE("sendText", [String(threadID), String(value.body || ""), reply], 2);
+    }
+    async function downloadE2EEAttachment(attachment) {
+      return callE2EE("downloadMedia", [attachment]);
+    }
+
+    async function assertE2EEOneToOneThread(threadID) {
+      const info = await threadApi.getThreadInfo(threadID);
+      if (!info || info.isGroup !== false) {
+        const error = new Error("E2EE controls currently support verified one-to-one threads only; group Sender Keys are not implemented");
+        error.code = info?.isGroup === true ? "FCA_E2EE_GROUP_UNSUPPORTED" : "FCA_E2EE_THREAD_TYPE_UNKNOWN";
+        error.retryable = false;
+        throw error;
+      }
+    }
+    async function sendE2EEReaction(threadID, messageID, reaction) {
+      await assertE2EEOneToOneThread(threadID);
+      if (!String(messageID || "").trim()) throw new TypeError("E2EE reaction requires a message ID");
+      return callE2EE("sendReaction", [String(threadID), String(messageID), String(reaction)], 3);
+    }
+    async function editE2EEMessage(threadID, messageID, newText) {
+      await assertE2EEOneToOneThread(threadID);
+      if (!String(messageID || "").trim()) throw new TypeError("E2EE edit requires a message ID");
+      return callE2EE("editMessage", [String(threadID), String(messageID), String(newText)], 3);
+    }
+    async function unsendE2EEMessage(threadID, messageID) {
+      await assertE2EEOneToOneThread(threadID);
+      if (!String(messageID || "").trim()) throw new TypeError("E2EE unsend requires a message ID");
+      return callE2EE("unsendMessage", [String(threadID), String(messageID)], 2);
+    }
+    async function sendE2EETyping(threadID, isTyping = true) {
+      await assertE2EEOneToOneThread(threadID);
+      return callE2EE("sendTyping", [String(threadID), isTyping !== false], 2);
+    }
+
     const stopSessionGuard = async () => {
       if (!guard) return false;
       const active = guard;
@@ -178,14 +352,194 @@ async function createFacebookMqttDriver({
         active.close();
       }
     };
+    async function uploadAttachments(input) {
+      const items = Array.isArray(input) ? input : [input];
+      if (!items.length || items.length > MAX_ATTACHMENT_COUNT) throw new RangeError("Attachment count must be between 1 and 10");
+      const files = [];
+      for (const item of items) files.push(await readAttachmentInput(item));
+      const totalBytes = files.reduce((sum, file) => sum + file.size, 0);
+      if (totalBytes > 10 * 1024 * 1024) throw new RangeError("Combined attachment upload exceeds the 10 MiB safety limit");
+      const form = new FormData();
+      form.append("voice_clip", "false");
+      files.forEach((file, index) => form.append("upload_" + index, new Blob([file.buffer], { type: file.mimeType }), file.fileName));
+      const response = await webClient.postMultipart("https://upload.facebook.com/ajax/mercury/upload.php", form);
+      const uploadPayload = response?.payload?.payload ?? response?.payload;
+      const metadata = uploadPayload?.metadata;
+      const entries = Array.isArray(metadata) ? metadata :
+        (metadata && typeof metadata === "object" ? Object.keys(metadata).sort((a,b) => Number(a)-Number(b)).map(key => metadata[key]) : []);
+      if (entries.length !== files.length) {
+        const error = new Error("Facebook did not confirm every uploaded attachment");
+        error.code = "FCA_ATTACHMENT_UPLOAD_INCOMPLETE";
+        throw error;
+      }
+      return entries.map((entry, index) => {
+        if (!entry || typeof entry !== "object" || Array.isArray(entry)) {
+          const error = new Error("Facebook returned malformed attachment metadata");
+          error.code = "FCA_RESPONSE_SHAPE_INVALID";
+          throw error;
+        }
+        const idKey = ["image_id", "video_id", "audio_id", "file_id", "gif_id"].find(key => entry[key] != null);
+        if (!idKey || !/^\d{1,40}$/.test(String(entry[idKey]))) {
+          const error = new Error("Facebook did not return a supported attachment ID");
+          error.code = "FCA_RESPONSE_SHAPE_INVALID";
+          throw error;
+        }
+        const type = idKey === "image_id" ? "image" : idKey === "video_id" ? "video" :
+          idKey === "audio_id" ? "audio" : idKey === "gif_id" ? "gif" : "file";
+        return Object.freeze({
+          attachmentID: String(entry[idKey]), id: String(entry[idKey]),
+          idKey, type, fileName: files[index].fileName,
+          mimeType: files[index].mimeType, size: files[index].size,
+          attachmentUrl: typeof entry.attachmentUrl === "string" ? entry.attachmentUrl : null,
+          metadata: entry
+        });
+      });
+    }
+
+    async function sendAttachmentMessage(input) {
+      const threadID = String(input?.threadID ?? "");
+      if (!/^\d{5,30}$/.test(threadID)) throw new TypeError("threadID must be a numeric Facebook ID");
+      const message = typeof input.message === "string" ? { body: input.message } : input.message;
+      if (!message || typeof message !== "object" || Array.isArray(message)) throw new TypeError("message must be a string or message object");
+      const body = message.body == null ? "" : String(message.body);
+      if (Buffer.byteLength(body, "utf8") > 20000) throw new RangeError("message body exceeds 20000 bytes");
+      const hasFiles = message.attachment != null;
+      const hasUrl = message.url != null;
+      if (hasFiles && hasUrl) throw new TypeError("A message can contain attachments or a share URL, not both");
+      if (!hasFiles && !hasUrl) throw new TypeError("Attachment message requires attachment or url");
+      const offlineId = offlineThreadingId();
+      const form = {
+        client: "mercury", action_type: "ma-type:user-generated-message",
+        author: "fbid:" + session.userId,
+        timestamp: Date.now(), timestamp_absolute: "Today",
+        timestamp_relative: "0 minutes ago", timestamp_time_passed: "0",
+        is_unread: false, is_cleared: false, is_forward: false,
+        is_filtered_content: false, is_filtered_content_bh: false,
+        is_filtered_content_account: false, is_filtered_content_quasar: false,
+        is_filtered_content_invalid_app: false, is_spoof_warning: false,
+        source: "source:chat:web", "source_tags[0]": "source:chat",
+        body, html_body: false, ui_push_phase: "V3", status: "0",
+        offline_threading_id: offlineId, message_id: offlineId,
+        threading_id: offlineThreadingId(), "ephemeral_ttl_mode:": "0",
+        manual_retry_cnt: "0", has_attachment: true
+      };
+      if (threadID.length === 15) {
+        form["specific_to_list[0]"] = "fbid:" + threadID;
+        form["specific_to_list[1]"] = "fbid:" + session.userId;
+        form.other_user_fbid = threadID;
+      } else form.thread_fbid = threadID;
+      if (input.replyToMessageID != null) form.replied_to_message_id = String(input.replyToMessageID);
+      let uploadedAttachments = [];
+      if (hasFiles) {
+        uploadedAttachments = await uploadAttachments(message.attachment);
+        const grouped = { image_id: "image_ids", gif_id: "gif_ids", video_id: "video_ids", audio_id: "audio_ids", file_id: "file_ids" };
+        const positions = Object.create(null);
+        for (const item of uploadedAttachments) {
+          const key = grouped[item.idKey];
+          const position = positions[key] || 0;
+          form[key + "[" + position + "]"] = item.attachmentID;
+          positions[key] = position + 1;
+        }
+      } else {
+        const shareUrl = new URL(String(message.url));
+        if (!["http:", "https:"].includes(shareUrl.protocol) || shareUrl.username || shareUrl.password) {
+          throw new TypeError("Share URL must be a valid HTTP or HTTPS URL without credentials");
+        }
+        const shared = await webClient.post("https://www.facebook.com/message_share_attachment/fromURI/", {
+          image_height: 960, image_width: 960, uri: shareUrl.toString()
+        });
+        const sharePayload = shared?.payload?.payload ?? shared?.payload;
+        const params = sharePayload?.share_data?.share_params;
+        if (sharePayload?.error || typeof params !== "string" || !params) {
+          const error = new Error("Facebook could not prepare the shared URL");
+          error.code = "FCA_ATTACHMENT_SHARE_FAILED";
+          throw error;
+        }
+        form["shareable_attachment[share_type]"] = "100";
+        form["shareable_attachment[share_params]"] = params;
+      }
+      if (Array.isArray(message.mentions)) {
+        message.mentions.forEach((mention, index) => {
+          if (!mention || typeof mention.tag !== "string") throw new TypeError("Mention tags must be strings");
+          const offset = body.indexOf(mention.tag, mention.fromIndex || 0);
+          form["profile_xmd[" + index + "][offset]"] = String(offset);
+          form["profile_xmd[" + index + "][length]"] = String(mention.tag.length);
+          form["profile_xmd[" + index + "][id]"] = String(mention.id ?? 0);
+          form["profile_xmd[" + index + "][type]"] = "p";
+        });
+      }
+      const result = await webClient.post("https://www.facebook.com/messaging/send/", form);
+      const payload = result?.payload?.payload ?? result?.payload;
+      if (!payload || payload.error || !Array.isArray(payload.actions)) {
+        const error = new Error("Facebook rejected the attachment message or returned an invalid response");
+        error.code = payload?.error ? "FCA_FACEBOOK_REQUEST_REJECTED" : "FCA_RESPONSE_SHAPE_INVALID";
+        error.facebookError = payload?.error ?? null;
+        throw error;
+      }
+      const action = payload.actions.find(item => item && (item.message_id || item.thread_fbid)) || payload.actions[0];
+      if (!action || !action.message_id) {
+        const error = new Error("Facebook did not confirm the sent attachment message");
+        error.code = "FCA_RESPONSE_SHAPE_INVALID";
+        throw error;
+      }
+      return {
+        threadID: String(action.thread_fbid || threadID),
+        messageID: String(action.message_id),
+        timestamp: action.timestamp ?? null,
+        attachments: uploadedAttachments.map(item => ({ attachmentID: item.attachmentID, type: item.type, fileName: item.fileName, mimeType: item.mimeType, size: item.size }))
+      };
+    }
+
+    function forwardAttachment(attachmentID, recipients, callback) {
+      const operation = (async () => {
+        const id = String(attachmentID ?? "");
+        if (!/^\d{1,40}$/.test(id)) throw new TypeError("attachmentID must be a numeric Facebook attachment ID");
+        const targets = Array.isArray(recipients) ? recipients : [recipients];
+        if (!targets.length || targets.length > 20) throw new RangeError("Recipient count must be between 1 and 20");
+        const form = { attachment_id: id };
+        const timestamp = Math.floor(Date.now() / 1000);
+        targets.forEach((target, index) => {
+          const recipient = String(target ?? "");
+          if (!/^\d{5,30}$/.test(recipient)) throw new TypeError("Every recipient must be a numeric Facebook ID");
+          form["recipient_map[" + (timestamp + index) + "]"] = recipient;
+        });
+        const result = await webClient.post("https://www.facebook.com/mercury/attachments/forward/", form);
+        const payload = result?.payload?.payload ?? result?.payload;
+        if (!payload || payload.error) {
+          const error = new Error("Facebook rejected the attachment forward request");
+          error.code = "FCA_FACEBOOK_REQUEST_REJECTED";
+          throw error;
+        }
+        return { success: true, attachmentID: id, recipients: targets.map(String) };
+      })();
+      return callbackResult(operation, callback);
+    }
+
+    const sendBroadcast = createBroadcastSender({
+      sendMessage: (message, threadID) => {
+        if (message && typeof message === "object" &&
+            (message.attachment != null || message.url != null)) {
+          return sendAttachmentMessage({ threadID, message });
+        }
+        return driver.sendMessage({ threadID, message });
+      }
+    });
+
     return Object.freeze({
       ...driver,
       ...threadApi,
+      sendBroadcast,
+      listenE2EE: callback => {
+        if (typeof callback !== "function") throw new TypeError("E2EE listener callback is required");
+        e2eeListeners.add(callback);
+        return () => e2eeListeners.delete(callback);
+      },
       listen: callback => {
         if (typeof callback !== "function") throw new TypeError("listener callback is required");
         if (!humanizer) humanizer = createHumanizer({
           sendTypingIndicator: (threadID, isTyping) => threadApi.sendTypingIndicator(threadID, isTyping)
         });
+        e2eeListeners.add(callback);
         const detach = driver.listen((error, event) => {
           if (error || !event || typeof event !== "object") {
             if (humanizer) humanizer.stop();
@@ -213,11 +567,76 @@ async function createFacebookMqttDriver({
           callback(null, event);
         });
         return () => {
+          e2eeListeners.delete(callback);
           if (humanizer) humanizer.stop();
           return detach();
         };
       },
       getHumanizer: () => humanizer,
+      uploadAttachment: uploadAttachments,
+      downloadAttachment(url, options = {}) { return downloadAttachmentFile(url, { ...options, fetchImpl: options.fetchImpl || fetchImpl }); },
+      forwardAttachment,
+      connectE2EE(callback) { return callbackResult(connectE2EE(), callback); },
+      _connectE2EEAndMerge(callback) { return callbackResult(connectE2EE(), callback); },
+      sendE2EEMessage(threadID, message, options = {}, callback) {
+        let settings = options;
+        let done = callback;
+        if (typeof settings === "function") { done = settings; settings = {}; }
+        return callbackResult(sendE2EEMessage(threadID, message, settings || {}), done);
+      },
+      sendE2EEAttachment(threadID, attachment, caption = "", options = {}, callback) {
+        let settings = options;
+        let done = callback;
+        if (typeof settings === "function") { done = settings; settings = {}; }
+        return callbackResult(sendE2EEMessage(threadID, { body: caption, attachment }, settings || {}), done);
+      },
+      downloadE2EEAttachment(attachment, callback) {
+        return callbackResult(downloadE2EEAttachment(attachment), callback);
+      },
+      sendE2EEReaction(threadID, messageID, reaction, callback) {
+        return callbackResult(sendE2EEReaction(threadID, messageID, reaction), callback);
+      },
+      editE2EEMessage(threadID, messageID, newText, callback) {
+        return callbackResult(editE2EEMessage(threadID, messageID, newText), callback);
+      },
+      unsendE2EEMessage(threadID, messageID, callback) {
+        return callbackResult(unsendE2EEMessage(threadID, messageID), callback);
+      },
+      sendE2EETyping(threadID, isTyping = true, callback) {
+        return callbackResult(sendE2EETyping(threadID, isTyping), callback);
+      },
+      isE2EEThread(threadID) {
+        return e2eeClient ? e2eeClient.isKnownE2EEThread(String(threadID)) : false;
+      },
+      getE2EEStatus() {
+        return Object.freeze({
+          connected: Boolean(e2eeClient && e2eeClient.connected),
+          deviceId: e2eeClient && e2eeClient.store ? e2eeClient.store.jidDevice : null,
+          persistentStorage: Boolean(e2eeDevicePath),
+          storageEncrypted: Boolean(e2eeDevicePath && e2eeStorageKey)
+        });
+      },
+      sendMessage(input, options = {}) {
+        const message = typeof input?.message === "string" ? input.message : input?.message;
+        const threadID = String(input?.threadID ?? "");
+        const requested = options.e2ee ?? (loginOptions.e2ee === true ? "required" : "auto");
+        const forceE2EE = requested === true || requested === "required";
+        const disableE2EE = requested === false || requested === "disabled";
+        const hasSavedE2EEDevice = Boolean(!e2eeClient && e2eeDevicePath && e2eeStorageKey && fs.existsSync(e2eeDevicePath));
+        const knownE2EE = !disableE2EE && (
+          (e2eeClient && e2eeClient.isKnownE2EEThread(threadID)) ||
+          (hasSavedE2EEDevice && getE2EEClient().isKnownE2EEThread(threadID))
+        );
+        if (forceE2EE || knownE2EE) {
+          return sendE2EEMessage(threadID, message, {
+            ...options,
+            replyToMessageID: input?.replyToMessageID ?? options.replyToMessageID
+          });
+        }
+        if (message && typeof message === "object" && (message.attachment != null || message.url != null)) return sendAttachmentMessage(input);
+        return Promise.resolve(driver.sendMessage(input, options))
+          .then(response => assertMessengerAccepted(response, "send-message"));
+      },
       changeGroupImage(image, threadID, callback) {
         const operation = (async () => {
           const file = await readImageInput(image);
@@ -318,10 +737,29 @@ async function createFacebookMqttDriver({
         });
         return callbackResult(operation, callback);
       },
+      pinMessage(messageID, threadID, callback) {
+        const request = createMessengerPinMessageRequest({ messageID, threadID, pin: true });
+        const operation = driver.sendRequest(request).then(response => {
+          assertMessengerAccepted(response, "pin-message");
+          return response?.payload?.payload ?? response?.payload ?? response;
+        });
+        return callbackResult(operation, callback);
+      },
+      unpinMessage(messageID, threadID, callback) {
+        const request = createMessengerPinMessageRequest({ messageID, threadID, pin: false });
+        const operation = driver.sendRequest(request).then(response => {
+          assertMessengerAccepted(response, "unpin-message");
+          return response?.payload?.payload ?? response?.payload ?? response;
+        });
+        return callbackResult(operation, callback);
+      },
       shareContact(text, senderID, threadID, callbackOrMessageID, callback) {
         const done = typeof callbackOrMessageID === "function" ? callbackOrMessageID : callback;
         const request = createMessengerShareContactRequest({ text, senderID, threadID });
-        const operation = driver.sendAction({ topic: "/ls_req", payload: request }).then(() => ({ success: true }));
+        const operation = driver.sendRequest(request).then(response => {
+          assertMessengerAccepted(response, "share-contact");
+          return response?.payload?.payload ?? response?.payload ?? response;
+        });
         return callbackResult(operation, done);
       },
       getCurrentUserID: () => session.userId,
@@ -355,6 +793,42 @@ async function createFacebookMqttDriver({
         return Object.freeze({ ...runtimeOptions });
       },
       getSessionState: () => session.state,
+      saveSession: callback => {
+        if (!guard) {
+          const error = new Error("Encrypted SessionGuard is not configured");
+          error.code = "FCA_SESSION_GUARD_MISSING";
+          throw error;
+        }
+        return callbackResult(guard.saveNow(), callback);
+      },
+      restoreSessionBackup: callback => {
+        const operation = (async () => {
+          if (!guard) {
+            const error = new Error("Encrypted SessionGuard is not configured");
+            error.code = "FCA_SESSION_GUARD_MISSING";
+            throw error;
+          }
+          const snapshot = guard.restoreBackup();
+          if (!snapshot || snapshot.version !== 1 || String(snapshot.userId) !== String(session.userId) ||
+              !Array.isArray(snapshot.appState) || snapshot.appState.length === 0) {
+            const error = new Error("Encrypted SessionGuard backup is invalid or belongs to another account");
+            error.code = "FCA_SESSION_RESTORE_FAILED";
+            throw error;
+          }
+          const previous = session.getAppState();
+          try {
+            await session.replaceAppState(snapshot.appState);
+            await guard.saveNow();
+            return Object.freeze({ restored: true, userId: session.userId, cookieCount: session.getAppState().length });
+          } catch (error) {
+            try { await session.replaceAppState(previous); } catch {}
+            throw error;
+          }
+        })();
+        return callbackResult(operation, callback);
+      },
+      httpPostFormData: (url, formData, callback) =>
+        callbackResult(Promise.resolve().then(() => webClient.postMultipart(url, formData)), callback),
       sessionGuard: (requestedPath, legacyOptions = {}) => {
         if (!guard) throw new Error("Encrypted SessionGuard is not configured; set FCA_SESSION_FILE and FCA_SESSION_KEY or pass sessionGuard.filePath/key");
         const paths = guard.getPaths();
@@ -373,13 +847,23 @@ async function createFacebookMqttDriver({
         return Object.freeze({ ...paths, saveNow: guard.saveNow });
       },
       stopSessionGuard,
+      disconnectE2EE: () => {
+        if (!e2eeClient) return false;
+        const client = e2eeClient;
+        e2eeClient = null;
+        client.disconnect();
+        return true;
+      },
       disconnect: async () => {
         if (closed) return;
         closed = true;
         if (humanizer) humanizer.stop();
         try {
-          try { await stopSessionGuard(); }
-          finally { await transport.disconnect(); }
+          try { if (e2eeClient) e2eeClient.disconnect(); }
+          finally {
+            try { await stopSessionGuard(); }
+            finally { await transport.disconnect(); }
+          }
         } finally { session.close(); }
       }
     });
