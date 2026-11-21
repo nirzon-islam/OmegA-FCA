@@ -116,6 +116,7 @@ function createMessengerShareContactRequest(input = {}) {
       epoch_id: String(epochId),
       version_id: SHARE_CONTACT_VERSION_ID
     }),
+    request_id: input.requestId ?? randomInt(1, 1000000),
     type: 3
   });
 }
