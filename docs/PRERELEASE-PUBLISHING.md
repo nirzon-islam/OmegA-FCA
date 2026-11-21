@@ -1,57 +1,47 @@
-# OmegA-FCA prerelease publishing
+# OmegA-FCA npm release publishing
 
-Prereleases are published by the GitHub Actions workflow `.github/workflows/publish-npm-release.yml`. The workflow publishes only prerelease tags to npm's `next` dist-tag; it does not move the stable `latest` tag.
+This repository publishes stable releases to npm's `latest` dist-tag and prereleases to `next`.
 
-## Current prerelease candidate
+## Current stable release candidate
 
 - Package: `@nirzon-islam/omega-fca`
-- Candidate version: `0.1.6-rc.4`
-- Git tag / GitHub Release: `v0.1.6-rc.4`
+- Target version: `0.1.6`
+- Git tag / GitHub Release: `v0.1.6`
 - Registry: `https://registry.npmjs.org/`
-- Dist-tag: `next`
+- Dist-tag: `latest`
 
 ## Required repository secret
 
-Before running the publish workflow, configure the repository Actions secret:
+Configure the repository Actions secret:
 
 - Name: `NPM_TOKEN`
-- Value: an npm automation/access token with publish permission for `@nirzon-islam/omega-fca`
+- Value: an npm access token with publish permission for `@nirzon-islam/omega-fca`
 
-Do not commit the token, put it in workflow source, or paste it into chat or logs. The workflow uses GitHub's OIDC permission for npm provenance as well as `NPM_TOKEN` for registry authentication.
+Never commit or paste the token into source code, chat, or logs. The workflow uses GitHub Actions OIDC provenance and the token for npm registry authentication.
 
-## Publish the existing rc.4 release
+## Prepare and publish stable 0.1.6
 
-The GitHub Release `v0.1.6-rc.4` already exists. Because the publish workflow was added after that release was created, its `release: published` trigger will not run retroactively.
+1. Confirm `package.json` and `package-lock.json` both declare `0.1.6`.
+2. Run the full test suite, TypeScript tests, syntax checks, and inspect `npm pack --dry-run`.
+3. Create and push the Git tag `v0.1.6` on the approved `main` commit.
+4. Create and publish the GitHub Release for `v0.1.6` (not marked as a prerelease).
+5. The `Publish npm release` workflow runs automatically. Alternatively, run it manually from Actions, select `main`, and enter `v0.1.6`.
+6. Wait for the publish and post-publish tarball verification steps to succeed.
 
-To publish this existing candidate:
-
-1. Open the repository's **Actions** tab.
-2. Select **Publish npm prerelease**.
-3. Choose **Run workflow**.
-4. Select branch `main`.
-5. Enter tag `v0.1.6-rc.4`.
-6. Start the workflow and wait for the `publish` job to finish successfully.
-
-The workflow checks out the exact tag, installs from the lockfile, runs tests/type/syntax checks, verifies that the package version matches the prerelease tag, reviews the package contents with `npm pack --dry-run`, then publishes with `--tag next`.
-
-For future GitHub prereleases, publishing starts automatically when a prerelease is published.
+The workflow checks out the exact tag, runs `npm ci`, tests, type checks, syntax checks, validates the package version against the tag, inspects the packed contents, publishes with provenance to `latest`, then downloads the registry tarball and confirms that `index.js` and `index.d.ts` are present.
 
 ## Verify the published artifact
 
-After the workflow succeeds, verify:
+After the workflow succeeds:
 
 ```sh
-npm view @nirzon-islam/omega-fca@next version
+npm view @nirzon-islam/omega-fca@latest version
 npm view @nirzon-islam/omega-fca dist-tags
-npm pack @nirzon-islam/omega-fca@next
+npm pack @nirzon-islam/omega-fca@latest
 ```
 
-Confirm that `next` resolves to `0.1.6-rc.4` and inspect the packed tarball. Only after that should GoatBot's `fca-migration-cleanup` dependency and lockfile be updated to the exact published version and tested with `npm ci`.
+Confirm that `latest` resolves to `0.1.6` and inspect the packed tarball. Only after that should GoatBot's dependency and lockfile be updated to the exact published version and tested with `npm ci`.
 
 ## Release boundary
 
-A successful package build and synthetic CI do not prove Facebook login, MQTT event delivery, message sending, attachments, or private web actions work against Meta's live service. Those still require an authorized owner-controlled AppState acceptance run.
-
-## Candidate scope
-
-This rc.4 candidate updates the package and lockfile version metadata. It does not claim new protocol support or completion of the outstanding live Facebook/AppState acceptance gates.
+A successful package build and CI run do not prove Facebook login, MQTT event delivery, message sending, attachments, or private web actions work against Meta's live service. Those still require an authorized owner-controlled AppState acceptance run. Do not claim live-service compatibility without that acceptance evidence.
