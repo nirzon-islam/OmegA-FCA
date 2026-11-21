@@ -20,7 +20,7 @@ OmegA-FCA is the Facebook integration library maintained under the **OmegA Bot**
 - Connection supervision, bounded reconnect/backoff and event dispatch.
 - Bounded realtime binary-frame envelope inspection based on observed captures.
 - Experimental Facebook Messenger MQTT 3.1 transport adapter using public FCA observations: `edge-chat.facebook.com/chat`, broker handshake, subscriptions and sync-queue bootstrap. Event normalization and live validation remain incomplete.
-- `createFacebookMqttClient()`: first-party AppState client factory with optional encrypted SessionGuard restore that wires the native personal-session bootstrap, MQTT driver, reconnect supervisor and GoatBot-style `listenMqtt` facade. Supply a WebSocket implementation; real Facebook broker acceptance is not yet verified.
+- `createFacebookMqttClient()`: first-party AppState client factory with optional encrypted SessionGuard restore that wires the native personal-session bootstrap, MQTT driver, reconnect supervisor and GoatBot-style `listenMqtt` facade. The package supplies its own `ws` WebSocket implementation by default (injection remains available for tests); real Facebook broker acceptance is not yet verified.
 - `inspectRealtimeSyncEnvelope()`: parses the captured outer sync JSON envelope and nested payload with size/type checks; it does not infer the unknown binary prefix or protocol semantics.
 - `createLegacyFcaProvider()`: adapter for an existing callback-style personal-account FCA implementation.
 - `createGoatBotLogin()`: callback-style GoatBot login adapter.
@@ -57,7 +57,7 @@ This is a session foundation only: it does not yet provide the full FCA action A
 
 ## Experimental Messenger MQTT transport
 
-`createFacebookMqttClient()` provides the first-party AppState and optional encrypted-session restore path: it validates the supplied session, opens the native WebSocket/MQTT transport, subscribes and initializes sync, and exposes a GoatBot-style callback listener. Known Messenger delta classes are normalized conservatively; unknown classes remain explicit. A limited set of web/thread and MQTT actions is available, but this is not full FCA parity. The private broker protocol, delta schemas, and action payloads are unofficial and have not been validated against a live Facebook account. See [Facebook MQTT transport notes](docs/FACEBOOK-MQTT-TRANSPORT.md) and [implementation status](docs/IMPLEMENTATION-STATUS.md).
+`createFacebookMqttClient()` provides the first-party AppState and optional encrypted-session restore path: it validates the supplied session, opens the native WebSocket/MQTT transport, subscribes and initializes sync, and exposes a GoatBot-style callback listener. Known Messenger delta classes are normalized conservatively; unknown classes remain explicit. A limited set of web/thread and MQTT actions is available, but this is not full FCA parity. The private broker protocol, delta schemas, and action payloads are unofficial and have not been validated against a live Facebook account. See [Facebook MQTT transport notes](docs/FACEBOOK-MQTT-TRANSPORT.md), [implementation status](docs/IMPLEMENTATION-STATUS.md), and the [Eryxen API parity/security audit](docs/ERYXEN-REFERENCE-AUDIT.md).
 
 ## Realtime frame inspection
 
