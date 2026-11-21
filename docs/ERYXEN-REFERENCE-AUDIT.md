@@ -54,10 +54,29 @@ The personal-account transport is unofficial and not a Meta-supported API. Faceb
 
 ## Public reference sources
 
-- Eryxen package API reference: https://www.npmjs.com/package/%40eryxenx/fca
+- Eryxen `fca-eryxenx` API quick reference: https://socket.dev/npm/package/fca-eryxenx/overview/4.0.3
+- Separate `@eryxenx/fca` package reference: https://www.npmjs.com/package/%40eryxenx/fca
 - OSV security advisory: https://osv.dev/vulnerability/MAL-2026-20276
 
 
 ## GoatBot listener options verified in the native compatibility layer
 
 The current implementation forwards login-time options from the callback adapter and applies the following event behaviours: `selfListen`, `selfListenEvent`, `listenEvents`, `listenTyping`, `updatePresence`, `autoMarkDelivery`, and `autoMarkRead`. `setOptions()` updates those supported runtime flags and rejects unknown options. The native driver also forwards `userAgent`; proxy support remains explicitly unsupported. Synthetic tests cover the event filters and runtime updates. This is not complete parity with every Eryxen/FCA configuration option.
+
+
+## Exact public Eryxen API checklist
+
+The API checklist also uses the public `fca-eryxenx` 4.0.3 quick reference (a separate package from `@eryxenx/fca`). Its documented method names are:
+
+- Messaging: `sendMessage`, `sendTypingIndicator`, `getMessage`, `editMessage`, `deleteMessage`, `unsendMessage`, `setMessageReaction`, `forwardAttachment`, `uploadAttachment`, `createPoll`.
+- Receipts: `markAsRead`, `markAsReadAll`, `markAsDelivered`, `markAsSeen`.
+- Threads: `getThreadInfo`, `getThreadList`, `getThreadHistory`, `deleteThread`, `changeThreadColor`, `changeThreadEmoji`, `changeGroupImage`, `setTitle`, `changeNickname`.
+- Users/groups: `getUserInfo`, `getFriendsList`, `getCurrentUserID`, `createNewGroup`, `addUserToGroup`, `removeUserFromGroup`, `changeAdminStatus`.
+- Auth/listening: `logout`, `getAppState`, `setOptions`, `listenMqtt`.
+
+The public checklist is a comparison target, not proof that every method is safe, stable, or supported by Meta. E2EE, media transfer, unknown private endpoint schemas and live account behaviour require separate evidence and verification. OmegA-FCA does not inherit the reference package's credential login or external API-server design; its current login phase remains owner-supplied AppState/session only.
+
+## Distinguish the reference packages
+
+- `fca-eryxenx` 4.0.3: public API quick reference captured from [Socket's package overview](https://socket.dev/npm/package/fca-eryxenx/overview/4.0.3).
+- `@eryxenx/fca`: separate npm package name. The OSV advisory linked below applies to the reported affected versions of this package; do not generalize it to the separate `fca-eryxenx` package without evidence.
