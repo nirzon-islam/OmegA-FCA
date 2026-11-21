@@ -262,18 +262,23 @@ function createFacebookThreadApi({ session, webClient, clientId = "omega-fca" } 
     if (!raw || raw.length > 2048) throw new TypeError("profile input is invalid");
     if (/^\d{5,30}$/.test(raw)) return callbackResult(Promise.resolve(raw), callback);
     let username = raw;
-    if (/^https?:\/\//i.test(raw) || /facebook\.com/i.test(raw)) {
+    const lowerRaw = raw.toLowerCase();
+    if (lowerRaw.startsWith("http://") || lowerRaw.startsWith("https://") || lowerRaw.includes("facebook.com")) {
       let parsed;
-      try { parsed = new URL(/^https?:\\/\\//i.test(raw) ? raw : "https://" + raw); }
-      catch { throw new TypeError("profile URL is invalid"); }
-      if (!/(^|\.)facebook\.com$/i.test(parsed.hostname)) throw new TypeError("profile URL must belong to facebook.com");
-      if (/^\\/profile\.php$/i.test(parsed.pathname)) {
+      try {
+        const candidate = lowerRaw.startsWith("http://") || lowerRaw.startsWith("https://") ? raw : "https://" + raw;
+        parsed = new URL(candidate);
+      } catch { throw new TypeError("profile URL is invalid"); }
+      if (!(parsed.hostname.toLowerCase() === "facebook.com" || parsed.hostname.toLowerCase().endsWith(".facebook.com"))) {
+        throw new TypeError("profile URL must belong to facebook.com");
+      }
+      if (parsed.pathname.toLowerCase() === "/profile.php") {
         const direct = parsed.searchParams.get("id");
-        if (direct && /^\d{5,30}$/.test(direct)) return callbackResult(Promise.resolve(direct), callback);
+        if (direct && /^\\d{5,30}$/.test(direct)) return callbackResult(Promise.resolve(direct), callback);
       }
       const parts = parsed.pathname.split("/").filter(Boolean);
       const last = parts.at(-1) || "";
-      if (/^\d{5,30}$/.test(last)) return callbackResult(Promise.resolve(last), callback);
+      if (/^\\d{5,30}$/.test(last)) return callbackResult(Promise.resolve(last), callback);
       username = parts[0] === "people" ? (parts[1] || "") : (parts[0] || "");
     }
     if (!username || username.includes("/") || username.length > 128) throw new TypeError("profile username is invalid");
