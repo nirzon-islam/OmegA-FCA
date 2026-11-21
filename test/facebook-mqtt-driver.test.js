@@ -226,6 +226,7 @@ test("honors GoatBot listener options and filters self, event, typing and presen
     if (error) throw error;
     received.push(event);
   });
+  driver.getHumanizer().setOptions({ reactDelayMs: 0, cooldownMs: 0, maxPerMinute: 0 });
   const threadID = "987654321";
   const delta = (kind, senderID, messageID) => ({
     class: kind,
