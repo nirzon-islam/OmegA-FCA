@@ -182,6 +182,8 @@ async function createFacebookMqttDriver({
       },
       getCurrentUserID: () => session.userId,
       getAppState: () => session.getAppState(),
+      // Sensitive legacy FCA compatibility helper. Never log or expose this value to ordinary users.
+      getCookies: () => session.getCookieHeader("https://www.facebook.com/"),
       refreshFb_dtsg: () => session.refreshTokens(),
       setOptions: options => {
         if (!options || typeof options !== "object" || Array.isArray(options)) {
