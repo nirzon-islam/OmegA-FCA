@@ -242,3 +242,33 @@ test("markAsDelivered validates IDs and normalizes rejected receipts", async () 
   assert.throws(() => api.markAsDelivered("", "mid.123"), /numeric Facebook ID/);
   await assert.rejects(api.markAsDelivered("123456789012345", "mid.123"), error => error.code === "FCA_FACEBOOK_REQUEST_REJECTED");
 });
+
+
+test("getMessage resolves a message from normalized thread history and supports not-found", async () => {
+  let calls = 0;
+  const api = createFacebookThreadApi({
+    session,
+    webClient: { post: async (url, body) => {
+      calls++;
+      const query = JSON.parse(body.queries).o0;
+      assert.equal(query.query_params.id, "987654321");
+      return { payload: batch({ message_thread: {
+        thread_type: "ONE_TO_ONE",
+        messages: { nodes: [{
+          __typename: "UserMessage", message_id: "mid.target",
+          message_sender: { id: "987654321" },
+          timestamp_precise: "1700000000001",
+          message: { text: "target message", ranges: [] }, blob_attachments: []
+        }] }
+      } }) };
+    } }
+  });
+  const found = await api.getMessage("987654321", "mid.target");
+  assert.equal(found.messageID, "mid.target");
+  assert.equal(found.body, "target message");
+  const missing = await api.getMessage("987654321", "mid.missing");
+  assert.equal(missing, null);
+  assert.equal(calls, 2);
+  assert.throws(() => api.getMessage("bad", "mid.target"), /numeric Facebook ID/);
+  assert.throws(() => api.getMessage("987654321", ""), /messageID is invalid/);
+});
