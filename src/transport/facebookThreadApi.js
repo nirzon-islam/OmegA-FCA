@@ -216,6 +216,18 @@ function createFacebookThreadApi({ session, webClient, clientId = "omega-fca" } 
     return callbackResult(operation, callback);
   }
 
+  function getMessage(threadID, messageID, callback) {
+    const thread = id(threadID, "threadID");
+    if (typeof messageID !== "string" || !messageID.trim() || messageID.length > 256) {
+      throw new TypeError("messageID is invalid");
+    }
+    const target = messageID.trim();
+    const operation = getThreadHistory(thread, 100, null).then(messages =>
+      messages.find(message => message.messageID === target) ?? null
+    );
+    return callbackResult(operation, callback);
+  }
+
   function getUserInfo(ids, callback) {
     const list = Array.isArray(ids) ? ids : [ids];
     if (!list.length || list.length > 100) throw new TypeError("getUserInfo requires 1 to 100 user IDs");
@@ -435,7 +447,7 @@ function createFacebookThreadApi({ session, webClient, clientId = "omega-fca" } 
     return callbackResult(operation, callback);
   }
 
-  return Object.freeze({ httpPost, getThreadList, getThreadInfo, getThreadHistory, getUserInfo,
+  return Object.freeze({ httpPost, getThreadList, getThreadInfo, getThreadHistory, getMessage, getUserInfo,
     addUserToGroup, removeUserFromGroup, changeNickname, changeThreadColor, changeThreadEmoji, setTitle, setMessageReaction, markAsRead, markAsDelivered, unsendMessage, sendTypingIndicator });
 }
 
