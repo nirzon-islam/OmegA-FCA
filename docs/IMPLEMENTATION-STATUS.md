@@ -100,3 +100,12 @@ Never commit live cookies, AppState, passwords, 2FA material, Page tokens, or en
 - Added normalized `getFriendsList()` and the observed GraphQL `createNewGroup(participantIDs, title?)` mutation.
 - Added client method registration and TypeScript declarations, plus synthetic request/response tests for each path.
 - These Facebook-private endpoints remain unofficial and need authorized live-account acceptance. CI must validate this batch before it is considered green.
+
+
+## GoatBot humanizer middleware — 2026-11-21
+
+- Added native `getHumanizer()`, created when `listenMqtt()` starts, matching GoatBot's `humanizerOptions.js` lifecycle.
+- Implemented `enabled`, fixed or ranged `reactDelayMs`, per-thread/global `cooldownMs`, `maxPerMinute`, and `perThread` behaviour.
+- The middleware starts a typing indicator, holds the incoming message for the configured reaction delay, then stops typing and delivers the event. It skips self messages (unless the Bot's self-listen filter allows them) and E2EE-marked events.
+- Pending typing timers are stopped when the listener detaches, errors, or the client disconnects.
+- Added unit tests and driver lifecycle tests. CI must verify this latest change before it is considered green.
