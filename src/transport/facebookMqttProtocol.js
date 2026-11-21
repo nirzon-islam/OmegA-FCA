@@ -130,7 +130,9 @@ function createFacebookMqttProtocol(options = {}) {
         // state and client availability immediately after queue initialization.
         socket.send(mqtt.encodePublish({ topic: "/foreground_state", payload: JSON.stringify({ foreground: options.online !== false }), qos: 1, packetId: nextPacketId() }));
         socket.send(mqtt.encodePublish({ topic: "/set_client_settings", payload: JSON.stringify({ make_user_available_when_in_foreground: true }), qos: 1, packetId: nextPacketId() }));
-        // MQTT keepalive is negotiated in seconds in CONNECT. Send PINGREQ\n        // at half that interval so the broker timeout is never approached.\n        const keepAliveMs = keepAliveSeconds * 500;
+        // MQTT keepalive is negotiated in seconds in CONNECT. Send PINGREQ
+        // at half that interval so the broker timeout is never approached.
+        const keepAliveMs = keepAliveSeconds * 500;
         if (keepAliveMs > 0) {
           const pingTimer = setInterval(() => {
             if (socket.readyState === undefined || socket.readyState === 1) {
