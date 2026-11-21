@@ -311,7 +311,7 @@ test("implements editMessage and shareContact with correlated MQTT requests", as
     const edited = await driver.editMessage("edited text", "mid-edit");
     assert.deepEqual(edited, { body: "edited text", messageID: "mid-edit" });
     const shared = await driver.shareContact("contact", "111111111111111", "222222222222222", "legacy-message-id");
-    assert.equal(shared.payload.success, true);
+    assert.equal(shared.success, true);
   } finally {
     await driver.disconnect();
   }
