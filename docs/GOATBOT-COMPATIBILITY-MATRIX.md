@@ -55,6 +55,8 @@ The client exposes each method below only when the injected driver provides that
 | `getUserInfo`, `getThreadInfo`, `getThreadList`, `getThreadHistory` | `threads` | Native AppState-backed web actions with synthetic tests; live Facebook endpoint behavior is unverified. |
 | `httpPost` | compatibility | Authenticated low-level POST returning response text; restricted to Facebook/Messenger HTTPS hosts and bounded request/response sizes. Supports custom GoatBot GraphQL commands such as friend-request management. |
 | `getMessage` | `threads` | Implemented by looking up the requested ID in the latest 100 normalized thread-history messages; callback and Promise forms are supported. Older messages may require a future cursor-based lookup. |
+| `editMessage` | `messaging` | Native MQTT task builder + correlated response parser; synthetic request/response test added. Live edit acceptance and old-message rejection still require owner testing. |
+| `shareContact` | `messaging` | Native MQTT contact-sharing task builder with correlated response; accepts GoatBot's legacy fourth message-ID argument as an ignored compatibility placeholder. Live acceptance is unverified. |
 | `getFriendsList` | `threads` | Not yet implemented by the first-party native driver; optional pass-through only. |
 | `getUserID` | `threads` | Alias to the authenticated account identity. |
 | `addUserToGroup`, `removeUserFromGroup`, `changeNickname`, `setTitle` | `groups` | Native AppState-backed web actions with synthetic tests; live acceptance is unverified. |
@@ -67,7 +69,7 @@ The client exposes each method below only when the injected driver provides that
 The source scan of the current `fca-migration-cleanup` branch found additional method calls beyond the core login contract:
 
 - Implemented in the native facade: `getAppState`, `refreshFb_dtsg`, `httpPost`, `sendMessage`, `unsendMessage`, `markAsDelivered`, `getCurrentUserID`, `getThreadList`, `getThreadInfo`, `getThreadHistory`, `getUserInfo`, `addUserToGroup`, `removeUserFromGroup`, `changeNickname`, `setTitle`, `changeThreadColor`, `changeThreadEmoji`, `sendTypingIndicator`, and `setMessageReaction`.
-- Still missing or not verified: `editMessage`, `changeGroupImage`, `changeAvatar`, and `shareContact`. `setOptions` now applies the supported native listener filters documented above; full parity with every legacy FCA option remains incomplete.
+- Still missing or not verified: `changeGroupImage` and `changeAvatar`. `setOptions` now applies the supported native listener filters documented above; full parity with every legacy FCA option remains incomplete.
 - This was a partial scan of command files, not the complete 271-file repository inventory; event handlers, dashboard, database, custom scripts, and dynamically accessed methods still need review.
 
 ## Required work before migration
