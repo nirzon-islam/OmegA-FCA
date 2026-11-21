@@ -61,4 +61,63 @@ function createMessengerSendMessageRequest(input = {}) {
   });
 }
 
-module.exports = { MESSENGER_MQTT_APP_ID, SEND_MESSAGE_VERSION_ID, offlineThreadingId, createMessengerSendMessageRequest };
+
+const EDIT_MESSAGE_VERSION_ID = "6903494529735864";
+const SHARE_CONTACT_VERSION_ID = "7214102258676893";
+
+function createMessengerEditMessageRequest(input = {}) {
+  const messageID = String(input.messageID ?? "");
+  const text = String(input.text ?? "");
+  if (!messageID || messageID.length > 256) throw new TypeError("messageID is invalid");
+  if (!text || Buffer.byteLength(text, "utf8") > 20000) throw new TypeError("edit text must contain 1-20000 bytes");
+  const epochId = input.epochId ?? Number.parseInt(offlineThreadingId(), 10);
+  const taskId = input.taskId ?? randomInt(1, 10000);
+  if (!Number.isSafeInteger(epochId) || epochId < 1) throw new TypeError("epochId is invalid");
+  if (!Number.isInteger(taskId) || taskId < 1 || taskId > 65535) throw new TypeError("taskId is invalid");
+  return Object.freeze({
+    app_id: MESSENGER_MQTT_APP_ID,
+    payload: JSON.stringify({
+      data_trace_id: null,
+      epoch_id: epochId,
+      tasks: [{
+        failure_count: null,
+        label: "742",
+        payload: JSON.stringify({ message_id: messageID, text }),
+        queue_name: "edit_message",
+        task_id: taskId
+      }],
+      version_id: EDIT_MESSAGE_VERSION_ID
+    }),
+    type: 3
+  });
+}
+
+function createMessengerShareContactRequest(input = {}) {
+  const senderID = String(input.senderID ?? "");
+  const threadID = String(input.threadID ?? "");
+  const text = String(input.text ?? "");
+  if (!/^\\d{5,30}$/.test(senderID)) throw new TypeError("senderID must be a numeric Facebook ID");
+  if (!/^\\d{5,30}$/.test(threadID)) throw new TypeError("threadID must be a numeric Facebook ID");
+  if (Buffer.byteLength(text, "utf8") > 20000) throw new RangeError("contact text exceeds 20000 bytes");
+  const epochId = input.epochId ?? offlineThreadingId();
+  if (!/^\\d{10,24}$/.test(String(epochId))) throw new TypeError("epochId is invalid");
+  const taskId = input.taskId ?? randomInt(0, 1001);
+  if (!Number.isInteger(taskId) || taskId < 0 || taskId > 1000) throw new TypeError("taskId is invalid");
+  return Object.freeze({
+    app_id: MESSENGER_MQTT_APP_ID,
+    payload: JSON.stringify({
+      tasks: [{
+        label: "359",
+        payload: JSON.stringify({ contact_id: senderID, sync_group: 1, text, thread_id: threadID }),
+        queue_name: "messenger_contact_sharing",
+        task_id: taskId,
+        failure_count: null
+      }],
+      epoch_id: String(epochId),
+      version_id: SHARE_CONTACT_VERSION_ID
+    }),
+    type: 3
+  });
+}
+
+module.exports = { MESSENGER_MQTT_APP_ID, SEND_MESSAGE_VERSION_ID, offlineThreadingId, createMessengerSendMessageRequest, createMessengerEditMessageRequest, createMessengerShareContactRequest };
