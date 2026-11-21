@@ -19,7 +19,7 @@ Status labels:
 
 | Reference API area | Reference methods / behaviours | OmegA-FCA status |
 |---|---|---|
-| Login and account | AppState login, current-user ID, AppState export, token refresh, logout, options | AppState/cookie login, current identity, AppState export and token refresh are implemented at the native facade; native username/password + 2FA is deferred; full option parity and logout semantics need audit |
+| Login and account | AppState login, current-user ID, AppState export, token refresh, logout, options | AppState/cookie login, current identity, AppState export and token refresh are implemented at the native facade; native username/password + 2FA is deferred; GoatBot's core listener options and selected setOptions runtime flags are supported, while full option parity and logout semantics still need audit |
 | Session recovery | sessionGuard, saveSession, restoreSessionBackup, stopSessionGuard | Encrypted AES-256-GCM sidecar, verified backup recovery, periodic/final save and account-bound restore are implemented and synthetic-tested; legacy account.txt is never overwritten |
 | Realtime | MQTT connect, listenMqtt, ready, error, auto-reconnect, event subscriptions | Native WebSocket/MQTT driver, supervisor and callback facade are implemented; live broker and event parity remain unverified |
 | Messages | sendMessage, editMessage, unsendMessage, deleteMessage, getMessage, broadcast | sendMessage is experimental; unsendMessage is implemented with synthetic web-action tests; edit/delete/getMessage/broadcast are missing or not verified |
@@ -56,3 +56,8 @@ The personal-account transport is unofficial and not a Meta-supported API. Faceb
 
 - Eryxen package API reference: https://www.npmjs.com/package/%40eryxenx/fca
 - OSV security advisory: https://osv.dev/vulnerability/MAL-2026-20276
+
+
+## GoatBot listener options verified in the native compatibility layer
+
+The current implementation forwards login-time options from the callback adapter and applies the following event behaviours: `selfListen`, `selfListenEvent`, `listenEvents`, `listenTyping`, `updatePresence`, `autoMarkDelivery`, and `autoMarkRead`. `setOptions()` updates those supported runtime flags and rejects unknown options. The native driver also forwards `userAgent`; proxy support remains explicitly unsupported. Synthetic tests cover the event filters and runtime updates. This is not complete parity with every Eryxen/FCA configuration option.
