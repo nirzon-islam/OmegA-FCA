@@ -12,7 +12,7 @@ const { createFacebookThreadApi } = require("./facebookThreadApi");
  * Thread and group methods use the same authenticated Facebook web session
  * and public FCA request conventions; their private endpoints can change.
  */
-async function extractEditMessageResult(response) {
+function extractEditMessageResult(response) {
   const step = response?.payload?.step;
   const candidate = step?.[1]?.[2]?.[2]?.[1];
   const messageID = String(candidate?.[2] || "");
@@ -31,7 +31,7 @@ function callbackResult(operation, callback) {
   return undefined;
 }
 
-function createFacebookMqttDriver({
+async function createFacebookMqttDriver({
   appState, socketFactory, fetchImpl, userAgent, timeoutMs = 20000,
   connectTimeoutMs = 15000, closeTimeoutMs = 3000, protocolSetupTimeoutMs = 15000,
   maxFrameBytes, syncCursorStore, onSyncCursor, requestTimeoutMs, maxPendingRequests,
