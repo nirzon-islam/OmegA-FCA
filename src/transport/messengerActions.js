@@ -127,12 +127,12 @@ const CHANGE_GROUP_IMAGE_VERSION_ID = "8798795233522156";
 function createMessengerChangeGroupImageRequest(input = {}) {
   const threadID = String(input.threadID ?? "");
   const imageID = String(input.imageID ?? "");
-  if (!/^\\d{5,30}$/.test(threadID)) throw new TypeError("threadID must be a numeric Facebook ID");
-  if (!/^\\d{5,30}$/.test(imageID)) throw new TypeError("imageID must be a numeric Facebook ID");
+  if (!/^\d{5,30}$/.test(threadID)) throw new TypeError("threadID must be a numeric Facebook ID");
+  if (!/^\d{5,30}$/.test(imageID)) throw new TypeError("imageID must be a numeric Facebook ID");
   const taskId = input.taskId ?? randomInt(1, 65536);
   if (!Number.isInteger(taskId) || taskId < 1 || taskId > 65535) throw new TypeError("taskId is invalid");
   const epochId = input.epochId ?? offlineThreadingId();
-  if (!/^\\d{10,24}$/.test(String(epochId))) throw new TypeError("epochId is invalid");
+  if (!/^\d{10,24}$/.test(String(epochId))) throw new TypeError("epochId is invalid");
   return Object.freeze({
     app_id: MESSENGER_MQTT_APP_ID,
     payload: JSON.stringify({
